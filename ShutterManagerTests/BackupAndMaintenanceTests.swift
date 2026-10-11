@@ -26,7 +26,7 @@ struct BackupTests {
         #expect(manager.availableBackups.count == 1)
         let backup = try #require(manager.availableBackups.first)
         #expect(backup.itemCounts.gearItems == 1)
-        #expect(backup.itemCounts.otherRecords == 6)
+        #expect(backup.itemCounts.otherRecords == 5, "Two readings, a loan, a maintenance record and a reminder")
         #expect(backup.includesPhotos == true)
         #expect(manager.lastBackupDate != nil)
 
@@ -126,7 +126,8 @@ struct MaintenanceServiceTests {
     }
 
     @Test func recurringRemindersSkipToTheNextOccurrence() {
-        let calendar = Calendar(identifier: .gregorian)
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC") ?? .gmt
         let due = Date(timeIntervalSince1970: 0)
         let now = Date(timeIntervalSince1970: 86_400 * 100.5)
         let next = MaintenanceReminder.nextOccurrence(after: due, intervalDays: 30, now: now, calendar: calendar)

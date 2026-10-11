@@ -74,7 +74,10 @@ final class AppStoreController: ObservableObject {
         if ProcessInfo.processInfo.arguments.contains("-uiTestStoreFailure") {
             throw CocoaError(.fileReadCorruptFile)
         }
-        if ProcessInfo.processInfo.arguments.contains("-uiTestInMemory") {
+        // Unit tests build their own containers, so the app hosting them shouldn't open the
+        // simulator's library or start CloudKit setup underneath them.
+        if ProcessInfo.processInfo.arguments.contains("-uiTestInMemory")
+            || ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil {
             container = try ModelContainer(for: AppSchema.schema, configurations: ModelConfiguration(
                 schema: AppSchema.schema, isStoredInMemoryOnly: true, cloudKitDatabase: .none))
             syncManager.configure(storageMode: .localOnly("This session uses a temporary library with iCloud disabled."))

@@ -157,7 +157,6 @@ struct ExportImportTests {
         lens.focalLengthMin = .nan
         lens.filterThread = .infinity
         lens.guideNumber = 5e12
-        try source.mainContext.save()
         let service = DataExportService(settingsStore: TestSupport.makeDefaults())
         let data = service.buildExportData(configuration: .init(format: .json), gearItems: [lens])
         #expect(service.lastReplacedValueCount == 3)
