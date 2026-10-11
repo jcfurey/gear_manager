@@ -115,6 +115,16 @@ final class GearItem {
     @Relationship(deleteRule: .cascade, inverse: \GearLoan.gearItem)
     var loans: [GearLoan]? = []
 
+    /// Shoots this item is down for. Many-to-many; `Shoot.gear` declares the inverse.
+    var shoots: [Shoot]? = []
+
+    /// Kits this item is in. Many-to-many; `Kit.gear` declares the inverse.
+    var kits: [Kit]? = []
+
+    /// Film rolls loaded in this camera. Deleting the camera keeps the rolls.
+    @Relationship(deleteRule: .nullify, inverse: \FilmRoll.camera)
+    var filmRolls: [FilmRoll]? = []
+
     init(category: GearCategory = .other,
          dateAdded: Date = Date(),
          make: String? = nil,

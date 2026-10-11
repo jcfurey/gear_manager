@@ -103,6 +103,19 @@ enum Constants {
         static let storageCompressionQuality: CGFloat = 0.8
     }
 
+    // MARK: - Shoots
+
+    enum Shoots {
+        /// A new shoot's length until its end is set.
+        static let defaultDuration: TimeInterval = 2 * 3600
+        /// How long before golden hour the heads-up can come, in minutes.
+        static let goldenHourAlertChoices = [15, 30, 60, 120]
+        /// Shoots further ahead than this get their heads-up on a later refresh.
+        static let alertLookaheadDays = 60
+        /// iOS keeps 64 pending notifications per app; leave room for gear reminders and timers.
+        static let maximumShootAlerts = 12
+    }
+
     // MARK: - User Defaults Keys
 
     /// Every persisted preference key, in one place.

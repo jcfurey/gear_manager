@@ -23,7 +23,10 @@ enum AppSchema {
         MaintenanceRecord.self, MaintenanceReminder.self,
         ShutterCountReading.self, GearLoan.self,
         DevelopmentRecipe.self, DevelopmentStep.self,
-        SavedPlace.self
+        SavedPlace.self,
+        Shoot.self, ShotListItem.self, Kit.self,
+        ShotListTemplate.self, ShotListTemplateItem.self,
+        FilmRoll.self
     ]
 
     /// The full schema, built from `models`.

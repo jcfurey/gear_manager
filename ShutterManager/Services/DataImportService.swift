@@ -109,6 +109,29 @@ final class DataImportService {
             context.insert(recipe)
             steps.forEach(context.insert)
         }
+        // Shoots and templates merge whole too, like recipes. Rolls link to shoots, so shoots
+        // come first, with a lookup of every shoot a roll can name.
+        var shootByID: [UUID: Shoot] = [:]
+        if strategy == .merge {
+            shootByID = try context.fetch(FetchDescriptor<Shoot>()).reduce(into: [:]) { $0[$1.id] = $1 }
+        }
+        for dto in document.shootList where shootByID[dto.id] == nil {
+            let (shoot, shotList) = dto.toShoot(gearByID: gearByID)
+            context.insert(shoot)
+            shotList.forEach(context.insert)
+            shootByID[shoot.id] = shoot
+        }
+        for dto in document.kitList where !existing.kits.contains(dto.id) {
+            context.insert(dto.toKit(gearByID: gearByID))
+        }
+        for dto in document.templateList where !existing.shotListTemplates.contains(dto.id) {
+            let (template, items) = dto.toTemplate()
+            context.insert(template)
+            items.forEach(context.insert)
+        }
+        for dto in document.rollList where !existing.filmRolls.contains(dto.id) {
+            context.insert(dto.toRoll(gearByID: gearByID, shootByID: shootByID))
+        }
         try saveChanges(context)
     }
 
@@ -121,6 +144,9 @@ final class DataImportService {
         var loans: Set<UUID> = []
         var developmentRecipes: Set<UUID> = []
         var savedPlaces: Set<UUID> = []
+        var kits: Set<UUID> = []
+        var shotListTemplates: Set<UUID> = []
+        var filmRolls: Set<UUID> = []
 
         init() {}
 
@@ -131,6 +157,9 @@ final class DataImportService {
             loans = Set(try context.fetch(FetchDescriptor<GearLoan>()).map(\.id))
             developmentRecipes = Set(try context.fetch(FetchDescriptor<DevelopmentRecipe>()).map(\.id))
             savedPlaces = Set(try context.fetch(FetchDescriptor<SavedPlace>()).map(\.id))
+            kits = Set(try context.fetch(FetchDescriptor<Kit>()).map(\.id))
+            shotListTemplates = Set(try context.fetch(FetchDescriptor<ShotListTemplate>()).map(\.id))
+            filmRolls = Set(try context.fetch(FetchDescriptor<FilmRoll>()).map(\.id))
         }
     }
 }
@@ -156,6 +185,10 @@ struct ImportPreview {
     let loanCount: Int
     let recipeCount: Int
     let placeCount: Int
+    let shootCount: Int
+    let kitCount: Int
+    let templateCount: Int
+    let filmRollCount: Int
     let hasSettings: Bool
     let includesPhotos: Bool
 
@@ -170,11 +203,18 @@ struct ImportPreview {
         loanCount = document.loans.count
         recipeCount = document.recipes.count
         placeCount = document.places.count
+        shootCount = document.shootList.count
+        kitCount = document.kitList.count
+        templateCount = document.templateList.count
+        filmRollCount = document.rollList.count
         hasSettings = document.settings != nil
         includesPhotos = document.includesPhotos
     }
 
-    var totalItems: Int { gearCount + maintenanceCount + shutterCountCount + loanCount + recipeCount + placeCount }
+    var totalItems: Int {
+        gearCount + maintenanceCount + shutterCountCount + loanCount + recipeCount + placeCount
+            + shootCount + kitCount + templateCount + filmRollCount
+    }
 
     var formattedDate: String { exportDate.formatted(date: .abbreviated, time: .shortened) }
 }

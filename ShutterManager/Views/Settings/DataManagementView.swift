@@ -69,6 +69,10 @@ struct DataImportView: View {
                         previewRow("arrow.left.arrow.right", "Loans", preview.loanCount)
                         previewRow("flask", "Development recipes", preview.recipeCount)
                         previewRow("mappin.and.ellipse", "Saved places", preview.placeCount)
+                        previewRow("calendar", "Shoots", preview.shootCount)
+                        previewRow("bag", "Kits", preview.kitCount)
+                        previewRow("checklist", "Shot-list templates", preview.templateCount)
+                        previewRow("film", "Film rolls", preview.filmRollCount)
                         if preview.hasSettings {
                             Label("App settings", systemImage: "gearshape")
                         }

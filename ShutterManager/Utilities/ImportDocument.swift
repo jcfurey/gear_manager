@@ -89,6 +89,25 @@ enum ImportDocument {
             try check(place.latitude, Limits.maximumMeasurement)
             try check(place.longitude, Limits.maximumMeasurement)
         }
+        for shoot in document.shootList {
+            try check(shoot.latitude, Limits.maximumMeasurement)
+            try check(shoot.longitude, Limits.maximumMeasurement)
+            try check(shoot.goldenHourAlertMinutes.map { Double($0) }, Limits.maximumMeasurement)
+            for item in shoot.shotList {
+                try check(Double(item.order), Limits.maximumMeasurement)
+            }
+        }
+        for template in document.templateList {
+            for item in template.items {
+                try check(Double(item.order), Limits.maximumMeasurement)
+            }
+        }
+        for roll in document.rollList {
+            try check(roll.pushPullStops, Limits.maximumMeasurement)
+            for count in [roll.ratedISO, roll.frameCount, roll.framesShot] {
+                try check(count.map { Double($0) }, Limits.maximumMeasurement)
+            }
+        }
         for recipe in document.recipes {
             try check(recipe.temperatureCelsius, Limits.maximumMeasurement)
             for step in recipe.steps {

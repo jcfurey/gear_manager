@@ -222,7 +222,7 @@ struct SettingsView: View {
             }
             Button("Cancel", role: .cancel) { }
         } message: {
-            Text("This permanently deletes all your gear, photos, maintenance history, shutter counts, loans, development recipes and saved places, on every device signed in to your iCloud account. Settings and local backups are kept.")
+            Text("This permanently deletes all your gear, photos, maintenance history, shutter counts, loans, development recipes, saved places, shoots, kits, shot-list templates and film rolls, on every device signed in to your iCloud account. Settings and local backups are kept.")
         }
         .alert("Couldn't Clear Data", isPresented: $clearFailed) {
             Button("OK", role: .cancel) { }

@@ -16,6 +16,8 @@ struct EnhancedDataExportView: View {
     @Query(sort: \GearItem.dateAdded, order: .reverse) private var gearItems: [GearItem]
     @Query private var recipes: [DevelopmentRecipe]
     @Query private var places: [SavedPlace]
+    @Query private var shoots: [Shoot]
+    @Query private var filmRolls: [FilmRoll]
 
     @State private var selectedFormat = EnhancedExportFormat.json
     @State private var includePhotos = true
@@ -51,7 +53,7 @@ struct EnhancedDataExportView: View {
                     } header: {
                         Text("Include")
                     } footer: {
-                        Text("Gear, maintenance, shutter counts, loans, development recipes and saved places are always included. Leaving photos out makes a much smaller file.")
+                        Text("Gear, maintenance, shutter counts, loans, development recipes, saved places, shoots, kits, shot-list templates and film rolls are always included. Leaving photos out makes a much smaller file.")
                     }
                 }
 
@@ -66,6 +68,12 @@ struct EnhancedDataExportView: View {
                     }
                     if selectedFormat == .json && !places.isEmpty {
                         StatRow(icon: "mappin.and.ellipse", label: "Saved Places", value: "\(places.count)", color: .teal)
+                    }
+                    if selectedFormat == .json && !shoots.isEmpty {
+                        StatRow(icon: "calendar", label: "Shoots", value: "\(shoots.count)", color: .indigo)
+                    }
+                    if selectedFormat == .json && !filmRolls.isEmpty {
+                        StatRow(icon: "film", label: "Film Rolls", value: "\(filmRolls.count)", color: .brown)
                     }
                 }
 
@@ -106,9 +114,10 @@ struct EnhancedDataExportView: View {
         }
     }
 
-    /// CSV and PDF list gear; JSON also carries recipes and settings.
+    /// CSV and PDF list gear; JSON also carries everything else and settings.
     private var hasAnythingToExport: Bool {
-        !gearItems.isEmpty || (selectedFormat == .json && (includeSettings || !recipes.isEmpty || !places.isEmpty))
+        !gearItems.isEmpty || (selectedFormat == .json && (includeSettings || !recipes.isEmpty || !places.isEmpty
+                                                           || !shoots.isEmpty || !filmRolls.isEmpty))
     }
 
     private func performExport() {

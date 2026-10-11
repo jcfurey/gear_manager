@@ -38,6 +38,8 @@ final class DataExportService {
         var includeDevelopmentRecipes = true
         /// Saved places (JSON only).
         var includeSavedPlaces = true
+        /// Shoots with their shot lists, kits, shot-list templates and film rolls (JSON only).
+        var includeShoots = true
         var includePhotos = true
         var includeSettings = true
         var format: ExportFormat
@@ -84,6 +86,11 @@ final class DataExportService {
                 ? library.developmentRecipes.map(DevelopmentRecipeDTO.init(from:)) : [],
             savedPlaces: configuration.includeSavedPlaces
                 ? library.savedPlaces.map(SavedPlaceDTO.init(from:)) : [],
+            shoots: configuration.includeShoots ? library.shoots.map(ShootDTO.init(from:)) : [],
+            kits: configuration.includeShoots ? library.kits.map(KitDTO.init(from:)) : [],
+            shotListTemplates: configuration.includeShoots
+                ? library.shotListTemplates.map(ShotListTemplateDTO.init(from:)) : [],
+            filmRolls: configuration.includeShoots ? library.filmRolls.map(FilmRollDTO.init(from:)) : [],
             settings: configuration.includeSettings ? exportSettings() : nil,
             includesPhotos: configuration.includePhotos)
         lastReplacedValueCount = data.replaceUnrestorableNumbers()

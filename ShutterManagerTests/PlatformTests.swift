@@ -17,7 +17,8 @@ struct PlatformTests {
         let names = Set(AppSchema.models.map { String(describing: $0) })
         #expect(names == ["GearItem", "GearPhoto", "MaintenanceRecord", "MaintenanceReminder",
                           "ShutterCountReading", "GearLoan", "DevelopmentRecipe", "DevelopmentStep",
-                          "SavedPlace"])
+                          "SavedPlace", "Shoot", "ShotListItem", "Kit", "ShotListTemplate",
+                          "ShotListTemplateItem", "FilmRoll"])
         let container = try TestSupport.makeContainer()
         #expect(container.schema.entities.count == AppSchema.models.count)
     }

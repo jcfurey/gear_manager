@@ -8,7 +8,8 @@
 import Foundation
 
 /// A whole-library export or backup. Every record type is a flat array; child records name
-/// their gear item by `gearItemID`.
+/// their gear item by `gearItemID`. Shoots and kits name their gear by ID, and shot lists, recipe
+/// steps and template items travel nested inside their parent.
 ///
 /// Compatibility rules, which keep every file the app ever wrote importable:
 /// - Fields added later are optional (or decode with a default), so older files still decode.
@@ -31,6 +32,11 @@ struct LibraryExport: Codable {
     var developmentRecipes: [DevelopmentRecipeDTO]? = nil
     /// Added in 1.0 development (M3); absent from earlier files, so optional.
     var savedPlaces: [SavedPlaceDTO]? = nil
+    /// Added in 1.0 development (M4), like the three below; absent from earlier files.
+    var shoots: [ShootDTO]? = nil
+    var kits: [KitDTO]? = nil
+    var shotListTemplates: [ShotListTemplateDTO]? = nil
+    var filmRolls: [FilmRollDTO]? = nil
     let settings: [String: String]?
     /// Whether photos were included, so a restore can warn before replacing photos with none.
     let includesPhotos: Bool
@@ -42,6 +48,10 @@ struct LibraryExport: Codable {
             + gearItems.reduce(0) { $0 + ($1.photos?.count ?? 0) }
             + recipes.reduce(0) { $0 + 1 + $1.steps.count }
             + places.count
+            + shootList.reduce(0) { $0 + 1 + $1.shotList.count }
+            + kitList.count
+            + templateList.reduce(0) { $0 + 1 + $1.items.count }
+            + rollList.count
     }
 
     /// `developmentRecipes`, empty for files written before recipes existed.
@@ -49,6 +59,12 @@ struct LibraryExport: Codable {
 
     /// `savedPlaces`, empty for files written before places existed.
     var places: [SavedPlaceDTO] { savedPlaces ?? [] }
+
+    // Each empty for files written before M4.
+    var shootList: [ShootDTO] { shoots ?? [] }
+    var kitList: [KitDTO] { kits ?? [] }
+    var templateList: [ShotListTemplateDTO] { shotListTemplates ?? [] }
+    var rollList: [FilmRollDTO] { filmRolls ?? [] }
 }
 
 /// Header written into every export file.
@@ -530,6 +546,216 @@ struct SavedPlaceDTO: Codable {
     }
 }
 
+// MARK: - Shoots
+
+/// A shoot with its shot list nested. Gear links travel as IDs; on import, an ID that matches no
+/// gear in the file or the library is dropped.
+struct ShootDTO: Codable {
+    let id: UUID
+    let title: String
+    let startDate: Date
+    let endDate: Date
+    let type: String
+    let client: String?
+    let notes: String?
+    let placeName: String?
+    // `var` so `replaceUnrestorableNumbers()` can drop an unusable value; a shoot with only one
+    // of the two has no place.
+    var latitude: Double?
+    var longitude: Double?
+    let timeZoneIdentifier: String?
+    let packedGearIDs: [UUID]?
+    let goldenHourAlertMinutes: Int?
+    let dateCreated: Date
+    let dateModified: Date?
+    let gearIDs: [UUID]
+    let shotList: [ShotListItemDTO]
+
+    init(from shoot: Shoot) {
+        id = shoot.id
+        title = shoot.title
+        startDate = shoot.startDate
+        endDate = shoot.endDate
+        type = shoot.typeID
+        client = shoot.client
+        notes = shoot.notes
+        placeName = shoot.placeName
+        latitude = shoot.latitude
+        longitude = shoot.longitude
+        timeZoneIdentifier = shoot.timeZoneIdentifier
+        packedGearIDs = shoot.packedIDs.sorted { $0.uuidString < $1.uuidString }
+        goldenHourAlertMinutes = shoot.goldenHourAlertMinutes
+        dateCreated = shoot.dateCreated
+        dateModified = shoot.dateModified
+        gearIDs = (shoot.gear ?? []).map(\.id).sorted { $0.uuidString < $1.uuidString }
+        shotList = shoot.orderedShotList.map(ShotListItemDTO.init(from:))
+    }
+
+    /// The shoot and its shot list, not yet inserted, linked to the gear `gearByID` has.
+    func toShoot(gearByID: [UUID: GearItem]) -> (shoot: Shoot, shotList: [ShotListItem]) {
+        let shoot = Shoot(title: title, startDate: startDate, endDate: endDate, client: client ?? "", notes: notes ?? "")
+        shoot.id = id
+        shoot.typeID = type
+        shoot.placeName = placeName ?? ""
+        if let latitude, let longitude, GeoCoordinate(latitude: latitude, longitude: longitude).isValid {
+            shoot.latitude = latitude
+            shoot.longitude = longitude
+        }
+        shoot.timeZoneIdentifier = timeZoneIdentifier ?? ""
+        shoot.packedIDs = Set(packedGearIDs ?? [])
+        shoot.goldenHourAlertMinutes = max(goldenHourAlertMinutes ?? 0, 0)
+        shoot.dateCreated = dateCreated
+        shoot.dateModified = dateModified ?? dateCreated
+        shoot.gear = gearIDs.compactMap { gearByID[$0] }
+        return (shoot, shotList.map { $0.toItem(shoot: shoot) })
+    }
+}
+
+struct ShotListItemDTO: Codable {
+    let id: UUID
+    let title: String
+    let notes: String?
+    let order: Int
+    let isDone: Bool
+
+    init(from item: ShotListItem) {
+        id = item.id
+        title = item.title
+        notes = item.notes
+        order = item.order
+        isDone = item.isDone
+    }
+
+    func toItem(shoot: Shoot) -> ShotListItem {
+        let item = ShotListItem(shoot: shoot, title: title, notes: notes ?? "", order: order, isDone: isDone)
+        item.id = id
+        return item
+    }
+}
+
+struct KitDTO: Codable {
+    let id: UUID
+    let name: String
+    let notes: String?
+    let symbol: String?
+    let dateCreated: Date
+    let gearIDs: [UUID]
+
+    init(from kit: Kit) {
+        id = kit.id
+        name = kit.name
+        notes = kit.notes
+        symbol = kit.symbol
+        dateCreated = kit.dateCreated
+        gearIDs = (kit.gear ?? []).map(\.id).sorted { $0.uuidString < $1.uuidString }
+    }
+
+    func toKit(gearByID: [UUID: GearItem]) -> Kit {
+        let kit = Kit(name: name, notes: notes ?? "", symbol: symbol ?? "bag")
+        kit.id = id
+        kit.dateCreated = dateCreated
+        kit.gear = gearIDs.compactMap { gearByID[$0] }
+        return kit
+    }
+}
+
+/// A saved template with its items nested.
+struct ShotListTemplateDTO: Codable {
+    let id: UUID
+    let name: String
+    let notes: String?
+    let dateCreated: Date
+    let items: [ShotListTemplateItemDTO]
+
+    init(from template: ShotListTemplate) {
+        id = template.id
+        name = template.name
+        notes = template.notes
+        dateCreated = template.dateCreated
+        items = template.orderedItems.map(ShotListTemplateItemDTO.init(from:))
+    }
+
+    func toTemplate() -> (template: ShotListTemplate, items: [ShotListTemplateItem]) {
+        let template = ShotListTemplate(name: name, notes: notes ?? "")
+        template.id = id
+        template.dateCreated = dateCreated
+        return (template, items.map { $0.toItem(template: template) })
+    }
+}
+
+struct ShotListTemplateItemDTO: Codable {
+    let id: UUID
+    let title: String
+    let notes: String?
+    let order: Int
+
+    init(from item: ShotListTemplateItem) {
+        id = item.id
+        title = item.title
+        notes = item.notes
+        order = item.order
+    }
+
+    func toItem(template: ShotListTemplate) -> ShotListTemplateItem {
+        let item = ShotListTemplateItem(template: template, title: title, notes: notes ?? "", order: order)
+        item.id = id
+        return item
+    }
+}
+
+/// A film roll. Its camera and shoot travel as IDs.
+struct FilmRollDTO: Codable {
+    let id: UUID
+    let filmStockID: String
+    let formatID: String?
+    let ratedISO: Int?
+    var pushPullStops: Double?
+    let frameCount: Int?
+    let framesShot: Int?
+    let status: String
+    let loadedDate: Date
+    let finishedDate: Date?
+    let lab: String?
+    let notes: String?
+    let dateCreated: Date
+    let cameraID: UUID?
+    let shootID: UUID?
+
+    init(from roll: FilmRoll) {
+        id = roll.id
+        filmStockID = roll.filmStockID
+        formatID = roll.formatID
+        ratedISO = roll.ratedISO
+        pushPullStops = roll.pushPullStops
+        frameCount = roll.frameCount
+        framesShot = roll.framesShot
+        status = roll.statusID
+        loadedDate = roll.loadedDate
+        finishedDate = roll.finishedDate
+        lab = roll.lab
+        notes = roll.notes
+        dateCreated = roll.dateCreated
+        cameraID = roll.camera?.id
+        shootID = roll.shoot?.id
+    }
+
+    func toRoll(gearByID: [UUID: GearItem], shootByID: [UUID: Shoot]) -> FilmRoll {
+        let roll = FilmRoll(filmStockID: filmStockID, formatID: formatID ?? "", ratedISO: max(ratedISO ?? 0, 0),
+                            frameCount: frameCount.map { max($0, 0) }, camera: cameraID.flatMap { gearByID[$0] },
+                            loadedDate: loadedDate)
+        roll.id = id
+        roll.pushPullStops = pushPullStops ?? 0
+        roll.framesShot = max(framesShot ?? 0, 0)
+        roll.statusID = status
+        roll.finishedDate = finishedDate
+        roll.lab = lab ?? ""
+        roll.notes = notes ?? ""
+        roll.dateCreated = dateCreated
+        roll.shoot = shootID.flatMap { shootByID[$0] }
+        return roll
+    }
+}
+
 // MARK: - Unrestorable numbers
 
 extension LibraryExport {
@@ -577,6 +803,19 @@ extension LibraryExport {
                 restorable(&places[i].longitude, limit: Limits.maximumMeasurement)
             }
             savedPlaces = places
+        }
+        if var shoots {
+            for i in shoots.indices {
+                restorable(&shoots[i].latitude, limit: Limits.maximumMeasurement)
+                restorable(&shoots[i].longitude, limit: Limits.maximumMeasurement)
+            }
+            self.shoots = shoots
+        }
+        if var filmRolls {
+            for i in filmRolls.indices {
+                restorable(&filmRolls[i].pushPullStops, limit: Limits.maximumMeasurement)
+            }
+            self.filmRolls = filmRolls
         }
         return replaced
     }
