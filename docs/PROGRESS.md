@@ -7,9 +7,94 @@ is still to check on a device. Add a section when a milestone finishes.
 |---|---|
 | M1 — Foundation and inventory | Done (2026-10-11) |
 | M2 — Tools: calculators and film | Done (2026-10-11) |
-| M3 — Light Meter and sky planning | Not started |
+| M3 — Light Meter and sky planning | Done (2026-10-11) |
 | M4 — Shoots | Not started |
 | M5 — 1.0 release prep | Not started |
+
+---
+
+## M3 — Light Meter and sky planning
+
+**Done 2026-10-11** on `claude/camera-gear-manager-e1zzxt` (commits `ce01591` onward).
+
+### What shipped
+- **The Light Meter tab:**
+  - a reflected-light reading from the camera, as EV at ISO 100, from the whole frame or a spot
+    you tap on the preview;
+  - hold, and a typed EV when there's no camera (or you'd rather);
+  - aperture, shutter or ISO priority, with the answer snapped to third stops and a warning when
+    it's off the scale;
+  - filter compensation, typed or from an inventory filter;
+  - a film's box speed for the ISO, and its reciprocity correction on long times;
+  - "Send to ND Filter", which opens the ND calculator in the Tools tab with the metered time.
+- **One camera owner.** `CaptureSessionCoordinator` owns the capture session and its one preview
+  layer. The barcode scanner moved onto it. Each client starts the camera for itself, and a stop
+  only lands while that client still owns it.
+- **Sky planners** (Tools → Sky):
+  - **Sun & Moon:** sunrise, sunset and solar noon; civil, nautical and astronomical twilight;
+    golden and blue hours; moonrise and moonset with their directions; phase and lit fraction.
+    An altitude chart shades the golden and blue hours and can be dragged to read any moment. A
+    map draws the directions, and a list shows the next four moon phases. Days step back and
+    forward, or come from a date picker.
+  - **Milky Way:** the next 21 nights, each with its dark, moonless hours and when the galactic
+    core is at least 10° up. A night's detail charts the core, moon and sun.
+- **Places:**
+  - `SavedPlace`, covered by export, import (merge and replace), backups and "Delete All Data";
+  - one-shot location while in use;
+  - a place picker with Apple Maps search, a tap on the map, or typed coordinates, which looks up
+    the place's name and time zone;
+  - times show in the place's time zone.
+- **Astronomy** (`Models/PhotoMath/`, Foundation-only): Meeus's sun (ch. 25) and moon (ch. 47),
+  sidereal time, nutation and ΔT; events found by searching altitude crossings; moon phases from
+  the elongation; the galactic centre precessed to date.
+- **Settings:** the light meter's calibration, exported with the other settings.
+- **Privacy policy:** location, Apple Maps search, the light meter, and timer alerts.
+- **Tests:**
+  - 62 Foundation-only tests, 25 of them new (astronomy and the light meter), which run on Linux
+    too;
+  - unit tests for saved places in export, import and backups, and the calibration setting,
+    bringing the total to 151;
+  - 2 new UI tests: the sun and moon planner from typed coordinates, and a typed light-meter
+    reading sent to the ND calculator. The tools test opens the two new tools.
+
+### Accuracy
+Against USNO's "Sun and Moon Data for One Day" for six places and dates (see
+[PHOTO_MATH_REFERENCES.md](PHOTO_MATH_REFERENCES.md#sun-and-moon)):
+- sunrise, sunset, twilight and solar noon came within 0.53 minutes, against a target of 1–2;
+- moonrise and moonset came within 0.44 minutes, against a target of about 5;
+- Tromsø's midnight sun and polar night are handled;
+- 2026's first 12 principal moon phases came within 3 minutes.
+
+### Changes from the plan
+- **The Milky Way planner is its own tool**, beside Astro Exposure, rather than part of it.
+- **Moon phases are found numerically** from the moon's elongation, instead of with Meeus
+  chapter 49's series. They agree with USNO within 3 minutes.
+- **The date scrubber** is a day stepper with a date picker; dragging across the chart scrubs the
+  time of day.
+- **Spot metering** sets the camera's exposure point of interest. The camera meters a region
+  around it, not a 1° spot.
+- **ISO from film:** the meter takes a film stock's box speed now. Taking it from a loaded roll
+  waits for M4's roll log, as planned.
+- **Not in the plan:**
+  - `AppNavigation`, the selected tab and the Tools stack, which lets the meter open the ND
+    calculator;
+  - reciprocity on the meter's long times;
+  - the preview stays level as an iPad turns.
+
+### Found by CI and fixed
+- A CoreLocation delegate method, which isn't isolated to the main actor, read a main-actor
+  message. It was the only compile error.
+
+### Still to check on a device
+- The light meter against a handheld meter or your camera in bright sun, overcast, indoors and at
+  dusk, then set the calibration. Check the spot point, holding, and the preview on an iPad as it
+  turns.
+- The barcode scanner on the shared camera, and moving between it and the light meter.
+- The location prompt and "Use My Location"; search, and the names and time zones of picked
+  places.
+- Sun and moon times where you are against a source you trust.
+- `SavedPlace` needs the CloudKit schema updated. Run `-initializeCloudKitSchema` again, review
+  `SavedPlace` in CloudKit Console, then check that places sync between two devices.
 
 ---
 

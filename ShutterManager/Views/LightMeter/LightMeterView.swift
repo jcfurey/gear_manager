@@ -280,7 +280,7 @@ struct LightMeterView: View {
             Text("Reading")
         } footer: {
             if source == .manual {
-                Text("EV at ISO 100, in third stops: about 15 in bright sun, 12 under overcast, 8 in a bright room, 5 in a dim one.")
+                Text("EV at ISO 100, in third stops. The Sunny 16 rule gives about 15 in bright sun, 13 under overcast and 11 in open shade.")
             }
         }
     }

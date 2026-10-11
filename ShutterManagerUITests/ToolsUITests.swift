@@ -2,7 +2,8 @@
 //  ToolsUITests.swift
 //  ShutterManagerUITests
 //
-//  Every tool opens; depth of field shows its results; a development recipe can be made and run.
+//  Every tool opens; depth of field shows its results; the sun and moon planner works from typed
+//  coordinates; a development recipe can be made and run.
 //  Runs against a fresh in-memory library (`-uiTestInMemory`).
 //
 
@@ -14,7 +15,8 @@ final class ToolsUITests: XCTestCase {
     /// Tool row identifiers and the titles their screens show, in list order.
     private let tools: [(id: String, title: String)] = [
         ("equivalentExposure", "Equivalent Exposure"), ("ndFilter", "ND Filter"), ("sunnySixteen", "Sunny 16"),
-        ("depthOfField", "Depth of Field"), ("fieldOfView", "Field of View"), ("astro", "Astro Exposure"),
+        ("depthOfField", "Depth of Field"), ("fieldOfView", "Field of View"),
+        ("sunAndMoon", "Sun & Moon"), ("nightSky", "Milky Way"), ("astro", "Astro Exposure"),
         ("timeLapse", "Time-Lapse"), ("flash", "Flash"), ("printSize", "Print Size"),
         ("reciprocity", "Reciprocity"), ("development", "Development Timer")
     ]
@@ -49,6 +51,39 @@ final class ToolsUITests: XCTestCase {
         for label in ["Near limit", "Far limit", "Depth of field", "Hyperfocal distance"] {
             let result = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", label)).firstMatch
             reveal(result, in: app)
+        }
+    }
+
+    @MainActor
+    func testSunAndMoonFromTypedCoordinates() throws {
+        let row = app.buttons["tool.sunAndMoon"].firstMatch
+        reveal(row, in: app)
+        row.tap()
+        XCTAssertTrue(app.navigationBars["Sun & Moon"].waitForExistence(timeout: 5))
+
+        let place = app.buttons["placeRow"].firstMatch
+        XCTAssertTrue(place.waitForExistence(timeout: 5))
+        place.tap()
+        let findOnMap = app.buttons["findOnMapButton"].firstMatch
+        XCTAssertTrue(findOnMap.waitForExistence(timeout: 5))
+        findOnMap.tap()
+
+        // London, typed: no location permission or network needed.
+        replaceText(in: app.textFields["latitudeField"].firstMatch, with: "51.5")
+        replaceText(in: app.textFields["longitudeField"].firstMatch, with: "-0.12")
+        let useCoordinates = app.buttons["useCoordinatesButton"].firstMatch
+        reveal(useCoordinates, in: app)
+        XCTAssertTrue(useCoordinates.isEnabled, "Typed coordinates should be accepted")
+        useCoordinates.tap()
+        let use = app.buttons["usePlaceButton"].firstMatch
+        XCTAssertTrue(use.waitForExistence(timeout: 5))
+        XCTAssertTrue(use.isEnabled, "A picked place can be used")
+        use.tap()
+
+        XCTAssertTrue(app.navigationBars["Sun & Moon"].waitForExistence(timeout: 5), "Using the place returns to the planner")
+        for label in ["Sunrise", "Sunset", "Moonrise"] {
+            let event = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", label)).firstMatch
+            reveal(event, in: app)
         }
     }
 

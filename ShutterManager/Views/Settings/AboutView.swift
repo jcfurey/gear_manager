@@ -103,6 +103,7 @@ struct PrivacyPolicyView: View {
                         • Gear you enter: makes, models, serial numbers, specifications, values and notes
                         • Photos you add to your gear
                         • Maintenance history, shutter counts and loans
+                        • Development recipes and places you save
                         • App settings
                         """)
 
@@ -113,14 +114,20 @@ struct PrivacyPolicyView: View {
                         """)
 
                     PrivacySection(title: "Camera and Photos", content: """
-                        • The camera is used to scan barcodes. Frames are processed on your device and never stored or sent.
+                        • The camera is used to scan barcodes and as a light meter. Frames are processed on your device and never stored or sent; the light meter reads only the camera's exposure settings.
                         • Photos are chosen with the system photo picker; the app can't see the rest of your library and never saves to it.
                         • "Fill from a Photo" reads the camera and lens details in a photo's metadata on your device. The photo itself isn't kept.
                         • Gear photos are resized before they're stored, and their location data is removed.
                         """)
 
+                    PrivacySection(title: "Location and Maps", content: """
+                        • Your location is read only when you tap "Use My Location" in the sun, moon and Milky Way planners, and only while the app is open. It's used on your device to work out sun and moon times, and isn't stored unless you save it as a place.
+                        • Places you save sync to your private iCloud database with the rest of your library.
+                        • Maps, place search and place names come from Apple Maps (MapKit). Searches you type, and the points you pick on the map, are sent to Apple to find places and their names.
+                        """)
+
                     PrivacySection(title: "Notifications", content: """
-                        Reminders for sensor cleanings and loans due back are scheduled on your device. Nothing is sent to a server.
+                        Reminders for sensor cleanings and loans due back, and alerts for running exposure and development timers, are scheduled on your device. Nothing is sent to a server.
                         """)
 
                     PrivacySection(title: "Other Services", content: """

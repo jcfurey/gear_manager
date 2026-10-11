@@ -2,8 +2,9 @@
 
 The formulas behind `ShutterManager/Models/PhotoMath/` and the film data in
 `Models/Catalog/FilmStockCatalog.swift`. Code comments cite the sections here rather than
-re-deriving them. The tests (`PhotoMathTests`, `FilmStockTests`) check worked examples from these
-sources and run on Linux as well as in Xcode (`Tools/linux/run_foundation_tests.sh`).
+re-deriving them. The tests (`PhotoMathTests`, `FilmStockTests`, `LightMeterTests`,
+`AstronomyTests`) check worked examples from these sources and run on Linux as well as in Xcode
+(`Tools/linux/run_foundation_tests.sh`).
 
 Units inside the math: millimetres for lengths, seconds for times, f-numbers for apertures, ISO
 arithmetic speed for sensitivity. Views convert to the user's units (`MeasurementUnits`).
@@ -47,6 +48,33 @@ distinct shadows, expose f/16 at 1/ISO, and open up one stop per step of duller 
 
 It assumes a front-lit subject around the middle of the day.
 
+## Light meter
+
+- **Reading.** The camera's auto-exposure picks an aperture N (fixed on a phone), a time t and an
+  ISO S. It also reports `exposureTargetOffset`: how many EV its picture is brighter than the
+  brightness it aims for. The scene is EV100 = log₂(N²/t) − log₂(S/100) + offset.
+  - Auto-exposure keeps the offset near 0. It grows only when the camera runs out of time or ISO,
+    in very dark or very bright scenes, and the formula still gives the scene's EV then.
+  - Like any reflected-light meter, it assumes the scene averages to mid-grey. Snow reads too dark
+    and a black subject too light, unless you meter something mid-toned and hold the reading.
+- **Spot metering** sets the camera's exposure point of interest. The camera meters a region
+  around that point, not a narrow 1° spot like a spot meter's.
+- **Steadying.** The meter samples five times a second. A change of less than 1 EV eases in by 30%
+  a sample; a bigger change (pointing at something else) is taken at once.
+- **Calibration** is added to every camera reading. Phone cameras aren't built as light meters, so
+  they can disagree with a handheld meter. Calibrating against a meter you trust sets it to the
+  trusted meter's EV100 minus this one's uncalibrated reading of the same scene, to 0.1 EV,
+  within ±5 EV.
+- **Solving.** Filters of f stops in front of the lens, which the meter doesn't see, mean the
+  exposure must suit EV100 − f. With E = EV100 − f + log₂(S/100):
+  - aperture priority: t = N² ÷ 2^E;
+  - shutter priority: N = √(t · 2^E);
+  - ISO priority: S = 100 · 2^(log₂(N²/t) − (EV100 − f)).
+
+  The solved value snaps to the nearest third-stop mark. One more than a sixth of a stop past
+  either end of its scale is flagged as out of range. The exception is a time longer than 30 s,
+  which is kept as it is for a bulb exposure.
+
 ## Depth of field
 
 Thin-lens formulas, as in S. F. Ray, *Applied Photographic Optics* (3rd ed., Focal Press, 2002),
@@ -88,6 +116,63 @@ Worked example (test): 50 mm, f/8, 5 m, c = 0.03 mm gives H = 10.47 m, near 3.39
   - Rotation in t seconds = 360 · t ÷ 86,164.0905.
   - A stack of frames each lasting e seconds, with gap g between them, over total time T has
     ⌊T ÷ (e + g)⌋ frames.
+
+## Sun and moon
+
+Methods from Jean Meeus, *Astronomical Algorithms*, 2nd edition (Willmann-Bell, 1998).
+
+- **Time.** Universal Time comes from the device clock. Terrestrial Time is UT + ΔT, from Espenak
+  and Meeus's polynomial for 2005–2050 (NASA Eclipse Web Site, 2006). For 2026 it gives about 75 s,
+  a few seconds off the measured value, which is far below a minute of rise time.
+- **Earth.** Nutation in longitude and obliquity, short version (ch. 22, 0.5″); mean and true
+  obliquity (22.2); apparent sidereal time at Greenwich (12.4, with the equation of the
+  equinoxes). Horizontal coordinates come from 13.5 and 13.6, with azimuth measured from north.
+- **Sun.** Chapter 25's low-accuracy method: apparent longitude good to 0.01°, about 2.4 s of
+  sunrise time.
+- **Moon.**
+  - Chapter 47, from the ELP-2000/82 theory: the 60 longitude and distance terms of Table 47.A,
+    and the 60 latitude terms of Table 47.B.
+  - All 120 rows were checked one by one against an independent transcription, the Go library
+    `github.com/soniakeys/meeus` (`moonposition`). Every row matched.
+  - The moon is close enough for parallax to matter. Its topocentric altitude is the geocentric
+    altitude minus π·cos(altitude), where π is its horizontal parallax.
+  - The lit fraction comes from 48.1–48.3.
+- **Events.** Each event is a body's altitude crossing a threshold.
+  - The altitude is sampled every 10 minutes through the local day (midnight to midnight in the
+    place's time zone), and each crossing is bisected to a second.
+  - A body that never crosses is reported as up or down all day, which covers the midnight sun
+    and polar night.
+  - Sunrise and sunset: the sun's centre at −0.8333°, which is 34′ of refraction plus a 16′
+    semi-diameter (ch. 15).
+  - Moonrise and moonset: the geocentric altitude at h₀ = 0.7275π − 0.5667° (ch. 15).
+  - Twilights: civil −6°, nautical −12°, astronomical −18°.
+  - Golden hour: the sun from 6° above to 4° below the horizon. Blue hour: 4° to 6° below.
+    Photographers' definitions of both vary; these are common ones.
+- **Moon phases.** New, first quarter, full and last quarter are the moments the moon's
+  elongation from the sun (difference in ecliptic longitude) reaches 0°, 90°, 180° and 270°. They
+  are found by searching every 12 hours and bisecting, not with chapter 49's series. Phase names
+  split the elongation into eight 45° sectors centred on the principal phases.
+- **Checked against the US Naval Observatory.** The tests compare with USNO's "Sun and Moon Data
+  for One Day" (Astronomical Applications Department), which rounds to the minute:
+  - six places and dates: Greenwich at the June solstice, Sydney at the December solstice, Quito
+    at the March equinox, New York, Tokyo and Ushuaia;
+  - sunrise, sunset, civil twilight and solar noon came within 0.53 minutes, and moonrise and
+    moonset within 0.44 minutes (the tests allow 2 and 5);
+  - Tromsø's midnight sun and polar night;
+  - the first 12 principal phases of 2026, each within 3 minutes.
+- **Meeus's worked examples** 12.a (sidereal time), 25.a (sun), 47.a (moon) and 48.a (lit
+  fraction) are tests too.
+
+## Milky Way
+
+- **Galactic centre:** Sagittarius A* at J2000 RA 266.4168°, Dec −29.0078°. It's precessed to
+  the date with the annual rates of Meeus 21.1, which are good to a few arcseconds over decades.
+- **A night** runs from local noon to the next noon.
+  - **Dark:** the sun more than 18° below the horizon (astronomical night).
+  - **Moonless:** the moon below its rising altitude.
+  - **Core window:** dark and moonless, with the core at least 10° up. Below about 10° the core is
+    dimmed by the thicker air near the horizon, and most horizons hide it anyway. This is the
+    app's choice of cut-off.
 
 ## Time-lapse
 

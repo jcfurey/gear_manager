@@ -10,7 +10,7 @@ milestones.
 
 The five tabs are **Inventory · Tools · Light Meter · Shoots · Settings**.
 
-## What works today (Milestones 1 and 2)
+## What works today (Milestones 1 to 3)
 
 **Inventory**
 - Category-aware forms for:
@@ -41,7 +41,15 @@ The five tabs are **Inventory · Tools · Light Meter · Shoots · Settings**.
   - ND filters (stacked, from your inventory) with a bulb timer;
   - Sunny 16.
 - **Optics:** depth of field and hyperfocal distance, field of view, and crop equivalents.
-- **Astro:** the NPF and 500 rules from your camera's pixel pitch; star trails.
+- **Sky:**
+  - a sun and moon planner for any place and date: sunrise and sunset, twilights, golden and blue
+    hours, moonrise and moonset with directions, an altitude chart to scrub through the day, a map
+    of the directions, and the coming moon phases;
+  - a Milky Way planner that lists the coming nights' dark, moonless hours with the galactic core
+    up;
+  - astro exposure: the NPF and 500 rules from your camera's pixel pitch, and star trails.
+- **Places:** your current location, a place found by search or a tap on the map, or typed
+  coordinates. Save places to reuse them; they sync with the rest of your library.
 - **Calculators:** time-lapse, flash guide numbers, print size and resolution.
 - **Film:**
   - long-exposure (reciprocity) correction from the makers' datasheets. There are 33 film stocks;
@@ -51,15 +59,23 @@ The five tabs are **Inventory · Tools · Light Meter · Shoots · Settings**.
   and aperture, an ND filter's strength, a flash's guide number.
 - Metric or imperial units.
 
+**Light Meter**
+- A reflected-light reading from the camera, as EV at ISO 100, whole-frame or from a spot you tap.
+- Hold a reading; type the EV by hand when there's no camera.
+- Aperture, shutter or ISO priority, with the answer on the third-stop scales.
+- Filter compensation, a film's box speed and reciprocity, and a calibration you can set against
+  a meter you trust.
+- Send the result to the ND filter calculator.
+
 **Your data**
 - Private iCloud sync across your devices, with a local-only fallback.
-- Export to JSON (restorable, photos and development recipes included), CSV and PDF; import by
-  merge or replace.
+- Export to JSON (restorable, with photos, development recipes and saved places), CSV and PDF;
+  import by merge or replace.
 - Automatic and manual backups, with retention.
 
-The Light Meter and Shoots tabs arrive in milestones 3 and 4: a light meter, sun and moon
-planning, shoot logs, kits, shot lists, and a film roll log. The formulas and sources behind the
-tools are in [docs/PHOTO_MATH_REFERENCES.md](docs/PHOTO_MATH_REFERENCES.md).
+The Shoots tab arrives in milestone 4: shoot logs, kits, shot lists, and a film roll log. The
+formulas and sources behind the tools, the light meter and the sky planners are in
+[docs/PHOTO_MATH_REFERENCES.md](docs/PHOTO_MATH_REFERENCES.md).
 
 ## Build and test
 

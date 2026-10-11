@@ -99,8 +99,8 @@ changed from this plan.
 A grouped list:
 - **Exposure**: equivalent exposure · ND filter with bulb timer · Sunny 16
 - **Optics**: depth of field and hyperfocal · field of view and crop
-- **Sky**: sun and moon planner · astro (500 and NPF rules, star trails, dark-sky and Milky Way
-  windows)
+- **Sky**: sun and moon planner · Milky Way planner (dark, moonless hours with the core up) ·
+  astro exposure (500 and NPF rules, star trails)
 - **Calculators**: time-lapse · flash guide number · print size and DPI
 - **Film**: reciprocity · development timer
 
@@ -236,7 +236,7 @@ set) handled explicitly.
   and focal length. ImageIO exposes a shutter-count key in Nikon's maker notes; other brands get
   checked against sample files, and fall back to manual entry. GPS data is never stored.
 - **Location**: `CLLocationManager` while in use, asked the first time you tap "Use my location".
-  The MapKit place picker and search send queries to Apple; the privacy policy will say so.
+  The MapKit place picker and search send queries to Apple, and the privacy policy says so.
 - **Notifications**: maintenance and sensor cleaning, loans due back, bulb and development timers
   (scheduled so they still fire if the app is in the background), and a golden-hour heads-up for
   planned shoots.
@@ -272,6 +272,8 @@ from this plan, and what is still to check on a device.
 - Values filled in from inventory.
 
 ### M3 — Light Meter and sky planning
+**Status:** done 2026-10-11. See [docs/PROGRESS.md](docs/PROGRESS.md).
+
 - `CaptureSessionCoordinator`, with the barcode scanner moved onto it; the Light Meter tab.
 - Location, the map picker, `SavedPlace`.
 - Sun and moon planner: elevation timeline (Swift Charts), sun and moon direction on a map, a date

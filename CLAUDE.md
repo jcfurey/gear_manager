@@ -65,20 +65,25 @@ external dependencies. The targets use folder-synced groups, so a new file in a 
 the target without a project edit.
 
 **Tabs** (`App/ContentView.swift`): **Inventory · Tools · Light Meter · Shoots · Settings**.
-Light Meter and Shoots are placeholders until M3 and M4.
+Shoots is a placeholder until M4.
 
 **Folders (`ShutterManager/`):**
-- `App/`: entry point (library or `StoreRecoveryView`) and root tabs.
+- `App/`: entry point (library or `StoreRecoveryView`), root tabs, and `AppNavigation` (the
+  selected tab and the Tools stack, for opening one tab from another).
 - `Models/`: the `@Model` types.
   - `Catalog/`: Foundation-only catalogs (`GearCategory`, `SensorFormat`, `LensMount`,
     `FilmStock` with `FilmStockCatalog`).
   - `PhotoMath/`: Foundation-only photography math (exposure scales, equivalent exposure, ND,
-    Sunny 16, optics, astro, time-lapse, flash, print size, reciprocity, development timing).
-    Sources are in `docs/PHOTO_MATH_REFERENCES.md`; comments cite it rather than re-deriving.
+    Sunny 16, the light meter, optics, astro, time-lapse, flash, print size, reciprocity,
+    development timing) and astronomy (`Astronomy`, `SunMoon`, `SkyEvents`: sun and moon
+    positions, rise and set, twilights, moon phases, Milky Way windows). Sources are in
+    `docs/PHOTO_MATH_REFERENCES.md`; comments cite it rather than re-deriving.
   - `Export/`: `LibraryExport` and its DTOs.
-- `Services/`: persistence, export/import, backups, reminders, EXIF, Tip Jar, iCloud status, and
-  `ToolTimers` (the running bulb and development timers).
-- `Views/`: `Inventory/`, `Tools/`, `Settings/`, `Shared/`.
+- `Services/`: persistence, export/import, backups, reminders, EXIF, Tip Jar, iCloud status,
+  `ToolTimers` (the running bulb and development timers), the camera (`CaptureSessionCoordinator`,
+  `BarcodeScannerService`, `LightMeterService`) and `LocationService`.
+- `Views/`: `Inventory/`, `Tools/`, `LightMeter/`, `Places/` (choosing a place), `Settings/`,
+  `Shared/`.
 - `Utilities/`: constants, schema, formatters, import validation, photo ingest, marketplace links.
 - `Extensions/`: small helpers on Swift types.
 
@@ -94,7 +99,7 @@ Light Meter and Shoots are placeholders until M3 and M4.
 
 ### Data layer
 
-Eight `@Model` types, registered once in `Utilities/AppSchema.swift`:
+Nine `@Model` types, registered once in `Utilities/AppSchema.swift`:
 - `GearItem`
 - `GearPhoto`
 - `MaintenanceRecord`
@@ -103,6 +108,7 @@ Eight `@Model` types, registered once in `Utilities/AppSchema.swift`:
 - `GearLoan`
 - `DevelopmentRecipe`
 - `DevelopmentStep`
+- `SavedPlace`
 
 The app container, previews (`PreviewModelContainer`) and tests all build from `AppSchema`, so a
 new model only needs listing there.
@@ -187,9 +193,27 @@ Development schema. Deploying to Production is done by hand in CloudKit Console.
   - A stock whose maker publishes no figures is `.unpublished` or `.noCorrectionUpTo`; never fill
     it from third-party tables.
   - Film stock IDs are stored and synced like the other catalog IDs: never rename or remove one.
+- **One camera owner.** `CaptureSessionCoordinator.shared` owns the capture session and its one
+  preview layer, like `AudioSessionManager` in Axe Manager.
+  - The barcode scanner and the light meter each start it for themselves. `stop(for:)` does
+    nothing once the other client has taken it.
+  - Don't create an `AVCaptureSession` anywhere else.
+  - `CameraPreviewUIView` shows the shared layer. Representables re-attach it in `updateUIView`,
+    because the other screen may have taken it.
+  - The light meter runs only while its tab is on screen and the app isn't in the background.
+- **Places and location.**
+  - `PlaceValue` is a place as the planners use it, saved or not. The planners keep the chosen
+    one per device as JSON; `SavedPlace` is the synced list.
+  - `LocationService` asks for one location, while in use, only when "Use My Location" is tapped.
+  - Sky times show in the place's own time zone, not the device's.
+- **Sky math.**
+  - Every event is an altitude crossing found by `SkySearch` (sample, then bisect to a second), so
+    polar day and night come out as no crossing.
+  - The tests compare with Meeus's worked examples and USNO's tables.
+  - The planners compute off the main actor (`Task.detached`).
 - **Tool inputs** persist per device with `@AppStorage` under
-  `Constants.UserDefaultsKeys.toolValuesPrefix`. They aren't exported; the units and
-  depth-of-field settings are.
+  `Constants.UserDefaultsKeys.toolValuesPrefix`. They aren't exported; the units, depth-of-field and
+  light-meter calibration settings are.
 - **No Pro mode, ever.** Money is a Tip Jar only (`TipJarStore`,
   `jcameronfurey.shuttermanager.tip.*`). Every feature is free.
 - **Logging and formatting.** Log with `os.Logger` (subsystem `Constants.App.loggerSubsystem`),
