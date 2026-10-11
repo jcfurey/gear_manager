@@ -84,6 +84,11 @@ Against USNO's "Sun and Moon Data for One Day" for six places and dates (see
 ### Found by CI and fixed
 - A CoreLocation delegate method, which isn't isolated to the main actor, read a main-actor
   message. It was the only compile error.
+- Picking a place on the map didn't return to the planner. The selection list called `dismiss`
+  from underneath the map picker, which doesn't pop the stack. Place selection is now a sheet, so
+  every way of choosing closes it, picker and all.
+- The light-meter UI test looked for a stepper button labelled "Increment". SwiftUI names a
+  stepper's buttons after its identifier (`meter.manualEV-Increment`).
 
 ### Still to check on a device
 - The light meter against a handheld meter or your camera in bright sun, overcast, indoors and at
