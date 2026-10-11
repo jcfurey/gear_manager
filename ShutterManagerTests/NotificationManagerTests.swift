@@ -249,8 +249,19 @@ struct ToolTimersTests {
         #expect(alerts.last?.body == "Next: Fixer.")
         #expect(alerts.first?.date == now.addingTimeInterval(110))
     }
+}
 
-    // MARK: - Shoot alerts
+/// Golden-hour heads-ups for planned shoots.
+@MainActor
+struct ShootAlertTests {
+    private typealias FakeCenter = NotificationManagerTests.FakeCenter
+
+    /// Gear reminders on, to show a gear refresh still leaves shoot alerts alone.
+    private func enabledDefaults() -> UserDefaults {
+        let defaults = TestSupport.makeDefaults()
+        defaults.set(true, forKey: Constants.UserDefaultsKeys.gearRemindersEnabled)
+        return defaults
+    }
 
     @Test func shootAlertsSurviveGearRefreshesAndAreReplaced() async {
         let center = FakeCenter()
