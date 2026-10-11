@@ -22,10 +22,9 @@ pick up from a clean working tree.
 | Audience | Hobby, paid client work, film, video and drones |
 | Devices | iPhone + iPad, iOS 18.6+ |
 | Tabs | **Inventory · Tools · Light Meter · Shoots · Settings** |
-| Pricing | Your own values and price history, plus marketplace search links. No server, no price feed |
+| Pricing | Purchase price plus an optional current value you update yourself, and marketplace search links. No price history, no price alerts, no server, no price feed |
 | Money | Free, with a Tip Jar. **No Pro mode**: every feature is free, now and later |
 | Categories | The list under Inventory, open to additions later |
-| Price alerts | None. Values are what you enter yourself, mainly the purchase price |
 | Shot lists | Built-in and saved templates in v1 |
 | Code | Copied from Axe Manager into a new project here; Axe Manager is not changed |
 | License | Same as Axe Manager ("For educational and personal use"); replaces Apache 2.0 before any code lands |
@@ -46,11 +45,13 @@ pick up from a clean working tree.
   `AnimationUtilities`, `AccessibilityUtilities`, `CurrencyFormatter`, `DateFormatters`,
   `MeasurementInput`, `Decimal+Extensions`, `String+Extensions`, `HapticFeedbackManager`.
 - Barcode: `BarcodeScannerService`, `BarcodeScannerView`, `UPCLookupService`, `ProductInfoView`.
-- Price history: `PriceEntry`, `GearValuationService`, the Market Insights views.
+- Collection value: the collection overview card.
 - Tip Jar: `TipJarStore`, `TipJarView`, with new product IDs `jcameronfurey.shuttermanager.tip.*`.
 
 **Adapt**
 - `GearItem`: drop the guitar fields, add camera fields (see Data model).
+- `GearValuationService`: an item's value is its current value, else its purchase price (the
+  price-history step in between goes).
 - `MaintenanceRecord`, `MaintenanceReminder`, `MaintenanceService`: camera maintenance types;
   string-change reminders become sensor-cleaning and service reminders.
 - `NotificationManager`: drop practice, streak and string reminders; add maintenance, loan-due,
@@ -70,8 +71,10 @@ pick up from a clean working tree.
 - String tension, Practice and Learn, tunings and temperaments.
 - `SerialNumberDecoder` (guitar brands only).
 - `MarketValuation`: in Axe Manager it is only export and backup plumbing; nothing creates one.
-- `PriceAlert` and `PriceAlertManager`: with no price feed they only fire on prices you type in
-  yourself, and the app mainly tracks what you paid.
+- Price history and alerts: `PriceEntry`, `PriceAlert`, `PriceAlertManager`, and the trend chart
+  and price-entry views (`PriceTrendsChart`, `AddPriceEntryView`, `TimeRangePicker`,
+  `PriceAlertsView`). The app tracks what you paid plus an optional current value, so a dated log
+  and alerts on prices you type yourself add little.
 
 ---
 
@@ -84,10 +87,10 @@ pick up from a clean working tree.
   open: a new category is an additive change (a new ID, plus any fields it needs, all defaulted),
   so it can be added in any release without a migration.
 - **Add**: by hand, by barcode (with optional UPC lookup), or **from a photo's EXIF data**.
-- **Detail**: sections shown by category; photos; maintenance log; price history and marketplace
-  links; shutter-count history; loans.
+- **Detail**: sections shown by category; photos; maintenance log; purchase price, current value
+  and marketplace links; shutter-count history; loans.
 - **Status badges**: needs service, on loan / rented, shutter near rated life, sensor cleaning due.
-- **Collection stats**: value, by category, by mount (Market Insights carries over).
+- **Collection stats**: total value (current value, else purchase price), by category, by mount.
 
 ### Tools
 A grouped list:
@@ -136,8 +139,7 @@ stable strings: **never rename or remove one.**
 
 ### `GearItem` (adapted)
 Kept: identity and dates, category, make, model, purchase date and price, current value, notes,
-UPC, serial number, year made, service flag and notes, reference links, photos, maintenance and
-price history.
+UPC, serial number, year made, service flag and notes, reference links, photos, maintenance.
 
 New flat fields (`0` or `""` means not set):
 
@@ -171,8 +173,8 @@ New flat fields (`0` or `""` means not set):
 | `ShotListTemplate` + `ShotListTemplateItem` | your saved templates: name, notes; items with title, notes, order. Built-in starters are value types, not stored | M4 |
 | `FilmRoll` | stock ID, format, rated ISO, push/pull stops, frame count, frames shot, status, loaded and finished dates, lab, notes; camera, shoot | M4 |
 
-That makes 16 models with the 5 kept ones (`GearItem`, `GearPhoto`, `MaintenanceRecord`,
-`MaintenanceReminder`, `PriceEntry`).
+That makes 15 models with the 4 kept ones (`GearItem`, `GearPhoto`, `MaintenanceRecord`,
+`MaintenanceReminder`).
 
 ### Value-type catalogs (not persisted, Foundation-only)
 - `SensorFormat`: built-in digital formats (full frame, APS-C, Canon APS-C, APS-H, Micro Four
