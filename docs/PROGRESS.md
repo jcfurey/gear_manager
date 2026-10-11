@@ -8,8 +8,83 @@ is still to check on a device. Add a section when a milestone finishes.
 | M1 — Foundation and inventory | Done (2026-10-11) |
 | M2 — Tools: calculators and film | Done (2026-10-11) |
 | M3 — Light Meter and sky planning | Done (2026-10-11) |
-| M4 — Shoots | Not started |
+| M4 — Shoots | Done (2026-10-11) |
 | M5 — 1.0 release prep | Not started |
+
+---
+
+## M4 — Shoots
+
+**Done 2026-10-11** on `claude/camera-gear-manager-e1zzxt` (commits `094d470`…`9bb8cf6`).
+
+### What shipped
+- **The Shoots tab:** a searchable shoot log, upcoming and past, with links to film rolls, kits and
+  shot-list templates.
+- **A shoot:**
+  - title, type, start and end, client, place and notes;
+  - that day's sunrise, sunset and golden and blue hours at the place, in its time zone;
+  - an optional golden-hour heads-up, 15 minutes to 2 hours before.
+- **Packing check:** tick off the shoot's gear. Items lent out, needing service or a sensor
+  cleaning, or rented and due back before the shoot ends are flagged.
+- **Kits:** named sets of gear with a symbol, added to a shoot in one go.
+- **Shot lists:**
+  - ticked off on the day, with shots added as you go;
+  - start from six built-in starters (wedding, engagement, portrait session, event, real
+    estate, product) or your own templates;
+  - save any shoot's list as a template. Templates are copied, never linked, so editing one
+    later leaves shoots alone.
+- **Film roll log:**
+  - stock, format, camera, rated speed, push or pull, frames shot, lab and notes;
+  - status from loaded to shot, at the lab, developed and scanned, with a swipe to the next one;
+  - rolls attach to the shoot they were shot on.
+- **The light meter** can meter for a loaded roll: its film (for reciprocity) and its rated speed.
+- **Gear detail** shows each item's use: shoots so far, when it was last used, its next shoot, its
+  kits, and the roll loaded in a film camera.
+- **Data:** six new models (`Shoot`, `ShotListItem`, `Kit`, `ShotListTemplate`,
+  `ShotListTemplateItem`, `FilmRoll`), covered by export, import (merge and replace), backups,
+  the import preview and "Delete All Data".
+- **Privacy policy:** shoots and their places, kits, templates, film rolls and golden-hour
+  heads-ups.
+- **Tests:**
+  - 68 Foundation-only tests, 6 of them new (a shoot's golden hours), which run on Linux too;
+  - unit tests for the log's rules, the drafts, deleting, export and import with gear links, and
+    shoot alerts, bringing the total to 176;
+  - 2 new UI tests: plan a shoot and tick off its shot list; load a roll and meter for it.
+
+### Verified
+[CI run 38180936784](https://github.com/jcfurey/gear_manager/actions/runs/38180936784) passed
+every job:
+- the Foundation tests in the Swift 6.2 Linux image;
+- the Debug and Release builds with warnings as errors;
+- 176 unit tests;
+- 12 UI tests on each of iPhone 17 and iPad (iOS 26.5).
+
+### Changes from the plan
+- **The golden-hour heads-up** is set per shoot. It covers the golden hours that overlap the
+  shoot, or the next one after it starts, so a midday shoot hears about the evening light.
+  Background refreshes never show the permission prompt; saving a shoot that asks for a
+  heads-up can.
+- **A shoot copies its place** rather than linking to a saved place, so deleting or renaming a
+  saved place never changes a shoot.
+- **Packing ticks** are stored on the shoot as item IDs, not as another model.
+- **Usage counts only shoots that have started.** Planned ones show as the next shoot.
+- **Not in the plan:**
+  - a "next shoot" and the loaded roll on gear detail;
+  - a rented item due back before the shoot ends is flagged in the packing check;
+  - built-in starters can be copied into your own templates.
+
+### Found by CI and fixed
+- The shoot-alert unit tests had been appended to the wrong suite and couldn't build.
+- On iPad, the light meter's "Use a Loaded Roll" menu never opened under UI tests. It's now a
+  pushed list, the same on iPhone and iPad.
+
+### Still to check on a device
+- A golden-hour heads-up arriving on time, for a shoot at your location and one in another time
+  zone.
+- The packing check and shot list on a real shoot, and the film roll log through a roll's life.
+- The new models need the CloudKit schema updated. Run `-initializeCloudKitSchema` again, review
+  `Shoot`, `ShotListItem`, `Kit`, `ShotListTemplate`, `ShotListTemplateItem` and `FilmRoll` in
+  CloudKit Console, then check that shoots and their gear links sync between two devices.
 
 ---
 
