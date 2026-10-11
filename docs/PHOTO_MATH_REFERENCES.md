@@ -163,6 +163,15 @@ Methods from Jean Meeus, *Astronomical Algorithms*, 2nd edition (Willmann-Bell, 
 - **Meeus's worked examples** 12.a (sidereal time), 25.a (sun), 47.a (moon) and 48.a (lit
   fraction) are tests too.
 
+## A shoot's golden hours
+
+`ShootLight` picks the golden hours a shoot's heads-up is about. It uses the same windows as the
+sun and moon planner (the sun from 6° above to 4° below the horizon), in the place's time zone:
+- the windows that overlap the shoot, on the days it spans (up to three);
+- if none overlap, the first one after the shoot starts, so a midday shoot hears about the
+  evening light;
+- a window that runs past midnight, as near the poles in summer, counts as one.
+
 ## Milky Way
 
 - **Galactic centre:** Sagittarius A* at J2000 RA 266.4168°, Dec −29.0078°. It's precessed to

@@ -280,6 +280,8 @@ from this plan, and what is still to check on a device.
   scrubber, upcoming moon phases. Dark-sky and Milky Way windows.
 
 ### M4 — Shoots
+**Status:** done 2026-10-11. See [docs/PROGRESS.md](docs/PROGRESS.md).
+
 - `Shoot`, `Kit`, `ShotListItem`, `ShotListTemplate`, `FilmRoll`.
 - Shoot log, kits and packing check, shot lists with built-in and saved templates, film roll log,
   golden-hour heads-up, usage per item. The light meter can take ISO from a loaded roll.

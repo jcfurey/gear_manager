@@ -65,7 +65,6 @@ external dependencies. The targets use folder-synced groups, so a new file in a 
 the target without a project edit.
 
 **Tabs** (`App/ContentView.swift`): **Inventory · Tools · Light Meter · Shoots · Settings**.
-Shoots is a placeholder until M4.
 
 **Folders (`ShutterManager/`):**
 - `App/`: entry point (library or `StoreRecoveryView`), root tabs, and `AppNavigation` (the
@@ -76,14 +75,15 @@ Shoots is a placeholder until M4.
   - `PhotoMath/`: Foundation-only photography math (exposure scales, equivalent exposure, ND,
     Sunny 16, the light meter, optics, astro, time-lapse, flash, print size, reciprocity,
     development timing) and astronomy (`Astronomy`, `SunMoon`, `SkyEvents`: sun and moon
-    positions, rise and set, twilights, moon phases, Milky Way windows). Sources are in
+    positions, rise and set, twilights, moon phases, Milky Way windows, and `ShootLight`, a
+    shoot's golden hours). Sources are in
     `docs/PHOTO_MATH_REFERENCES.md`; comments cite it rather than re-deriving.
   - `Export/`: `LibraryExport` and its DTOs.
 - `Services/`: persistence, export/import, backups, reminders, EXIF, Tip Jar, iCloud status,
   `ToolTimers` (the running bulb and development timers), the camera (`CaptureSessionCoordinator`,
-  `BarcodeScannerService`, `LightMeterService`) and `LocationService`.
-- `Views/`: `Inventory/`, `Tools/`, `LightMeter/`, `Places/` (choosing a place), `Settings/`,
-  `Shared/`.
+  `BarcodeScannerService`, `LightMeterService`), `LocationService` and `ShootAlertScheduler`.
+- `Views/`: `Inventory/`, `Tools/`, `LightMeter/`, `Shoots/` (the shoot log, kits, film rolls,
+  shot-list templates), `Places/` (choosing a place), `Settings/`, `Shared/`.
 - `Utilities/`: constants, schema, formatters, import validation, photo ingest, marketplace links.
 - `Extensions/`: small helpers on Swift types.
 
@@ -99,7 +99,7 @@ Shoots is a placeholder until M4.
 
 ### Data layer
 
-Nine `@Model` types, registered once in `Utilities/AppSchema.swift`:
+Fifteen `@Model` types, registered once in `Utilities/AppSchema.swift`:
 - `GearItem`
 - `GearPhoto`
 - `MaintenanceRecord`
@@ -109,6 +109,10 @@ Nine `@Model` types, registered once in `Utilities/AppSchema.swift`:
 - `DevelopmentRecipe`
 - `DevelopmentStep`
 - `SavedPlace`
+- `Shoot` and `ShotListItem`
+- `Kit`
+- `ShotListTemplate` and `ShotListTemplateItem`
+- `FilmRoll`
 
 The app container, previews (`PreviewModelContainer`) and tests all build from `AppSchema`, so a
 new model only needs listing there.
@@ -136,9 +140,10 @@ Development schema. Deploying to Production is done by hand in CloudKit Console.
   - `ShutterCountReading.sourceID` (`source`)
   - `GearLoan.directionID` (`direction`)
   - `GearItem.sensorFormatID` (`sensorFormat`)
+  - `Shoot.typeID` (`type`) and `FilmRoll.statusID` (`status`)
 
-  An ID from a newer version reads as `.other` and is kept as is, through edits, export and
-  import. Never rename or remove an ID. Custom sensor formats encode their size in a `custom:` ID,
+  An ID from a newer version reads as `.other` (a roll's status as `.shot`, so it's never the
+  loaded roll) and is kept as is, through edits, export and import. Never rename or remove an ID. Custom sensor formats encode their size in a `custom:` ID,
   so they resolve on any device.
 - **One list of editable fields.** `GearItemDTO.applyFields(to:)` is the single place that writes
   a gear item's fields. Import, the edit draft and its rollback all use it. Adding a field means:
@@ -160,9 +165,13 @@ Development schema. Deploying to Production is done by hand in CloudKit Console.
     model is added there, and to `LibraryExport` as an optional array so older files still decode.
   - Replace-import and "Delete All Data" use `ModelContext.deleteEveryRecord()`, which covers every
     model in `AppSchema`.
-  - Recipe steps travel nested inside their recipe's DTO.
-- **Recipe edits use a value draft.** `DevelopmentRecipeDraft` holds the edits, and `apply(to:in:)`
-  writes them on Save, matching steps by ID.
+  - Recipe steps, shot lists and template items travel nested inside their parent's DTO. Shoots,
+    kits and rolls name their gear (and a roll its shoot) by ID; import drops an ID that matches
+    nothing.
+- **Value drafts.** `DevelopmentRecipeDraft`, `ShootDraft`, `KitDraft`, `FilmRollDraft` and
+  `ShotListTemplateDraft` hold an editor's changes and write them on Save; the lists inside
+  recipes and templates are matched by ID. Ticks (packing, shots) and additions on a shoot's screen
+  save as they happen.
 - **Settings in exports.** Every key in `Constants.UserDefaultsKeys.exportableSettings` needs a
   typed rule in `ImportedSettings`; a test checks this.
 - **Photos.** Read EXIF (`PhotoMetadataReader`) from the original bytes *before* `PhotoIngest`
@@ -211,6 +220,24 @@ Development schema. Deploying to Production is done by hand in CloudKit Console.
     polar day and night come out as no crossing.
   - The tests compare with Meeus's worked examples and USNO's tables.
   - The planners compute off the main actor (`Task.detached`).
+- **The shoot log.**
+  - A shoot copies its place (name, coordinates, time zone) rather than linking a `SavedPlace`,
+    and shows its times in that time zone.
+  - Shoots and kits link to gear many-to-many; only `Shoot.gear` and `Kit.gear` declare the
+    inverse. Deleting across the log unlinks; a shoot's shot list and a template's items go with
+    it.
+  - Shot lists are copies: applying a template never links to it, so editing one later leaves
+    shoots alone. Built-in starters (`ShotListStarter`) are values, not stored.
+  - Packing ticks are item IDs in `Shoot.packedGearIDs`. `GearItem.packingIssues(for:)` flags
+    gear that's lent out, needing service or a cleaning, or a rental due back before the shoot
+    ends.
+  - Usage per item comes from the log: shoots that have started count, planned ones don't.
+- **Golden-hour heads-ups** go through `ShootAlertScheduler`, which works out each shoot's windows
+  with `ShootLight` off the main actor and hands them to `NotificationManager.replaceShootAlerts`.
+  - Their identifiers start with `shoot_`, so gear-reminder refreshes leave them alone.
+  - Each shoot turns its own on; they don't depend on the Gear Reminders setting.
+  - They're reconciled wherever gear reminders are, and after a shoot is saved or deleted. Only
+    saving a shoot that asks for one can show the permission prompt.
 - **Tool inputs** persist per device with `@AppStorage` under
   `Constants.UserDefaultsKeys.toolValuesPrefix`. They aren't exported; the units, depth-of-field and
   light-meter calibration settings are.

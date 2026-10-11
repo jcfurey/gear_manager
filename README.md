@@ -10,7 +10,7 @@ milestones.
 
 The five tabs are **Inventory · Tools · Light Meter · Shoots · Settings**.
 
-## What works today (Milestones 1 to 3)
+## What works today (Milestones 1 to 4)
 
 **Inventory**
 - Category-aware forms for:
@@ -67,15 +67,27 @@ The five tabs are **Inventory · Tools · Light Meter · Shoots · Settings**.
   a meter you trust.
 - Send the result to the ND filter calculator.
 
+**Shoots**
+- A shoot log, upcoming and past: when, where, the client, the type and notes.
+- That day's sunrise, sunset and golden and blue hours at the shoot's place, and an optional
+  heads-up before golden hour.
+- A packing check of the shoot's gear that flags items lent out, needing service or due back.
+- Kits: saved sets of gear, added to a shoot in one go.
+- Shot lists ticked off on the day. Start one from a built-in starter (wedding, engagement,
+  portrait session, event, real estate, product) or your own template, and save any shoot's list
+  as a template.
+- A film roll log: stock, format, camera, rated speed, push or pull, frames, and where it is
+  (loaded, shot, at the lab, developed, scanned). The light meter can meter for a loaded roll.
+- Each item's use: how many shoots, when it was last used, its next shoot and its kits.
+
 **Your data**
 - Private iCloud sync across your devices, with a local-only fallback.
-- Export to JSON (restorable, with photos, development recipes and saved places), CSV and PDF;
-  import by merge or replace.
+- Export to JSON (restorable, with photos, development recipes, places, shoots, kits, templates
+  and film rolls), CSV and PDF; import by merge or replace.
 - Automatic and manual backups, with retention.
 
-The Shoots tab arrives in milestone 4: shoot logs, kits, shot lists, and a film roll log. The
-formulas and sources behind the tools, the light meter and the sky planners are in
-[docs/PHOTO_MATH_REFERENCES.md](docs/PHOTO_MATH_REFERENCES.md).
+Milestone 5 prepares the 1.0 release. The formulas and sources behind the tools, the light meter
+and the sky planners are in [docs/PHOTO_MATH_REFERENCES.md](docs/PHOTO_MATH_REFERENCES.md).
 
 ## Build and test
 

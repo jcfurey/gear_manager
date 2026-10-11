@@ -104,6 +104,8 @@ struct PrivacyPolicyView: View {
                         • Photos you add to your gear
                         • Maintenance history, shutter counts and loans
                         • Development recipes and places you save
+                        • Shoots you plan or log, with their places, clients, shot lists and packing ticks
+                        • Kits, shot-list templates and film rolls
                         • App settings
                         """)
 
@@ -122,12 +124,12 @@ struct PrivacyPolicyView: View {
 
                     PrivacySection(title: "Location and Maps", content: """
                         • Your location is read only when you tap "Use My Location" in the sun, moon and Milky Way planners, and only while the app is open. It's used on your device to work out sun and moon times, and isn't stored unless you save it as a place.
-                        • Places you save sync to your private iCloud database with the rest of your library.
+                        • Places you save, and the places of your shoots, sync to your private iCloud database with the rest of your library.
                         • Maps, place search and place names come from Apple Maps (MapKit). Searches you type, and the points you pick on the map, are sent to Apple to find places and their names.
                         """)
 
                     PrivacySection(title: "Notifications", content: """
-                        Reminders for sensor cleanings and loans due back, and alerts for running exposure and development timers, are scheduled on your device. Nothing is sent to a server.
+                        Reminders for sensor cleanings and loans due back, alerts for running exposure and development timers, and golden-hour heads-ups for shoots you plan are scheduled on your device. Nothing is sent to a server.
                         """)
 
                     PrivacySection(title: "Other Services", content: """
