@@ -8,6 +8,7 @@
 
 import SwiftUI
 import AVFoundation
+import SwiftData
 
 private typealias ToolKey = Constants.UserDefaultsKeys
 
@@ -53,6 +54,10 @@ struct LightMeterView: View {
     @AppStorage(ToolKey.toolValuesPrefix + "meter.manualEV") private var manualEV = 12.0
     @AppStorage(ToolKey.toolValuesPrefix + "nd.shutter") private var ndShutter = 1.0 / 128
     @AppStorage(ToolKey.lightMeterCalibration) private var calibration = 0.0
+    @Query(sort: \FilmRoll.loadedDate, order: .reverse) private var rolls: [FilmRoll]
+    /// A loaded roll's rated speed, kept through the film change it causes (which would otherwise
+    /// set the box speed).
+    @State private var rollISO: Double?
 
     /// The reading frozen by Hold.
     @State private var heldEV: Double?
@@ -126,7 +131,12 @@ struct LightMeterView: View {
             .onChange(of: metering) { applyMetering() }
             .onChange(of: meter.status) { applyMetering() }
             .onChange(of: filmStockID) { _, id in
-                if let stock = FilmStock(id: id) { iso = Double(stock.iso) }
+                if let rollISO {
+                    iso = rollISO
+                    self.rollISO = nil
+                } else if let stock = FilmStock(id: id) {
+                    iso = Double(stock.iso)
+                }
             }
             .sheet(isPresented: $showingCalibration) {
                 MeterCalibrationView(meter: meter, calibration: $calibration)
@@ -323,6 +333,19 @@ struct LightMeterView: View {
             if priority != .iso {
                 ScaleValuePicker(title: "ISO", scale: ExposureScale.isoSpeeds(), value: $iso)
                 FilmStockRow(stockID: $filmStockID, title: "Film (sets the ISO)")
+                let loaded = rolls.filter(\.isLoaded)
+                if !loaded.isEmpty {
+                    Menu {
+                        ForEach(loaded) { roll in
+                            Button(roll.camera.map { "\(roll.displayName) in \($0.displayName)" } ?? roll.displayName) {
+                                use(roll)
+                            }
+                        }
+                    } label: {
+                        Label("Use a Loaded Roll", systemImage: "film")
+                    }
+                    .accessibilityIdentifier("meter.loadedRoll")
+                }
             }
             if let solution {
                 ToolResultRow(title: solvedTitle, value: solvedLabel(solution), detail: solvedDetail(solution))
@@ -338,6 +361,20 @@ struct LightMeterView: View {
         } footer: {
             Text("Choose two settings and the meter works out the third, in third stops.")
         }
+    }
+
+    /// Meters for a loaded roll: its film (for reciprocity) and the speed it's rated at.
+    private func use(_ roll: FilmRoll) {
+        HapticFeedbackManager.shared.selection()
+        guard let speed = roll.meteringISO else {
+            filmStockID = roll.filmStockID
+            return
+        }
+        if roll.filmStockID != filmStockID {
+            rollISO = Double(speed)
+            filmStockID = roll.filmStockID
+        }
+        iso = Double(speed)
     }
 
     private var solvedTitle: String {

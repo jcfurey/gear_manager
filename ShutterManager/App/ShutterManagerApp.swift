@@ -76,15 +76,17 @@ struct ShutterManagerApp: App {
         }
     }
 
+    /// Reconciles gear reminders and the shoots' golden-hour heads-ups with the library.
     private func refreshGearReminders() {
         Task { @MainActor in
             guard let context = store.container?.mainContext else { return }
             do {
                 let items = try context.fetch(FetchDescriptor<GearItem>())
                 await NotificationManager.shared.refreshGearReminders(for: items)
+                await ShootAlertScheduler.refresh(in: context)
             } catch {
                 Logger(subsystem: Constants.App.loggerSubsystem, category: "Notifications")
-                    .error("Could not refresh gear reminders: \(error.localizedDescription, privacy: .public)")
+                    .error("Could not refresh reminders: \(error.localizedDescription, privacy: .public)")
             }
         }
     }

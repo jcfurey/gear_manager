@@ -206,3 +206,50 @@ extension Shoot {
         return template
     }
 }
+
+/// An editable copy of a saved template. Written to the template only on Save, matching items by
+/// ID like recipe steps.
+struct ShotListTemplateDraft: Equatable {
+    struct Item: Identifiable, Equatable {
+        var id = UUID()
+        var title = ""
+        var notes = ""
+    }
+
+    var name = ""
+    var notes = ""
+    var items: [Item] = []
+
+    init() {}
+
+    init(template: ShotListTemplate) {
+        name = template.name
+        notes = template.notes
+        items = template.orderedItems.map { Item(id: $0.id, title: $0.title, notes: $0.notes) }
+    }
+
+    var canSave: Bool { !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+
+    /// Writes the draft into `template`: kept items update, new ones are inserted, removed ones
+    /// deleted, and blank ones dropped, in the draft's order. The caller saves.
+    func apply(to template: ShotListTemplate, in context: ModelContext) {
+        template.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        template.notes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
+        var existing = Dictionary((template.items ?? []).map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        let kept = items.filter { !$0.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        for (order, draft) in kept.enumerated() {
+            let item = existing.removeValue(forKey: draft.id) ?? {
+                let inserted = ShotListTemplateItem(template: template)
+                inserted.id = draft.id
+                context.insert(inserted)
+                return inserted
+            }()
+            item.title = draft.title.trimmingCharacters(in: .whitespacesAndNewlines)
+            item.notes = draft.notes.trimmingCharacters(in: .whitespacesAndNewlines)
+            item.order = order
+        }
+        for removed in existing.values {
+            context.delete(removed)
+        }
+    }
+}

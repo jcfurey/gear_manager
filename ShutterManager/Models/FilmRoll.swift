@@ -158,3 +158,85 @@ extension GearItem {
         (filmRolls ?? []).filter(\.isLoaded).max { $0.loadedDate < $1.loadedDate }
     }
 }
+
+/// An editable copy of a roll. Written to the roll only on Save.
+struct FilmRollDraft: Equatable {
+    var filmStockID = ""
+    var formatID = SensorFormat.film35mm.id
+    var ratedISO = 0
+    var pushPullStops = 0.0
+    var frameCount = 36
+    var framesShot = 0
+    /// Kept as text, so a status from a newer version survives an edit that doesn't change it.
+    var statusID = FilmRollStatus.loaded.rawValue
+    var loadedDate = Date()
+    var finishedDate: Date?
+    var lab = ""
+    var notes = ""
+    var cameraID: UUID?
+    var shootID: UUID?
+
+    init(camera: GearItem? = nil, shoot: Shoot? = nil) {
+        cameraID = camera?.id
+        shootID = shoot?.id
+        if let format = camera?.sensorFormat, format.kind != .digital {
+            formatID = format.id
+            frameCount = FilmRoll.defaultFrameCount(formatID: format.id)
+        }
+    }
+
+    init(roll: FilmRoll) {
+        filmStockID = roll.filmStockID
+        formatID = roll.formatID
+        ratedISO = roll.ratedISO
+        pushPullStops = roll.pushPullStops
+        frameCount = roll.frameCount
+        framesShot = roll.framesShot
+        statusID = roll.statusID
+        loadedDate = roll.loadedDate
+        finishedDate = roll.finishedDate
+        lab = roll.lab
+        notes = roll.notes
+        cameraID = roll.camera?.id
+        shootID = roll.shoot?.id
+    }
+
+    var status: FilmRollStatus {
+        get { FilmRollStatus(storedID: statusID) }
+        set {
+            statusID = newValue.rawValue
+            if newValue == .loaded {
+                finishedDate = nil
+            } else if finishedDate == nil {
+                finishedDate = Date()
+            }
+        }
+    }
+
+    /// Changes the format and, while the frame count is still the old format's usual one, the count.
+    mutating func setFormat(_ id: String) {
+        if frameCount == FilmRoll.defaultFrameCount(formatID: formatID) {
+            frameCount = FilmRoll.defaultFrameCount(formatID: id)
+        }
+        formatID = id
+    }
+
+    var canSave: Bool { !filmStockID.isEmpty }
+
+    /// Writes the draft into `roll`, linking the camera and shoot it names. The caller saves.
+    func apply(to roll: FilmRoll, camera: GearItem?, shoot: Shoot?) {
+        roll.filmStockID = filmStockID
+        roll.formatID = formatID
+        roll.ratedISO = max(ratedISO, 0)
+        roll.pushPullStops = pushPullStops.isFinite ? pushPullStops : 0
+        roll.frameCount = max(frameCount, 0)
+        roll.framesShot = max(framesShot, 0)
+        roll.statusID = statusID
+        roll.loadedDate = loadedDate
+        roll.finishedDate = FilmRollStatus(storedID: statusID) == .loaded ? nil : finishedDate
+        roll.lab = lab.trimmingCharacters(in: .whitespacesAndNewlines)
+        roll.notes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
+        roll.camera = camera
+        roll.shoot = shoot
+    }
+}

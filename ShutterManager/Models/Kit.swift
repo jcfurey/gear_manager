@@ -52,3 +52,30 @@ extension Shoot {
         return new.count
     }
 }
+
+/// An editable copy of a kit. Written to the kit only on Save.
+struct KitDraft: Equatable {
+    var name = ""
+    var notes = ""
+    var symbol = "bag"
+    var gearIDs: Set<UUID> = []
+
+    init() {}
+
+    init(kit: Kit) {
+        name = kit.name
+        notes = kit.notes
+        symbol = kit.symbol
+        gearIDs = Set((kit.gear ?? []).map(\.id))
+    }
+
+    var canSave: Bool { !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+
+    /// Writes the draft into `kit`, linking the items of `gear` it names. The caller saves.
+    func apply(to kit: Kit, gear: [GearItem]) {
+        kit.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        kit.notes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
+        kit.symbol = symbol
+        kit.gear = gear.filter { gearIDs.contains($0.id) }
+    }
+}

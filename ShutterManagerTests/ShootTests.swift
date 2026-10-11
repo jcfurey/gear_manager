@@ -396,4 +396,96 @@ struct ShootTests {
         let preview = ImportPreview(fileName: "test.json", document: document)
         #expect(preview.shootCount == 1 && preview.kitCount == 1 && preview.templateCount == 1 && preview.filmRollCount == 1)
     }
+
+    // MARK: - Drafts
+
+    @Test func shootDraftKeepsLengthAndUnknownTypes() throws {
+        let container = try TestSupport.makeContainer()
+        let context = container.mainContext
+        let start = Date(timeIntervalSince1970: 1_750_000_000)
+        let shoot = Shoot(title: "Old", startDate: start, endDate: start.addingTimeInterval(3600))
+        shoot.typeID = "underwaterPortrait"
+        context.insert(shoot)
+
+        var draft = ShootDraft(shoot: shoot)
+        draft.title = "  New title  "
+        draft.setStart(start.addingTimeInterval(86_400))
+        #expect(draft.endDate.timeIntervalSince(draft.startDate) == 3600, "Moving the start keeps the length")
+        draft.goldenHourAlertMinutes = 60
+        draft.place = PlaceValue(name: "Beach", coordinate: GeoCoordinate(latitude: 10, longitude: 20))
+        draft.apply(to: shoot)
+        #expect(shoot.title == "New title")
+        #expect(shoot.typeID == "underwaterPortrait", "An untouched type from a newer version survives")
+        #expect(shoot.startDate == start.addingTimeInterval(86_400))
+        #expect(shoot.goldenHourAlertMinutes == 60)
+        #expect(shoot.place?.name == "Beach")
+
+        let fresh = ShootDraft(now: Date(timeIntervalSince1970: 1_750_000_123))
+        #expect(fresh.startDate > Date(timeIntervalSince1970: 1_750_000_123))
+        #expect(fresh.endDate.timeIntervalSince(fresh.startDate) == Constants.Shoots.defaultDuration)
+    }
+
+    @Test func kitAndRollDraftsWriteOnApply() throws {
+        let container = try TestSupport.makeContainer()
+        let context = container.mainContext
+        let body = TestSupport.insertSampleBody(into: context)
+        let lens = TestSupport.insertSampleLens(into: context)
+
+        var kitDraft = KitDraft()
+        #expect(!kitDraft.canSave)
+        kitDraft.name = " Travel "
+        kitDraft.gearIDs = [lens.id]
+        let kit = Kit()
+        context.insert(kit)
+        kitDraft.apply(to: kit, gear: [body, lens])
+        #expect(kit.name == "Travel")
+        #expect(kit.gear?.map(\.id) == [lens.id])
+
+        let filmCamera = GearItem(category: .cameraBody, make: "Mamiya", model: "RB67")
+        filmCamera.sensorFormatID = SensorFormat.film6x7.id
+        context.insert(filmCamera)
+        var rollDraft = FilmRollDraft(camera: filmCamera)
+        #expect(rollDraft.formatID == SensorFormat.film6x7.id && rollDraft.frameCount == 10, "A film camera sets the format")
+        #expect(!rollDraft.canSave)
+        rollDraft.filmStockID = "ilfordHP5Plus"
+        rollDraft.setFormat(SensorFormat.film6x6.id)
+        #expect(rollDraft.frameCount == 12, "The usual count follows the format")
+        rollDraft.frameCount = 11
+        rollDraft.setFormat(SensorFormat.film645.id)
+        #expect(rollDraft.frameCount == 11, "A count you changed stays")
+        rollDraft.status = .atLab
+        #expect(rollDraft.finishedDate != nil)
+        rollDraft.lab = " Lab One "
+        let roll = FilmRoll()
+        context.insert(roll)
+        rollDraft.apply(to: roll, camera: filmCamera, shoot: nil)
+        #expect(roll.status == .atLab && roll.lab == "Lab One")
+        #expect(roll.camera?.id == filmCamera.id)
+        #expect(FilmRollDraft(camera: body).formatID == SensorFormat.film35mm.id, "A digital body leaves the default")
+    }
+
+    @Test func templateDraftMatchesItemsByID() throws {
+        let container = try TestSupport.makeContainer()
+        let context = container.mainContext
+        let template = ShotListTemplate(name: "Old")
+        context.insert(template)
+        let keep = ShotListTemplateItem(template: template, title: "Keep", order: 0)
+        let drop = ShotListTemplateItem(template: template, title: "Drop", order: 1)
+        context.insert(keep)
+        context.insert(drop)
+        try context.save()
+
+        var draft = ShotListTemplateDraft(template: template)
+        draft.name = "New"
+        draft.items.removeAll { $0.title == "Drop" }
+        draft.items.insert(ShotListTemplateDraft.Item(title: "First"), at: 0)
+        draft.items.append(ShotListTemplateDraft.Item(title: "   "))
+        draft.apply(to: template, in: context)
+        try context.save()
+        #expect(template.name == "New")
+        #expect(template.orderedItems.map(\.title) == ["First", "Keep"], "Blank shots are dropped")
+        #expect(template.orderedItems.last?.id == keep.id, "A kept shot keeps its identity")
+        #expect(try context.fetch(FetchDescriptor<ShotListTemplateItem>()).count == 2)
+    }
 }
+

@@ -249,4 +249,66 @@ struct ToolTimersTests {
         #expect(alerts.last?.body == "Next: Fixer.")
         #expect(alerts.first?.date == now.addingTimeInterval(110))
     }
+
+    // MARK: - Shoot alerts
+
+    @Test func shootAlertsSurviveGearRefreshesAndAreReplaced() async {
+        let center = FakeCenter()
+        let manager = center.make(defaults: enabledDefaults())
+        let soon = ShootAlert(identifier: "shoot_a_0", date: Date().addingTimeInterval(3600), title: "Golden hour", body: "Soon")
+        let past = ShootAlert(identifier: "shoot_b_0", date: Date().addingTimeInterval(-60), title: "Golden hour", body: "Gone")
+        await manager.replaceShootAlerts([soon, past])
+        #expect(center.pending.map(\.identifier) == ["shoot_a_0"], "Past alerts are skipped")
+        await manager.refreshGearReminders(for: [])
+        #expect(center.pending.map(\.identifier) == ["shoot_a_0"], "A gear refresh leaves shoot alerts alone")
+        await manager.replaceShootAlerts([])
+        #expect(center.pending.isEmpty)
+    }
+
+    @Test func shootAlertsAskForPermissionOnlyWhenAsked() async {
+        let center = FakeCenter()
+        center.status = .notDetermined
+        let manager = center.make(defaults: enabledDefaults())
+        let alert = ShootAlert(identifier: "shoot_a_0", date: Date().addingTimeInterval(3600), title: "Golden hour", body: "Soon")
+        await manager.replaceShootAlerts([alert])
+        #expect(center.permissionRequests == 0, "A background refresh never prompts")
+        #expect(center.pending.isEmpty)
+        await manager.replaceShootAlerts([alert], askingPermission: true)
+        #expect(center.permissionRequests == 1)
+        #expect(center.pending.count == 1)
+    }
+
+    @Test func plansCoverUpcomingShootsWithAPlaceAndAHeadsUp() async throws {
+        let container = try TestSupport.makeContainer()
+        let context = container.mainContext
+        let bst = TimeZone(secondsFromGMT: 3600)!
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = bst
+        let at = { (hour: Int) in calendar.date(from: DateComponents(year: 2026, month: 6, day: 21, hour: hour))! }
+        let now = at(12)
+        let greenwich = PlaceValue(name: "Greenwich Park", coordinate: GeoCoordinate(latitude: 51.4769, longitude: -0.0005),
+                                   timeZoneIdentifier: "Europe/London")
+
+        let evening = Shoot(title: "Evening", startDate: at(19), endDate: at(22))
+        evening.place = greenwich
+        evening.goldenHourAlertMinutes = 30
+        let noPlace = Shoot(title: "Studio", startDate: at(19), endDate: at(22))
+        noPlace.goldenHourAlertMinutes = 30
+        let noAlert = Shoot(title: "Quiet", startDate: at(19), endDate: at(22))
+        noAlert.place = greenwich
+        let finished = Shoot(title: "Morning", startDate: at(4), endDate: at(6))
+        finished.place = greenwich
+        finished.goldenHourAlertMinutes = 30
+        for shoot in [evening, noPlace, noAlert, finished] { context.insert(shoot) }
+
+        let alerts = await ShootAlertScheduler.alerts(for: [evening, noPlace, noAlert, finished], now: now)
+        #expect(alerts.count == 1)
+        let alert = try #require(alerts.first)
+        #expect(alert.identifier == "shoot_\(evening.id.uuidString)_0")
+        let window = try #require(ShootLight.goldenHours(for: evening.interval, observer: greenwich.coordinate,
+                                                         timeZone: greenwich.timeZone).first)
+        #expect(alert.date == window.start.addingTimeInterval(-30 * 60))
+        #expect(alert.body.hasPrefix("Evening: golden hour at Greenwich Park starts at"))
+    }
 }
+

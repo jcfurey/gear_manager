@@ -252,3 +252,64 @@ extension GearItem {
         return issues
     }
 }
+
+// MARK: - Editing
+
+/// An editable copy of a shoot's own fields. The editor changes this value and writes it to the
+/// shoot only on Save, so Cancel leaves the library untouched. Gear, the shot list and rolls are
+/// edited on the shoot's screen.
+struct ShootDraft: Equatable {
+    var title = ""
+    /// Kept as text, so a type from a newer version survives an edit that doesn't change it.
+    var typeID = ShootType.other.rawValue
+    var startDate: Date
+    var endDate: Date
+    var client = ""
+    var place: PlaceValue?
+    var notes = ""
+    var goldenHourAlertMinutes = 0
+
+    /// A new shoot starting at the next full hour.
+    init(now: Date = Date()) {
+        let calendar = Calendar.current
+        let hour = calendar.dateInterval(of: .hour, for: now)?.end ?? now
+        startDate = hour
+        endDate = hour.addingTimeInterval(Constants.Shoots.defaultDuration)
+    }
+
+    init(shoot: Shoot) {
+        title = shoot.title
+        typeID = shoot.typeID
+        startDate = shoot.startDate
+        endDate = shoot.endDate
+        client = shoot.client
+        place = shoot.place
+        notes = shoot.notes
+        goldenHourAlertMinutes = shoot.goldenHourAlertMinutes
+    }
+
+    var type: ShootType {
+        get { ShootType(storedID: typeID) }
+        set { typeID = newValue.rawValue }
+    }
+
+    /// Moves the start and keeps the shoot's length, so the end never comes first.
+    mutating func setStart(_ newStart: Date) {
+        let length = max(endDate.timeIntervalSince(startDate), 0)
+        startDate = newStart
+        endDate = newStart.addingTimeInterval(length)
+    }
+
+    /// Writes the draft into `shoot`. The caller saves.
+    func apply(to shoot: Shoot) {
+        shoot.title = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        shoot.typeID = typeID
+        shoot.startDate = startDate
+        shoot.endDate = max(endDate, startDate)
+        shoot.client = client.trimmingCharacters(in: .whitespacesAndNewlines)
+        shoot.place = place
+        shoot.notes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
+        shoot.goldenHourAlertMinutes = max(goldenHourAlertMinutes, 0)
+        shoot.markModified()
+    }
+}

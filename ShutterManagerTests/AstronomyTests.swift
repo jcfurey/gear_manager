@@ -239,3 +239,59 @@ struct SkySampleTests {
         #expect(samples.allSatisfy { abs($0.sun) <= 90 && abs($0.moon) <= 91 && abs($0.galacticCenter) <= 90 })
     }
 }
+
+struct ShootLightTests {
+    private let greenwich = GeoCoordinate(latitude: 51.4769, longitude: -0.0005)
+    private let bst = TimeZone(secondsFromGMT: 3600)!
+
+    private func shoot(_ startHour: Int, _ startMinute: Int, hours: Double) -> DateInterval {
+        DateInterval(start: time(2026, 6, 21, startHour, startMinute, utcOffset: 1), duration: hours * 3600)
+    }
+
+    @Test func anEveningShootGetsTheEveningGoldenHour() throws {
+        let windows = ShootLight.goldenHours(for: shoot(19, 0, hours: 3), observer: greenwich, timeZone: bst)
+        #expect(windows.count == 1)
+        let window = try #require(windows.first)
+        // The sun is 6° up about an hour before the 21:21 sunset.
+        #expect(window.start > time(2026, 6, 21, 20, 0, utcOffset: 1) && window.start < time(2026, 6, 21, 20, 40, utcOffset: 1))
+        #expect(window.end > time(2026, 6, 21, 21, 21, utcOffset: 1))
+    }
+
+    @Test func aMorningShootGetsTheMorningGoldenHour() throws {
+        let windows = ShootLight.goldenHours(for: shoot(4, 0, hours: 2), observer: greenwich, timeZone: bst)
+        #expect(windows.count == 1)
+        let window = try #require(windows.first)
+        #expect(window.start < time(2026, 6, 21, 4, 43, utcOffset: 1), "It starts before the 04:43 sunrise")
+    }
+
+    @Test func aMiddayShootHearsAboutTheEvening() throws {
+        let windows = ShootLight.goldenHours(for: shoot(12, 0, hours: 2), observer: greenwich, timeZone: bst)
+        #expect(windows.count == 1)
+        #expect(try #require(windows.first).start > time(2026, 6, 21, 20, 0, utcOffset: 1))
+    }
+
+    @Test func aLongShootGetsEveryWindowItSpans() {
+        let windows = ShootLight.goldenHours(for: shoot(3, 0, hours: 20), observer: greenwich, timeZone: bst)
+        #expect(windows.count == 2, "Morning and evening")
+    }
+
+    @Test func midnightSunWindowsJoinAcrossMidnight() throws {
+        // In Tromsø at midsummer the sun skims low around midnight: one golden "hour" over midnight.
+        let tromso = GeoCoordinate(latitude: 69.6492, longitude: 18.9553)
+        let cest = TimeZone(secondsFromGMT: 7200)!
+        let night = DateInterval(start: time(2026, 6, 21, 23, 0, utcOffset: 2), duration: 2 * 3600)
+        let windows = ShootLight.goldenHours(for: night, observer: tromso, timeZone: cest)
+        #expect(windows.count == 1)
+        let window = try #require(windows.first)
+        #expect(window.start < time(2026, 6, 21, 23, 0, utcOffset: 2))
+        #expect(window.end > time(2026, 6, 22, 1, 0, utcOffset: 2))
+    }
+
+    @Test func touchingWindowsMerge() {
+        let a = DateInterval(start: Date(timeIntervalSince1970: 0), duration: 100)
+        let b = DateInterval(start: Date(timeIntervalSince1970: 100), duration: 100)
+        let c = DateInterval(start: Date(timeIntervalSince1970: 500), duration: 100)
+        #expect(ShootLight.merge([c, b, a]) == [DateInterval(start: a.start, end: b.end), c])
+    }
+}
+

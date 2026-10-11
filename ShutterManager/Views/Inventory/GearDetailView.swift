@@ -88,6 +88,7 @@ struct GearDetailView: View {
         }
         Group {
             if category.hasShutter { shutterSection }
+            usageSection
             loansSection
             if category.hasSensorCleaning && (item.sensorCleaningIntervalDays > 0 || item.lastSensorCleaningDate != nil) {
                 sensorCleaningSection
@@ -190,6 +191,49 @@ struct GearDetailView: View {
             if let upc = item.upcCode?.nonEmptyOrNil {
                 LabeledContent("UPC", value: upc)
                     .textSelection(.enabled)
+            }
+        }
+    }
+
+    /// Use from the shoot log: how often and when it went out, what's next, its kits, and the
+    /// roll loaded in a film camera.
+    @ViewBuilder
+    private var usageSection: some View {
+        let past = item.pastShoots()
+        let next = item.nextShoot()
+        let kits = (item.kits ?? []).map(\.displayName).sorted()
+        let roll = item.loadedRoll
+        if !past.isEmpty || next != nil || !kits.isEmpty || roll != nil {
+            Section("Use") {
+                if !past.isEmpty {
+                    LabeledContent("Shoots", value: past.count.formatted())
+                }
+                if let last = item.lastUsed() {
+                    LabeledContent("Last Used", value: last.formatted(date: .abbreviated, time: .omitted))
+                }
+                if let next {
+                    LabeledContent("Next Shoot") {
+                        VStack(alignment: .trailing, spacing: 2) {
+                            Text(next.displayTitle)
+                            Text(next.startDate.formatted(date: .abbreviated, time: .omitted))
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                if !kits.isEmpty {
+                    LabeledContent("Kits", value: kits.joined(separator: ", "))
+                }
+                if let roll {
+                    LabeledContent("Loaded") {
+                        VStack(alignment: .trailing, spacing: 2) {
+                            Text(roll.displayName)
+                            if let iso = roll.meteringISO {
+                                Text("ISO \(iso) · \(roll.framesShot)/\(roll.frameCount) frames")
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                }
             }
         }
     }

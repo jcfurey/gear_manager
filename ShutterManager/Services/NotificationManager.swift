@@ -2,7 +2,8 @@
 //  NotificationManager.swift
 //  ShutterManager
 //
-//  Local notifications for gear reminders: sensor cleaning due, and loans due back.
+//  Local notifications: gear reminders (sensor cleaning due, loans due back), timer alerts, and
+//  the golden-hour heads-up for planned shoots.
 //
 
 import Foundation
@@ -300,6 +301,40 @@ final class NotificationManager: ObservableObject {
         removeRequests(pending.map(\.identifier).filter { $0.hasPrefix(prefix) })
     }
 
+    // MARK: - Shoot alerts
+
+    /// Replaces every pending shoot alert with `alerts` (past ones are skipped, and at most
+    /// `Constants.Shoots.maximumShootAlerts`, soonest first). `askingPermission` shows the
+    /// permission prompt if it hasn't been answered; a background refresh never does.
+    func replaceShootAlerts(_ alerts: [ShootAlert], askingPermission: Bool = false) async {
+        await enqueue { [self] in
+            let pending = await pendingRequests()
+            removeRequests(pending.map(\.identifier).filter { $0.hasPrefix(ShootAlert.identifierPrefix) })
+            if askingPermission, !alerts.isEmpty, authorizationStatus == .notDetermined {
+                await requestAuthorization()
+            } else {
+                await refreshAuthorizationStatus()
+            }
+            guard canDeliver else { return }
+            let upcoming = alerts.filter { $0.date.timeIntervalSinceNow > 1 }.sorted { $0.date < $1.date }
+            for alert in upcoming.prefix(Constants.Shoots.maximumShootAlerts) {
+                let content = UNMutableNotificationContent()
+                content.title = alert.title
+                content.body = alert.body
+                content.sound = .default
+                let components = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute, .second],
+                                                                 from: alert.date)
+                let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
+                do {
+                    try await deliverRequest(UNNotificationRequest(identifier: alert.identifier, content: content,
+                                                                   trigger: trigger))
+                } catch {
+                    logger.error("Shoot alert could not be scheduled: \(error.localizedDescription, privacy: .public)")
+                }
+            }
+        }.value
+    }
+
     // MARK: - Badge
 
     /// Clears the app icon badge; called whenever the app becomes active.
@@ -312,6 +347,19 @@ final class NotificationManager: ObservableObject {
             }
         }
     }
+}
+
+/// A golden-hour heads-up for a planned shoot. Like timer alerts, these aren't gear reminders:
+/// refreshing reminders leaves them alone, and each shoot turns its own on or off, whatever the
+/// Gear Reminders setting. A plain value outside the main actor, so the sky math that makes them
+/// can run in the background.
+struct ShootAlert: Equatable, Sendable {
+    static let identifierPrefix = "shoot_"
+
+    let identifier: String
+    let date: Date
+    let title: String
+    let body: String
 }
 
 // MARK: - Foreground presentation

@@ -38,8 +38,7 @@ struct ContentView: View {
                 LightMeterView()
             }
             Tab("Shoots", systemImage: "calendar", value: AppTab.shoots) {
-                ComingSoonTab(title: "Shoots", systemImage: "calendar",
-                              message: "Shoot logs, kits, shot lists and film rolls are on the way.")
+                ShootsView()
             }
             Tab("Settings", systemImage: "gearshape", value: AppTab.settings) {
                 SettingsView()
@@ -49,20 +48,6 @@ struct ContentView: View {
         .environment(navigation)
         .toast()
         .preferredColorScheme(colorScheme)
-    }
-}
-
-/// Stands in for a tab until its feature lands.
-private struct ComingSoonTab: View {
-    let title: String
-    let systemImage: String
-    let message: String
-
-    var body: some View {
-        NavigationStack {
-            ContentUnavailableView(title, systemImage: systemImage, description: Text(message))
-                .navigationTitle(title)
-        }
     }
 }
 

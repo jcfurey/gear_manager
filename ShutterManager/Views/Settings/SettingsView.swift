@@ -242,8 +242,11 @@ struct SettingsView: View {
             // Every model in the schema, so nothing is left orphaned or forgotten.
             try modelContext.deleteEveryRecord()
             try modelContext.save()
-            // No gear means no reminders: this removes every pending one.
-            Task { await NotificationManager.shared.refreshGearReminders(for: []) }
+            // No gear or shoots means no reminders: this removes every pending one.
+            Task {
+                await NotificationManager.shared.refreshGearReminders(for: [])
+                await ShootAlertScheduler.refresh(shoots: [])
+            }
         } catch {
             logger.error("Failed to clear data: \(error.localizedDescription, privacy: .public)")
             modelContext.rollback()
