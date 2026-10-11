@@ -7,7 +7,9 @@ Usage:
 
 build: lists compiler errors and warnings, and annotates them on the changed files.
 test:  shows pass/fail/skip counts, each failure with its message, and per-target line coverage
-       when the bundle has coverage.
+       when the bundle has coverage. For a failed UI test it also includes the app's accessibility
+       hierarchy that XCTest captured at the failure, so a missing control can be diagnosed from
+       the run page without downloading the result bundle.
 
 It only reports. It always exits 0 so the xcodebuild step stays the one that decides whether the
 job fails, and a missing or unreadable bundle (xcodebuild died before writing one) is noted in the
@@ -16,8 +18,10 @@ summary rather than hiding the real error.
 
 import json
 import os
+import re
 import subprocess
 import sys
+import tempfile
 from urllib.parse import parse_qs, unquote, urlparse
 
 WORKSPACE = os.environ.get("GITHUB_WORKSPACE", os.getcwd())
@@ -123,6 +127,9 @@ def summarize_tests(bundle, title):
             annotate("error", text, title=f"{failure.get('targetName', '')} {name}".strip())
         lines.append("")
 
+    if failures:
+        lines += failure_hierarchies(bundle)
+
     coverage = run_json(["xcrun", "xccov", "view", "--report", "--only-targets", "--json", bundle])
     targets = coverage if isinstance(coverage, list) else (coverage or {}).get("targets", [])
     if targets:
@@ -133,6 +140,59 @@ def summarize_tests(bundle, title):
             lines.append(f"| {target.get('name', '?')} | {target.get('lineCoverage', 0):.1%} "
                          f"({covered}/{executable} lines) |")
     write_summary(lines)
+
+
+HIERARCHY_LINE_LIMIT = 150
+HIERARCHY_TEST_LIMIT = 3
+
+
+def failure_hierarchies(bundle):
+    """Collapsible blocks with the accessibility hierarchy XCTest attached to failing UI tests.
+
+    XCTest snapshots the app's hierarchy when a UI test fails and attaches it as text starting
+    with "Application,". Unit tests have no such attachment, so this adds nothing for them.
+    """
+    output = tempfile.mkdtemp(prefix="attachments-")
+    try:
+        subprocess.run(["xcrun", "xcresulttool", "export", "attachments", "--path", bundle,
+                        "--output-path", output], check=True, capture_output=True)
+        with open(os.path.join(output, "manifest.json"), encoding="utf-8") as handle:
+            manifest = json.load(handle)
+    except (subprocess.CalledProcessError, FileNotFoundError, OSError, json.JSONDecodeError) as error:
+        print(f"Could not export attachments: {error}")
+        return []
+
+    blocks = []
+    shown_tests = 0
+    for entry in manifest if isinstance(manifest, list) else []:
+        if shown_tests >= HIERARCHY_TEST_LIMIT:
+            break
+        test = entry.get("testIdentifierString") or entry.get("testIdentifier") or "?"
+        for attachment in entry.get("attachments", []):
+            text = read_small_text(os.path.join(output, attachment.get("exportedFileName", "")))
+            if not text or not text.startswith("Application,"):
+                continue
+            all_lines = text.splitlines()
+            # Drop memory addresses and AX ids; they're noise when reading it.
+            shown = [re.sub(r", 0x[0-9a-f]+| <(AX|App) element[^>]*>", "", line)
+                     for line in all_lines[:HIERARCHY_LINE_LIMIT]]
+            if len(all_lines) > len(shown):
+                shown.append(f"… {len(all_lines) - len(shown)} more lines in the result bundle")
+            blocks += [f"<details><summary>UI hierarchy at the failure: <code>{test}</code></summary>",
+                       "", "```", *shown, "```", "</details>", ""]
+            shown_tests += 1
+            break
+    return blocks
+
+
+def read_small_text(path, limit=512 * 1024):
+    try:
+        if os.path.getsize(path) > limit:
+            return None
+        with open(path, encoding="utf-8") as handle:
+            return handle.read()
+    except (OSError, UnicodeDecodeError):
+        return None
 
 
 def main():

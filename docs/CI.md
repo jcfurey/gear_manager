@@ -17,7 +17,9 @@ protection (Settings → Branches → `main` → Require status checks → `CI r
 | CI result | Linux | Sums up the jobs above | Always |
 
 Each macOS job writes a summary on the run page (errors and warnings with file and line, test
-counts, each failure's message, line coverage) and annotates errors on the changed files. When a
+counts, each failure's message, line coverage) and annotates errors on the changed files. A
+failed UI test's summary also shows the app's accessibility hierarchy at the moment it failed,
+which is usually enough to see why a control wasn't found. When a
 job fails, its `.xcresult` bundle is uploaded as an artifact for 7 days; open it in Xcode for
 screenshots, logs and the full test report.
 
@@ -36,6 +38,9 @@ screenshots, logs and the full test report.
   the test step. Booting it in the background during the build looked like a saving but made
   the build take 4-5 minutes instead of under one: the build's asset tools wait on the same
   simulator runtime the first boot is busy with.
+- **The unit-test host app uses a temporary in-memory library.** The unit tests build their own
+  containers, so the app hosting them doesn't open the simulator's library or start CloudKit
+  setup. That alone took the unit-test step from about 7 minutes to under 4.
 - **Unit tests run in one simulator** (`-parallel-testing-enabled NO`). Swift Testing still runs
   tests in parallel within it; cloned simulators are what tends to be slow and flaky in CI.
 - **UI tests don't run on every branch push.** They're the slowest job. They run on pull requests,

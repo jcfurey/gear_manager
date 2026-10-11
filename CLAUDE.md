@@ -75,9 +75,13 @@ Tools, Light Meter and Shoots are placeholders until M2–M4.
 
 **Tests:**
 - `ShutterManagerTests/` uses Swift Testing. `TestSupport` provides in-memory containers, isolated
-  defaults and sample items.
+  defaults and sample items. In Debug, the app hosting the unit tests opens a temporary in-memory
+  library, never the simulator's real one.
 - `ShutterManagerUITests/` uses XCUITest. Launch with `-uiTestInMemory` for a fresh library, and
-  navigate tabs with `selectTab` (it handles the iPad floating tab bar).
+  navigate tabs with `selectTab` (it handles the iPad floating tab bar). They run on iPhone and
+  iPad. On iPad the top tab bar leaves room for about two trailing toolbar buttons (search takes
+  one), and extra ones fold into a "More" menu, so keep a screen's main action in
+  `.primaryAction` and move secondary buttons to the leading side.
 
 ### Data layer
 

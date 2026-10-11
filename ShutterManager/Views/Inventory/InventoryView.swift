@@ -73,7 +73,10 @@ struct InventoryView: View {
                     .accessibilityLabel("Collection stats")
                 }
 
-                ToolbarItem(placement: .navigationBarTrailing) {
+                // Sort and filter sit on the leading side so Add Gear is never pushed into an
+                // overflow menu: on iPad the top tab bar leaves room for two trailing buttons,
+                // and search takes one of them.
+                ToolbarItem(placement: .navigationBarLeading) {
                     Menu {
                         Picker("Sort by", selection: $sortOption) {
                             ForEach(GearSortOption.allCases) { option in
@@ -93,7 +96,7 @@ struct InventoryView: View {
                     .accessibilityLabel("Sort and filter")
                 }
 
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .primaryAction) {
                     Button {
                         HapticFeedbackManager.shared.buttonTap()
                         showingAddGear = true
