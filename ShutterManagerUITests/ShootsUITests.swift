@@ -84,6 +84,9 @@ final class ShootsUITests: XCTestCase {
         reveal(menu, in: app)
         menu.tap()
         let choice = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Ilford HP5 Plus 400")).firstMatch
+        // On iPad a tap that lands while the form is still settling after "By Hand" can leave the
+        // menu closed; the hierarchy then shows no menu at all, so tap it once more.
+        if !choice.waitForExistence(timeout: 3) { menu.tap() }
         XCTAssertTrue(choice.waitForExistence(timeout: 5), "The loaded roll is offered")
         choice.tap()
         let film = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Ilford HP5 Plus 400")).firstMatch
