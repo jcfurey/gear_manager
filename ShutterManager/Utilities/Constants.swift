@@ -48,6 +48,9 @@ enum Constants {
 
         static let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
 
+        /// Where support questions go; the privacy policy names the same address.
+        static let supportEmail = PrivacyPolicy.contactEmail
+
         /// `os.Logger` subsystem for every log line the app writes.
         static let loggerSubsystem = "jcameronfurey.shuttermanager"
     }

@@ -177,7 +177,7 @@ struct SettingsView: View {
 
                     Section("About") {
                         SettingsRow(icon: "info.circle", iconColor: .blue, title: "Version", constants: constants) {
-                            Text(Constants.App.version)
+                            Text("\(Constants.App.version) (\(Constants.App.build))")
                                 .foregroundColor(.secondary)
                                 .font(constants.bodyFont)
                         }
@@ -201,7 +201,7 @@ struct SettingsView: View {
                             SettingsRow(icon: "hand.raised", iconColor: .orange, title: "Privacy Policy", constants: constants)
                         }
 
-                        if let support = URL(string: "mailto:jcfurey@furey-labs.com") {
+                        if let support = URL(string: "mailto:\(Constants.App.supportEmail)") {
                             Link(destination: support) {
                                 SettingsRow(icon: "envelope", iconColor: .green, title: "Contact Support", constants: constants) {
                                     Image(systemName: "arrow.up.right")
