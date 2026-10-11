@@ -133,6 +133,7 @@ struct ExportImportTests {
         exportDefaults.set("dark", forKey: Constants.UserDefaultsKeys.darkModePreference)
         exportDefaults.set("imperial", forKey: Constants.UserDefaultsKeys.measurementUnits)
         exportDefaults.set(3000, forKey: Constants.UserDefaultsKeys.depthOfFieldStandard)
+        exportDefaults.set(-0.7, forKey: Constants.UserDefaultsKeys.lightMeterCalibration)
         let data = try await exportJSON([], defaults: exportDefaults)
 
         let importDefaults = TestSupport.makeDefaults()
@@ -142,6 +143,7 @@ struct ExportImportTests {
         #expect(importDefaults.string(forKey: Constants.UserDefaultsKeys.darkModePreference) == "dark")
         #expect(importDefaults.string(forKey: Constants.UserDefaultsKeys.measurementUnits) == "imperial")
         #expect(importDefaults.object(forKey: Constants.UserDefaultsKeys.depthOfFieldStandard) as? Int == 3000)
+        #expect(importDefaults.object(forKey: Constants.UserDefaultsKeys.lightMeterCalibration) as? Double == -0.7)
     }
 
     @Test func everyExportableSettingHasAnImportRule() {
@@ -155,6 +157,7 @@ struct ExportImportTests {
             Constants.UserDefaultsKeys.darkModePreference: "neon",
             Constants.UserDefaultsKeys.measurementUnits: "cubits",
             Constants.UserDefaultsKeys.depthOfFieldStandard: "1234",
+            Constants.UserDefaultsKeys.lightMeterCalibration: "nan",
             "someOtherKey": "true"
         ], to: defaults)
         #expect(written.isEmpty)

@@ -122,11 +122,13 @@ enum Constants {
         static let measurementUnits = "tools.measurementUnits"
         /// A `CircleOfConfusionStandard` raw value (the diagonal divisor) for depth of field.
         static let depthOfFieldStandard = "tools.depthOfFieldStandard"
+        /// The light meter's calibration in EV (`Double`), added to every camera reading.
+        static let lightMeterCalibration = "lightMeter.calibration"
 
         /// The settings keys that export writes and import is allowed to restore. Each one needs
         /// a validation rule in `ImportedSettings`; a key without one is never imported.
         static let exportableSettings: [String] = [hapticFeedback, darkModePreference, measurementUnits,
-                                                    depthOfFieldStandard]
+                                                    depthOfFieldStandard, lightMeterCalibration]
 
         // Per-device tool state, not exported: the last values typed into each calculator.
         static let toolValuesPrefix = "tools.values."

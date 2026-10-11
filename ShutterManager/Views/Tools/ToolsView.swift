@@ -111,10 +111,12 @@ enum Tool: String, CaseIterable, Identifiable, Hashable {
 }
 
 struct ToolsView: View {
+    @Environment(AppNavigation.self) private var navigation
     private let timers = ToolTimers.shared
 
     var body: some View {
-        NavigationStack {
+        @Bindable var navigation = navigation
+        NavigationStack(path: $navigation.toolsPath) {
             List {
                 if timers.hasActiveTimer {
                     Section("Running") {
@@ -200,4 +202,5 @@ private struct RunningTimersSection: View {
 #Preview {
     ToolsView()
         .modelContainer(PreviewModelContainer.make())
+        .environment(AppNavigation())
 }

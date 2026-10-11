@@ -318,8 +318,9 @@ struct BarcodeScannerView: View {
 
 /// Hosts the `AVCaptureVideoPreviewLayer` for the scanner's capture session.
 ///
-/// The layer is the service's cached one (`getPreviewLayer()`), attached once when the view is
-/// made; updates only show or hide it, and layout only resizes it. `updateUIView` used to tear
+/// The layer is the camera's shared one (`getPreviewLayer()`), attached when the view is made and
+/// again on update in case the light meter took it; updates otherwise only show or hide it, and
+/// layout only resizes it. `updateUIView` used to tear
 /// the layer down and build a new one on EVERY published change of the scanner (scan state,
 /// errors, the scanned code…) — a visible flicker plus a fresh layer and layout pass each time.
 struct CameraPreview: UIViewRepresentable {
@@ -335,49 +336,9 @@ struct CameraPreview: UIViewRepresentable {
     }
 
     func updateUIView(_ uiView: CameraPreviewUIView, context: Context) {
+        // The layer is shared with the light meter, which may have taken it.
+        uiView.attach(scannerService.getPreviewLayer())
         uiView.setPreviewVisible(isSessionReady)
-    }
-}
-
-class CameraPreviewUIView: UIView {
-    private var previewLayer: AVCaptureVideoPreviewLayer?
-
-    override init(frame: CGRect) {
-        super.init(frame: frame)
-        backgroundColor = .black
-    }
-
-    required init?(coder: NSCoder) {
-        super.init(coder: coder)
-        backgroundColor = .black
-    }
-
-    override func layoutSubviews() {
-        super.layoutSubviews()
-        // A standalone sublayer animates frame changes implicitly; track the view's bounds exactly.
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        previewLayer?.frame = bounds
-        CATransaction.commit()
-    }
-
-    /// Installs the (cached) preview layer once. Re-attaching the same layer is a no-op.
-    func attach(_ layer: AVCaptureVideoPreviewLayer?) {
-        guard let layer, layer !== previewLayer else { return }
-        previewLayer?.removeFromSuperlayer()
-        self.layer.addSublayer(layer)   // also removes it from any previous superlayer
-        previewLayer = layer
-        setNeedsLayout()
-    }
-
-    /// Shows the preview only while the session is ready, so a stopped or reconfiguring session
-    /// shows black rather than a frozen frame. Cheap: no layer is created or removed.
-    func setPreviewVisible(_ visible: Bool) {
-        guard let previewLayer, previewLayer.isHidden == visible else { return }
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        previewLayer.isHidden = !visible
-        CATransaction.commit()
     }
 }
 

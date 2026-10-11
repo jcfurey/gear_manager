@@ -26,6 +26,7 @@ struct SettingsView: View {
     @AppStorage(Constants.UserDefaultsKeys.gearRemindersEnabled) private var gearRemindersEnabled = false
     @AppStorage(Constants.UserDefaultsKeys.measurementUnits) private var measurementUnits = UnitPreference.automatic
     @AppStorage(Constants.UserDefaultsKeys.depthOfFieldStandard) private var depthOfFieldStandard = CircleOfConfusionStandard.standard
+    @AppStorage(Constants.UserDefaultsKeys.lightMeterCalibration) private var lightMeterCalibration = 0.0
 
     @State private var showingDataExport = false
     @State private var showingDataImport = false
@@ -101,10 +102,21 @@ struct SettingsView: View {
                             .pickerStyle(.menu)
                             .font(constants.bodyFont)
                         }
+                        SettingsRow(icon: "camera.aperture", iconColor: .orange, title: "Light Meter", constants: constants) {
+                            Stepper(value: Binding(get: { lightMeterCalibration },
+                                                   set: { lightMeterCalibration = ($0 * 10).rounded() / 10 }),
+                                    in: LightMeter.calibrationRange, step: 0.1) {
+                                Text("\(LightMeter.signedEVLabel(lightMeterCalibration)) EV")
+                                    .font(constants.bodyFont)
+                                    .monospacedDigit()
+                            }
+                            .fixedSize()
+                            .accessibilityIdentifier("settings.meterCalibration")
+                        }
                     } header: {
                         Text("Tools")
                     } footer: {
-                        Text("Automatic units follow your region. The depth-of-field standard sets how strict \"sharp\" is: \(depthOfFieldStandard.detail.lowercased()).")
+                        Text("Automatic units follow your region. The depth-of-field standard sets how strict \"sharp\" is: \(depthOfFieldStandard.detail.lowercased()). The light meter's calibration is added to every reading: raise it if photos come out too bright, lower it if they come out too dark, or calibrate against a meter you trust in the Light Meter tab.")
                     }
 
                     Section("iCloud Sync") {

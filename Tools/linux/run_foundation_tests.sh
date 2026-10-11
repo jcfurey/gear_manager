@@ -22,6 +22,7 @@ TESTS=(
   ShutterManagerTests/PhotoMathTests.swift
   ShutterManagerTests/FilmStockTests.swift
   ShutterManagerTests/AstronomyTests.swift
+  ShutterManagerTests/LightMeterTests.swift
 )
 
 WORK="$(mktemp -d)"

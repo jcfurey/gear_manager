@@ -27,13 +27,16 @@ enum ImportedSettings {
         case choice(Set<String>)
         /// One of a fixed set of whole numbers, stored as `Int`.
         case integerChoice(Set<Int>)
+        /// A finite number in a range, stored as `Double`.
+        case number(ClosedRange<Double>)
     }
 
     private static let rules: [String: Rule] = [
         K.hapticFeedback: .bool,
         K.darkModePreference: .choice(["system", "light", "dark"]),
         K.measurementUnits: .choice(Set(UnitPreference.allCases.map(\.rawValue))),
-        K.depthOfFieldStandard: .integerChoice(Set(CircleOfConfusionStandard.allCases.map(\.rawValue)))
+        K.depthOfFieldStandard: .integerChoice(Set(CircleOfConfusionStandard.allCases.map(\.rawValue))),
+        K.lightMeterCalibration: .number(LightMeter.calibrationRange)
     ]
 
     /// Keys with a validation rule. Every `exportableSettings` key needs one to be importable.
@@ -58,6 +61,9 @@ enum ImportedSettings {
                 defaults.set(value, forKey: key)
             case .integerChoice(let options):
                 guard let number = Int(value), options.contains(number) else { continue }
+                defaults.set(number, forKey: key)
+            case .number(let range):
+                guard let number = Double(value), number.isFinite, range.contains(number) else { continue }
                 defaults.set(number, forKey: key)
             }
             written.insert(key)

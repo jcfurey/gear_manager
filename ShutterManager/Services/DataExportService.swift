@@ -240,7 +240,9 @@ final class DataExportService {
             K.darkModePreference: settingsStore.string(forKey: K.darkModePreference) ?? "system",
             K.measurementUnits: settingsStore.string(forKey: K.measurementUnits) ?? UnitPreference.automatic.rawValue,
             K.depthOfFieldStandard: String(settingsStore.object(forKey: K.depthOfFieldStandard) as? Int
-                                           ?? CircleOfConfusionStandard.standard.rawValue)
+                                           ?? CircleOfConfusionStandard.standard.rawValue),
+            // `String(Double)` is the shortest text that reads back as the same number.
+            K.lightMeterCalibration: String(settingsStore.double(forKey: K.lightMeterCalibration))
         ]
     }
 

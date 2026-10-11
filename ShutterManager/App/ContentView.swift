@@ -16,6 +16,7 @@ struct ContentView: View {
     /// `Transaction.updates` listener covers the whole session: an Ask-to-Buy approval that lands
     /// while the Tip Jar screen is closed is still finished.
     @State private var tipJarStore = TipJarStore()
+    @State private var navigation = AppNavigation()
 
     private var colorScheme: ColorScheme? {
         switch darkModePreference {
@@ -26,26 +27,26 @@ struct ContentView: View {
     }
 
     var body: some View {
-        TabView {
-            Tab("Inventory", systemImage: "camera") {
+        TabView(selection: $navigation.tab) {
+            Tab("Inventory", systemImage: "camera", value: AppTab.inventory) {
                 InventoryView()
             }
-            Tab("Tools", systemImage: "wrench.and.screwdriver") {
+            Tab("Tools", systemImage: "wrench.and.screwdriver", value: AppTab.tools) {
                 ToolsView()
             }
-            Tab("Light Meter", systemImage: "camera.aperture") {
-                ComingSoonTab(title: "Light Meter", systemImage: "camera.aperture",
-                              message: "A light meter using your iPhone's camera is on the way.")
+            Tab("Light Meter", systemImage: "camera.aperture", value: AppTab.lightMeter) {
+                LightMeterView()
             }
-            Tab("Shoots", systemImage: "calendar") {
+            Tab("Shoots", systemImage: "calendar", value: AppTab.shoots) {
                 ComingSoonTab(title: "Shoots", systemImage: "calendar",
                               message: "Shoot logs, kits, shot lists and film rolls are on the way.")
             }
-            Tab("Settings", systemImage: "gearshape") {
+            Tab("Settings", systemImage: "gearshape", value: AppTab.settings) {
                 SettingsView()
             }
         }
         .environment(tipJarStore)
+        .environment(navigation)
         .toast()
         .preferredColorScheme(colorScheme)
     }
