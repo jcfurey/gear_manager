@@ -71,12 +71,12 @@ extension LocationService: CLLocationManagerDelegate {
     }
 
     nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        let message = (error as? CLError)?.code == .denied
-            ? Self.deniedMessage
-            : "Your location isn't available right now. Try again, or pick the place on the map."
+        let denied = (error as? CLError)?.code == .denied
         MainActor.assumeIsolated {
             isLocating = false
-            errorMessage = message
+            errorMessage = denied
+                ? Self.deniedMessage
+                : "Your location isn't available right now. Try again, or pick the place on the map."
         }
     }
 }
