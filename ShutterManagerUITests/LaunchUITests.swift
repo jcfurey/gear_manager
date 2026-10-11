@@ -17,15 +17,20 @@ final class LaunchUITests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
-        for title in ["Inventory", "Tools", "Light Meter", "Shoots", "Settings"] {
-            XCTAssertTrue(tabButton(title, in: app).waitForExistence(timeout: 10), "Missing tab: \(title)")
+        XCTAssertTrue(app.tabBarItem("Inventory").waitForExistence(timeout: 10), "Missing tab: Inventory")
+        for title in ["Tools", "Light Meter", "Shoots", "Settings"] {
+            XCTAssertTrue(app.tabBarItem(title).exists, "Missing tab: \(title)")
         }
     }
 
-    /// iPhone shows a bottom tab bar; iPad (iOS 18+) shows a floating tab bar whose items are
-    /// plain buttons, so fall back to any button with the tab's title.
-    private func tabButton(_ title: String, in app: XCUIApplication) -> XCUIElement {
-        let tabBarButton = app.tabBars.buttons[title]
-        return tabBarButton.exists ? tabBarButton : app.buttons[title].firstMatch
+    @MainActor
+    func testEveryTabOpens() throws {
+        let app = XCUIApplication()
+        app.launchArguments += ["-uiTestInMemory"]
+        app.launch()
+        for title in ["Tools", "Light Meter", "Shoots", "Settings", "Inventory"] {
+            selectTab(title, in: app)
+            XCTAssertTrue(app.navigationBars[title].waitForExistence(timeout: 5), "\(title) didn't open")
+        }
     }
 }

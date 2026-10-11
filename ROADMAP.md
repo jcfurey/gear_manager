@@ -58,8 +58,10 @@ pick up from a clean working tree.
   timer and golden-hour notifications.
 - `DataExportService` (JSON, CSV, PDF): DTOs for every new model; `replaceUnrestorableNumbers`
   covers every new `Double` field, kept in step with `ImportDocument.validate`.
-- `MarketplaceSearch`: MPB, KEH, eBay, B&H, Adorama and Google. Search-URL formats verified when
-  built, as Axe Manager did.
+- `MarketplaceSearch`: MPB, KEH, eBay, B&H, Adorama and Google. eBay and Google take a query in
+  the URL. The cloud session couldn't confirm the others' own search URLs (MPB ignored the query
+  parameter), so they open a Google search restricted to that site. Switch to a site's own search
+  once its URL format is checked on a device.
 - `Constants`: new namespaces; tuner, metronome and tension removed.
 - Inventory and Settings screens, `AboutView`.
 - CI workflows (`swift.yml`, `test.yml`, `ui-tests.yml`) and UI-test support
@@ -247,6 +249,9 @@ note. **No model ships without export, import and backup coverage in the same mi
 Axe Manager's 1.5.0 rule that export writes only what restore accepts.
 
 ### M1 — Foundation and inventory
+**Status:** code complete on `claude/camera-gear-manager-e1zzxt`, built and tested by CI. Still to
+check on a device: EXIF fill from your own bodies, and iCloud sync.
+
 - Swap the license. New Xcode project `ShutterManager` with folder-synced groups; app, unit-test and
   UI-test targets; entitlements; CI.
 - Copy and rename the platform layer.

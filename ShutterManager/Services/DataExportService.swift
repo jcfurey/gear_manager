@@ -124,7 +124,7 @@ final class DataExportService {
             var status: [String] = []
             if openLoans.contains(item.id) { status.append("On loan") }
             if item.serviceNeeded == true { status.append("Needs service") }
-            let fields = [
+            let fields: [String] = [
                 GearCategory(storedID: item.category).displayName,
                 item.make ?? "",
                 item.model ?? "",
