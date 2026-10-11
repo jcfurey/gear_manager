@@ -80,16 +80,16 @@ final class ShootsUITests: XCTestCase {
         let byHand = app.buttons["By Hand"].firstMatch
         reveal(byHand, in: app)
         byHand.tap()
-        let menu = app.buttons["meter.loadedRoll"].firstMatch
-        reveal(menu, in: app)
-        menu.tap()
+        let loadedRolls = app.buttons["meter.loadedRoll"].firstMatch
+        reveal(loadedRolls, in: app)
+        loadedRolls.tap()
+        XCTAssertTrue(app.navigationBars["Loaded Rolls"].waitForExistence(timeout: 5))
         let choice = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Ilford HP5 Plus 400")).firstMatch
-        // On iPad a tap that lands while the form is still settling after "By Hand" can leave the
-        // menu closed; the hierarchy then shows no menu at all, so tap it once more.
-        if !choice.waitForExistence(timeout: 3) { menu.tap() }
         XCTAssertTrue(choice.waitForExistence(timeout: 5), "The loaded roll is offered")
         choice.tap()
-        let film = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Ilford HP5 Plus 400")).firstMatch
-        XCTAssertTrue(film.waitForExistence(timeout: 5), "The meter takes the roll's film")
+        XCTAssertTrue(app.navigationBars["Light Meter"].waitForExistence(timeout: 5), "Picking a roll goes back")
+        let film = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@ AND label CONTAINS %@",
+                                                    "Film", "HP5 Plus 400")).firstMatch
+        reveal(film, in: app)
     }
 }

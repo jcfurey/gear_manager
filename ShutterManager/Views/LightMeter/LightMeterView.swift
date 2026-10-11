@@ -335,12 +335,8 @@ struct LightMeterView: View {
                 FilmStockRow(stockID: $filmStockID, title: "Film (sets the ISO)")
                 let loaded = rolls.filter(\.isLoaded)
                 if !loaded.isEmpty {
-                    Menu {
-                        ForEach(loaded) { roll in
-                            Button(roll.camera.map { "\(roll.displayName) in \($0.displayName)" } ?? roll.displayName) {
-                                use(roll)
-                            }
-                        }
+                    NavigationLink {
+                        LoadedRollPicker(rolls: loaded) { use($0) }
                     } label: {
                         Label("Use a Loaded Roll", systemImage: "film")
                     }
@@ -431,6 +427,26 @@ struct LightMeterView: View {
         } footer: {
             Text("Filters in front of the lens that the meter doesn't see, such as a polariser or a colour filter: use the stops their maker gives.")
         }
+    }
+}
+
+/// The rolls loaded in cameras now; picking one meters for it and goes back.
+private struct LoadedRollPicker: View {
+    let rolls: [FilmRoll]
+    let onPick: (FilmRoll) -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        List(rolls) { roll in
+            Button {
+                onPick(roll)
+                dismiss()
+            } label: {
+                FilmRollRow(roll: roll)
+            }
+        }
+        .navigationTitle("Loaded Rolls")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 
