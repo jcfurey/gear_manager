@@ -366,7 +366,8 @@ struct GearItemCard: View {
             RoundedRectangle(cornerRadius: constants.cornerRadius)
                 .fill(Color(.secondarySystemBackground))
         )
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(item.accessibilitySummary)
     }
 
     private var categoryChip: some View {
@@ -410,7 +411,8 @@ struct GearItemListRow: View {
             }
         }
         .padding(.vertical, 2)
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(item.accessibilitySummary)
     }
 }
 
@@ -433,6 +435,19 @@ extension GearItem {
         default:
             return notes?.nonEmptyOrNil
         }
+    }
+
+    /// What VoiceOver reads for a row or card: the name first, then the details and anything
+    /// needing attention, in the same order on iPhone (list) and iPad (grid).
+    var accessibilitySummary: String {
+        var parts = [displayName, gearCategory.displayName]
+        if let subtitle = listSubtitle { parts.append(subtitle) }
+        if let value = CurrencyFormatter.formatOptional(effectiveValue) { parts.append(value) }
+        if isOnLoan { parts.append(isLoanOverdue ? "Loan overdue" : "On loan") }
+        if serviceNeeded { parts.append("Needs service") }
+        if isSensorCleaningDue { parts.append("Sensor cleaning due") }
+        if isNearShutterLife { parts.append("Shutter near rated life") }
+        return parts.joined(separator: ", ")
     }
 }
 

@@ -102,10 +102,10 @@ final class InventoryUITests: XCTestCase {
         XCTAssertTrue(save.waitForNonExistence(timeout: 5), "The sheet should close", file: file, line: line)
     }
 
-    /// Opens an item from the inventory. A row (list) or card (grid) is one combined element whose
-    /// label starts with the item's name.
+    /// Opens an item from the inventory. A row (iPhone list) or card (iPad grid) is one element
+    /// whose label starts with the item's name.
     private func openItem(named name: String, file: StaticString = #file, line: UInt = #line) {
-        let row = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", name)).firstMatch
+        let row = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", name + ",")).firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 5), "\(name) should be listed", file: file, line: line)
         row.tap()
         XCTAssertTrue(app.buttons["editGearButton"].waitForExistence(timeout: 5), "Detail should open",

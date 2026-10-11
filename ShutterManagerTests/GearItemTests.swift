@@ -141,6 +141,13 @@ struct GearItemTests {
         #expect([cheap, none, dear].gearSorted(by: .name).map(\.make) == ["A", "B", "C"])
     }
 
+    @Test func accessibilitySummaryStartsWithTheName() {
+        let body = GearItem(category: .cameraBody, make: "Nikon", model: "Z8")
+        body.mount = "Nikon Z"
+        body.serviceNeeded = true
+        #expect(body.accessibilitySummary == "Nikon Z8, Camera Body, Nikon Z, Needs service")
+    }
+
     @Test func referenceLinksAreParsedAndDeduplicated() {
         let item = GearItem()
         item.referenceLinks = "example.com\n\nhttps://example.com\n  https://other.example/page  "
