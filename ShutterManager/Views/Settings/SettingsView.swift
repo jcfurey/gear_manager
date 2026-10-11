@@ -1,0 +1,229 @@
+//
+//  SettingsView.swift
+//  ShutterManager
+//
+//  Root settings screen: appearance and haptics, reminders, iCloud sync, data (backups,
+//  export, import, clear), and about. Preferences persist via @AppStorage
+//  (Constants.UserDefaultsKeys).
+//
+
+import SwiftUI
+import SwiftData
+import os
+
+private let logger = Logger(subsystem: Constants.App.loggerSubsystem, category: "SettingsView")
+
+struct SettingsView: View {
+    @Environment(\.modelContext) private var modelContext
+    @Environment(iCloudSyncManager.self) private var syncManager
+
+    /// All gear, to reschedule reminders when the preference changes.
+    @Query private var gearItems: [GearItem]
+
+    @AppStorage(Constants.UserDefaultsKeys.hapticFeedback) private var hapticFeedback = true
+    @AppStorage(Constants.UserDefaultsKeys.darkModePreference) private var darkModePreference = "system"
+    /// Master switch for gear reminders. The schedule and time are per item.
+    @AppStorage(Constants.UserDefaultsKeys.gearRemindersEnabled) private var gearRemindersEnabled = false
+
+    @State private var showingDataExport = false
+    @State private var showingDataImport = false
+    @State private var showingDeleteConfirmation = false
+    @State private var clearFailed = false
+
+    var body: some View {
+        GeometryReader { geometry in
+            let constants = ResponsiveConstants(geometry)
+
+            NavigationStack {
+                List {
+                    Section("App Preferences") {
+                        SettingsRow(icon: "paintbrush", iconColor: .purple, title: "Appearance", constants: constants) {
+                            Picker("Appearance", selection: $darkModePreference) {
+                                Text("System").tag("system")
+                                Text("Light").tag("light")
+                                Text("Dark").tag("dark")
+                            }
+                            .pickerStyle(.menu)
+                            .font(constants.bodyFont)
+                        }
+
+                        SettingsRow(icon: "iphone.radiowaves.left.and.right", iconColor: .orange, title: "Haptic Feedback", constants: constants) {
+                            Toggle("", isOn: $hapticFeedback)
+                                .labelsHidden()
+                                .accessibilityLabel("Haptic Feedback")
+                                .accessibilityIdentifier("settings.haptics")
+                                .onChange(of: hapticFeedback) { _, _ in
+                                    HapticFeedbackManager.shared.toggle()
+                                }
+                        }
+                    }
+
+                    Section {
+                        SettingsRow(icon: "bell.badge", iconColor: .red, title: "Gear Reminders", constants: constants) {
+                            Toggle("", isOn: $gearRemindersEnabled)
+                                .labelsHidden()
+                                .accessibilityLabel("Gear Reminders")
+                                .accessibilityIdentifier("settings.gearReminders")
+                                .onChange(of: gearRemindersEnabled) { _, enabled in
+                                    HapticFeedbackManager.shared.toggle()
+                                    if enabled {
+                                        Task { @MainActor in
+                                            await NotificationManager.shared.requestAuthorization()
+                                            NotificationManager.shared.updateGearRemindersEnabled(true)
+                                            await NotificationManager.shared.refreshGearReminders(for: gearItems)
+                                        }
+                                    } else {
+                                        NotificationManager.shared.updateGearRemindersEnabled(false)
+                                    }
+                                }
+                        }
+                    } header: {
+                        Text("Reminders")
+                    } footer: {
+                        Text("Sensor cleanings due and loans due back. Set each item's schedule and reminder time in Inventory.")
+                    }
+
+                    Section("iCloud Sync") {
+                        NavigationLink {
+                            iCloudSyncDetailView()
+                        } label: {
+                            SettingsRow(icon: syncManager.status.icon,
+                                        iconColor: syncManager.isAvailable ? .green : .secondary,
+                                        title: "iCloud Sync",
+                                        constants: constants) {
+                                Text(syncManager.status.displayText)
+                                    .font(constants.captionFont)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .accessibilityIdentifier("settings.icloud")
+                    }
+
+                    Section("Data") {
+                        NavigationLink {
+                            BackupManagementView()
+                        } label: {
+                            SettingsRow(icon: "arrow.clockwise.icloud", iconColor: .cyan, title: "Backups", constants: constants)
+                        }
+                        .accessibilityIdentifier("settings.backups")
+
+                        Button {
+                            HapticFeedbackManager.shared.buttonTap()
+                            showingDataExport = true
+                        } label: {
+                            SettingsRow(icon: "square.and.arrow.up", iconColor: .blue, title: "Export Data", constants: constants) {
+                                Image(systemName: "chevron.right")
+                                    .font(constants.captionFont)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .accessibilityIdentifier("settings.export")
+
+                        Button {
+                            HapticFeedbackManager.shared.buttonTap()
+                            showingDataImport = true
+                        } label: {
+                            SettingsRow(icon: "square.and.arrow.down", iconColor: .green, title: "Import Data", constants: constants) {
+                                Image(systemName: "chevron.right")
+                                    .font(constants.captionFont)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .accessibilityIdentifier("settings.import")
+
+                        Button {
+                            HapticFeedbackManager.shared.buttonTap()
+                            showingDeleteConfirmation = true
+                        } label: {
+                            SettingsRow(icon: "trash", iconColor: .red, title: "Clear All Data", titleColor: .red, constants: constants)
+                        }
+                    }
+
+                    Section("About") {
+                        SettingsRow(icon: "info.circle", iconColor: .blue, title: "Version", constants: constants) {
+                            Text(Constants.App.version)
+                                .foregroundColor(.secondary)
+                                .font(constants.bodyFont)
+                        }
+
+                        NavigationLink {
+                            AboutView()
+                        } label: {
+                            SettingsRow(icon: "person.circle", iconColor: .purple, title: "About the App", constants: constants)
+                        }
+
+                        NavigationLink {
+                            TipJarView()
+                        } label: {
+                            SettingsRow(icon: "heart", iconColor: .pink, title: "Tip Jar", constants: constants)
+                        }
+                        .accessibilityIdentifier("settings.tipJar")
+
+                        NavigationLink {
+                            PrivacyPolicyView()
+                        } label: {
+                            SettingsRow(icon: "hand.raised", iconColor: .orange, title: "Privacy Policy", constants: constants)
+                        }
+
+                        if let support = URL(string: "mailto:jcfurey@furey-labs.com") {
+                            Link(destination: support) {
+                                SettingsRow(icon: "envelope", iconColor: .green, title: "Contact Support", constants: constants) {
+                                    Image(systemName: "arrow.up.right")
+                                        .font(constants.captionFont)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                        }
+                    }
+                }
+                .navigationTitle("Settings")
+            }
+        }
+        .confirmationDialog("Clear All Data", isPresented: $showingDeleteConfirmation, titleVisibility: .visible) {
+            Button("Clear All Data", role: .destructive) {
+                HapticFeedbackManager.shared.delete()
+                clearAllData()
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("This permanently deletes all your gear, photos, maintenance history, shutter counts and loans, on every device signed in to your iCloud account. Settings and local backups are kept.")
+        }
+        .alert("Couldn't Clear Data", isPresented: $clearFailed) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text("Nothing was deleted. Please try again.")
+        }
+        .sheet(isPresented: $showingDataExport) {
+            EnhancedDataExportView()
+        }
+        .sheet(isPresented: $showingDataImport) {
+            DataImportView()
+        }
+    }
+
+    private func clearAllData() {
+        do {
+            // Children first, then gear, so nothing is left orphaned.
+            try modelContext.delete(model: GearPhoto.self)
+            try modelContext.delete(model: MaintenanceRecord.self)
+            try modelContext.delete(model: MaintenanceReminder.self)
+            try modelContext.delete(model: ShutterCountReading.self)
+            try modelContext.delete(model: GearLoan.self)
+            try modelContext.delete(model: GearItem.self)
+            try modelContext.save()
+            // No gear means no reminders: this removes every pending one.
+            Task { await NotificationManager.shared.refreshGearReminders(for: []) }
+        } catch {
+            logger.error("Failed to clear data: \(error.localizedDescription, privacy: .public)")
+            modelContext.rollback()
+            clearFailed = true
+        }
+    }
+}
+
+#Preview {
+    SettingsView()
+        .modelContainer(PreviewModelContainer.make())
+        .environment(iCloudSyncManager())
+        .preferredColorScheme(.dark)
+}
