@@ -89,13 +89,10 @@ jobs:
       - name: Select simulator
         id: sim
         run: python3 Tools/ci/select_simulator.py iPhone
-      - name: Boot the simulator while building
-        env:
-          UDID: ${{ steps.sim.outputs.udid }}
-        run: nohup xcrun simctl bootstatus "$UDID" -b > "$RUNNER_TEMP/simulator-boot.log" 2>&1 &
-      # Builds for the generic simulator, not the booted device: resolving a specific simulator
-      # waits on CoreSimulator while that simulator is still booting, which cost minutes. ARCHS
-      # keeps the generic build to the runner's own architecture.
+      # Builds for the generic simulator (ARCHS keeps it to the runner's architecture). The
+      # simulator boots afterwards, in the test step: booting it during the build made the build
+      # take 4-5 minutes instead of under one, because the build's asset tools wait on the same
+      # simulator runtime.
       - name: Build for testing
         id: build
         run: |
@@ -135,7 +132,6 @@ jobs:
           path: |
             ${{ runner.temp }}/Build.xcresult
             ${{ runner.temp }}/UnitTests.xcresult
-            ${{ runner.temp }}/simulator-boot.log
           if-no-files-found: ignore
           retention-days: 7
 
@@ -199,10 +195,6 @@ jobs:
       - name: Select simulator
         id: sim
         run: python3 Tools/ci/select_simulator.py "${{ matrix.family }}"
-      - name: Boot the simulator while building
-        env:
-          UDID: ${{ steps.sim.outputs.udid }}
-        run: nohup xcrun simctl bootstatus "$UDID" -b > "$RUNNER_TEMP/simulator-boot.log" 2>&1 &
       - name: Build for testing
         id: build
         run: |
@@ -238,7 +230,6 @@ jobs:
           name: ui-test-results-${{ matrix.family }}
           path: |
             ${{ runner.temp }}/UITests.xcresult
-            ${{ runner.temp }}/simulator-boot.log
           if-no-files-found: ignore
           retention-days: 7
 

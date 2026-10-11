@@ -31,10 +31,11 @@ screenshots, logs and the full test report.
   to the newest Xcode with the same major version and shows a warning on the run.
 - **Simulators are picked by UDID** from the newest iOS runtime (`Tools/ci/select_simulator.py`).
   A name like "iPhone 17" can exist under several runtimes.
-- **The simulator boots while the app builds.** The build targets the generic simulator
-  (`generic/platform=iOS Simulator`, the runner's own architecture) rather than the booted
-  device. Naming a specific simulator makes xcodebuild wait on CoreSimulator until that
-  simulator finishes booting, which cost over three minutes on the first run.
+- **Build first, then boot.** The build targets the generic simulator
+  (`generic/platform=iOS Simulator`, the runner's own architecture), and the simulator boots in
+  the test step. Booting it in the background during the build looked like a saving but made
+  the build take 4-5 minutes instead of under one: the build's asset tools wait on the same
+  simulator runtime the first boot is busy with.
 - **Unit tests run in one simulator** (`-parallel-testing-enabled NO`). Swift Testing still runs
   tests in parallel within it; cloned simulators are what tends to be slow and flaky in CI.
 - **UI tests don't run on every branch push.** They're the slowest job. They run on pull requests,
