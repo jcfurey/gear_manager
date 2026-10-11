@@ -23,7 +23,10 @@ pick up from a clean working tree.
 | Devices | iPhone + iPad, iOS 18.6+ |
 | Tabs | **Inventory · Tools · Light Meter · Shoots · Settings** |
 | Pricing | Your own values and price history, plus marketplace search links. No server, no price feed |
-| Money | Free + Tip Jar at launch; a one-time Pro unlock later |
+| Money | Free, with a Tip Jar. **No Pro mode**: every feature is free, now and later |
+| Categories | The list under Inventory, open to additions later |
+| Price alerts | None. Values are what you enter yourself, mainly the purchase price |
+| Shot lists | Built-in and saved templates in v1 |
 | Code | Copied from Axe Manager into a new project here; Axe Manager is not changed |
 | License | Same as Axe Manager ("For educational and personal use"); replaces Apache 2.0 before any code lands |
 | Location | Current location (asked on first use, while in use only) plus a map picker and saved places |
@@ -67,8 +70,8 @@ pick up from a clean working tree.
 - String tension, Practice and Learn, tunings and temperaments.
 - `SerialNumberDecoder` (guitar brands only).
 - `MarketValuation`: in Axe Manager it is only export and backup plumbing; nothing creates one.
-- `PriceAlert`: with no price feed it only fires on prices you type in yourself. Open question
-  below.
+- `PriceAlert` and `PriceAlertManager`: with no price feed they only fire on prices you type in
+  yourself, and the app mainly tracks what you paid.
 
 ---
 
@@ -77,7 +80,9 @@ pick up from a clean working tree.
 ### Inventory
 - **Categories** (stored as stable IDs, never renamed): Camera Body · Lens · Flash & Lighting ·
   Support (tripods, gimbals, sliders) · Filter · Drone · Audio · Battery & Power · Memory Card ·
-  Bag & Case · Accessory · Other. A film camera is a Camera Body with a film format.
+  Bag & Case · Accessory · Other. A film camera is a Camera Body with a film format. The list is
+  open: a new category is an additive change (a new ID, plus any fields it needs, all defaulted),
+  so it can be added in any release without a migration.
 - **Add**: by hand, by barcode (with optional UPC lookup), or **from a photo's EXIF data**.
 - **Detail**: sections shown by category; photos; maintenance log; price history and marketplace
   links; shutter-count history; loans.
@@ -107,7 +112,10 @@ resolution, filter strength, flash guide number. Every value can still be typed 
 - **Shoot log**: date, location (with that day's sun times), client, type, gear used, notes.
 - **Kits and packing lists**: saved kits ("wedding", "astro"); a pre-shoot check-off that flags
   items that are on loan or need service.
-- **Shot lists**: per shoot, ticked off on the day.
+- **Shot lists**: per shoot, ticked off on the day. Start one from a template: built-in starters
+  (wedding, engagement, portrait session, event, real estate, product) or your own. Any shoot's
+  list can be saved as a new template. Applying a template copies its items into the shoot, so
+  editing a template later never changes past shoots.
 - **Film roll log**: stock, format, camera, rated ISO, push/pull, frames, and status
   (loaded → shot → at lab → developed → scanned).
 - **Usage per item**: number of shoots and last used, derived from the log.
@@ -160,9 +168,10 @@ New flat fields (`0` or `""` means not set):
 | `Shoot` | title, start and end, place name and coordinates, client, type, notes, packed-item state; gear used (many-to-many), shot list, film rolls | M4 |
 | `Kit` | name, notes, symbol, gear (many-to-many) | M4 |
 | `ShotListItem` | title, notes, order, done, shoot | M4 |
+| `ShotListTemplate` + `ShotListTemplateItem` | your saved templates: name, notes; items with title, notes, order. Built-in starters are value types, not stored | M4 |
 | `FilmRoll` | stock ID, format, rated ISO, push/pull stops, frame count, frames shot, status, loaded and finished dates, lab, notes; camera, shoot | M4 |
 
-That makes 14 models with the 5 kept ones (`GearItem`, `GearPhoto`, `MaintenanceRecord`,
+That makes 16 models with the 5 kept ones (`GearItem`, `GearPhoto`, `MaintenanceRecord`,
 `MaintenanceReminder`, `PriceEntry`).
 
 ### Value-type catalogs (not persisted, Foundation-only)
@@ -259,9 +268,9 @@ Axe Manager's 1.5.0 rule that export writes only what restore accepts.
   scrubber, upcoming moon phases. Dark-sky and Milky Way windows.
 
 ### M4 — Shoots
-- `Shoot`, `Kit`, `ShotListItem`, `FilmRoll`.
-- Shoot log, kits and packing check, shot lists, film roll log, golden-hour heads-up, usage per
-  item. The light meter can take ISO from a loaded roll.
+- `Shoot`, `Kit`, `ShotListItem`, `ShotListTemplate`, `FilmRoll`.
+- Shoot log, kits and packing check, shot lists with built-in and saved templates, film roll log,
+  golden-hour heads-up, usage per item. The light meter can take ISO from a loaded roll.
 
 ### M5 — 1.0 release prep
 - Tip Jar products, About, privacy policy, app icon, screenshots and App Store text.
@@ -285,23 +294,20 @@ runners. Anything that needs a real camera, GPS or an iCloud account is checked 
 
 ---
 
-## Later and Pro candidates
+## Later candidates
 
-- 🔵 **Pro**: an inventory report for your insurer (PDF with photos, serials and values; worded as
-  "a report for your insurer", never "insurance"), QR labels for bags and cases, "import usage from
-  photos" (count shots per body and lens from a batch of photos and update shutter counts), lens
-  and body compatibility with adapters.
-- 🟢 Widgets or a Live Activity for the development and bulb timers.
-- 🟠 Cloud cover via WeatherKit. It is an Apple framework, but it sends your location to Apple and
+There is no Pro mode, so everything here ships free when it ships. The list stays open: add ideas
+as they come up.
+
+- An inventory report for your insurer: a PDF with photos, serials and values, worded as "a
+  report for your insurer", never "insurance".
+- QR labels for bags and cases.
+- Import usage from photos: count shots per body and lens from a batch of photos and update
+  shutter counts.
+- Lens and body compatibility, including adapters.
+- More categories and category-specific fields as they're needed.
+- Widgets or a Live Activity for the development and bulb timers.
+- Cloud cover via WeatherKit. It is an Apple framework, but it sends your location to Apple and
   has a usage quota, so it changes the privacy story.
-- 🟣 Rental-house or studio mode (checking gear out to clients). A separate tier, like Axe
-  Manager's luthier mode.
-
----
-
-## Open questions for review
-
-1. **Categories**: is the list above right? Missing anything, such as computers and storage, light
-   stands, or modifiers?
-2. **Price alerts**: drop them (the plan above) or keep them?
-3. **Shot-list templates** (for example a standard wedding list): v1 or later?
+- Rental-house or studio mode (checking gear out to clients). A big build for a different user;
+  scope it only if there's demand.
