@@ -23,13 +23,18 @@ extension GeoCoordinate {
     }
 }
 
-/// The place row in a planner: shows the chosen place and opens `PlaceSelectionView`.
+/// The place row in a planner: shows the chosen place and opens `PlaceSelectionView` in a sheet.
+///
+/// A sheet, not a push: choosing a place in the map picker, which sits on top of the selection
+/// list, has to close both. Dismissing the sheet does that in one step; popping a pushed list
+/// from underneath the picker didn't.
 struct PlaceRow: View {
     @Binding var place: PlaceValue?
+    @State private var choosing = false
 
     var body: some View {
-        NavigationLink {
-            PlaceSelectionView(selection: $place)
+        Button {
+            choosing = true
         } label: {
             LabeledContent {
                 if let place {
@@ -44,11 +49,18 @@ struct PlaceRow: View {
                 Label("Place", systemImage: "mappin.and.ellipse")
             }
         }
+        .tint(.primary)
         .accessibilityIdentifier("placeRow")
+        .sheet(isPresented: $choosing) {
+            NavigationStack {
+                PlaceSelectionView(selection: $place)
+            }
+        }
     }
 }
 
-/// Current location, saved places, or a new place from the map.
+/// Current location, saved places, or a new place from the map. Shown as the root of a sheet:
+/// every way of choosing dismisses the sheet.
 struct PlaceSelectionView: View {
     @Binding var selection: PlaceValue?
     @Environment(\.dismiss) private var dismiss
@@ -115,6 +127,11 @@ struct PlaceSelectionView: View {
         }
         .navigationTitle("Place")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Cancel") { dismiss() }
+            }
+        }
         .onChange(of: location.location) { _, newLocation in
             guard awaitingLocation, let newLocation else { return }
             awaitingLocation = false

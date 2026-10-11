@@ -80,6 +80,8 @@ final class ToolsUITests: XCTestCase {
         XCTAssertTrue(use.isEnabled, "A picked place can be used")
         use.tap()
 
+        // The place sheet closes, back to the planner.
+        XCTAssertTrue(use.waitForNonExistence(timeout: 5), "Using the place closes the place sheet")
         XCTAssertTrue(app.navigationBars["Sun & Moon"].waitForExistence(timeout: 5), "Using the place returns to the planner")
         for label in ["Sunrise", "Sunset", "Moonrise"] {
             let event = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", label)).firstMatch

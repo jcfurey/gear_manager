@@ -31,12 +31,9 @@ final class LightMeterUITests: XCTestCase {
         let before = ev.label
         XCTAssertTrue(before.hasPrefix("EV "), "A typed reading shows its EV, not \(before)")
 
-        // The typed-EV stepper comes before the filter stepper, so its buttons match first.
-        let stepper = app.descendants(matching: .any).matching(identifier: "meter.manualEV").firstMatch
-        reveal(stepper, in: app)
-        let direction = before == "EV 25" ? "Decrement" : "Increment"
-        var step = stepper.buttons[direction].firstMatch
-        if !step.exists { step = app.buttons[direction].firstMatch }
+        // SwiftUI names a stepper's buttons after its identifier.
+        let step = app.buttons[before == "EV 25" ? "meter.manualEV-Decrement" : "meter.manualEV-Increment"].firstMatch
+        reveal(step, in: app)
         step.tap()
         let changed = expectation(for: NSPredicate(format: "label != %@", before), evaluatedWith: ev)
         wait(for: [changed], timeout: 5)
