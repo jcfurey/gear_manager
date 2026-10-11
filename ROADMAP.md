@@ -1,8 +1,9 @@
 # Shutter Manager — Product Roadmap
 
 A camera-gear manager with field tools for photographers, built on the platform layer of Cam's Axe
-Manager. This is the plan for review before any code lands. Keep it current so later sessions can
-pick up from a clean working tree.
+Manager. This is the product plan. Keep it current so later sessions can pick up from a clean
+working tree. [docs/PROGRESS.md](docs/PROGRESS.md) records where each milestone stands and what
+changed from this plan.
 
 > **Stack (same as Axe Manager):** SwiftUI + SwiftData + CloudKit private sync, iOS 18.6+, iPhone
 > and iPad, Xcode 26, Swift 5 language mode, Apple frameworks only. **Zero external dependencies,
@@ -64,8 +65,8 @@ pick up from a clean working tree.
   once its URL format is checked on a device.
 - `Constants`: new namespaces; tuner, metronome and tension removed.
 - Inventory and Settings screens, `AboutView`.
-- CI workflows (`swift.yml`, `test.yml`, `ui-tests.yml`) and UI-test support
-  (`-uiTestInMemory`, `-uiTestStoreFailure`).
+- CI, now one workflow (`ci.yml`; see `docs/CI.md`), and UI-test support (`-uiTestInMemory`,
+  `-uiTestStoreFailure`).
 - Test suites for data, backup, import/export, CloudKit compatibility and photo ingest.
 
 **Leave behind**
@@ -249,8 +250,8 @@ note. **No model ships without export, import and backup coverage in the same mi
 Axe Manager's 1.5.0 rule that export writes only what restore accepts.
 
 ### M1 — Foundation and inventory
-**Status:** code complete on `claude/camera-gear-manager-e1zzxt`, built and tested by CI. Still to
-check on a device: EXIF fill from your own bodies, and iCloud sync.
+**Status:** done 2026-10-11. See [docs/PROGRESS.md](docs/PROGRESS.md) for what shipped, the changes
+from this plan, and what is still to check on a device.
 
 - Swap the license. New Xcode project `ShutterManager` with folder-synced groups; app, unit-test and
   UI-test targets; entitlements; CI.
@@ -262,6 +263,8 @@ check on a device: EXIF fill from your own bodies, and iCloud sync.
   CloudKit compatibility.
 
 ### M2 — Tools: calculators and film
+**Status:** in progress.
+
 - `PhotoMath`, its references doc, and tests.
 - Equivalent exposure, ND with bulb timer, Sunny 16, depth of field and hyperfocal, field of view,
   time-lapse, flash, print size, 500 and NPF, star trails, reciprocity, and the development timer
