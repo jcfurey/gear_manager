@@ -42,8 +42,10 @@ final class ToolTimers {
     /// The "start pouring" alert comes this long before a step ends, for steps long enough to need it.
     static let pourWarningSeconds = 10.0
 
-    init(notifications: NotificationManager = .shared) {
-        self.notifications = notifications
+    /// `notifications` defaults to the shared manager (a default argument can't read it, being
+    /// evaluated off the main actor).
+    init(notifications: NotificationManager? = nil) {
+        self.notifications = notifications ?? .shared
     }
 
     var hasActiveTimer: Bool { exposure != nil || development != nil }

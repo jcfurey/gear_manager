@@ -30,18 +30,22 @@ xcodebuild test -project ShutterManager.xcodeproj -scheme ShutterManager \
 python3 Tools/ci/check_conventions.py
 ```
 
-**Cloud sessions have no Xcode.** Write the code there and let CI build it. Before pushing, run
-the convention checks and, if a Swift toolchain is available, `swiftc -parse -swift-version 5` on
-every changed file. Foundation-only files (catalogs, the Learn-style value types, `PhotoMath`
-later) can also be type-checked and run on Linux. CI treats warnings as errors, so an unused
-variable fails the build.
+**Cloud sessions have no Xcode.** Write the code there and let CI build it. Before pushing:
+- run the convention checks;
+- if a Swift toolchain is available, run `swiftc -parse -swift-version 5` on every changed file;
+- run the Foundation-only tests (`PhotoMath`, the film and format catalogs) with
+  `Tools/linux/run_foundation_tests.sh [path/to/swift]`. They build and run on Linux, and CI runs
+  them there too.
+
+CI treats warnings as errors, so an unused variable fails the build.
 
 ## CI
 
 One workflow, `.github/workflows/ci.yml`. `docs/CI.md` describes every job and the reasons for
 its design. In short:
 
-- Linux: change detection; conventions, actionlint and ShellCheck. These gate the macOS jobs.
+- Linux: change detection; conventions, actionlint and ShellCheck, which gate the macOS jobs; and
+  the Foundation-only tests in the official Swift image.
 - macOS: build for the generic simulator with warnings as errors, then unit tests with coverage;
   an unsigned Release device build; UI tests on iPhone and iPad (pull requests, `main`, and manual
   runs with `ui_tests: true`).
@@ -61,15 +65,20 @@ external dependencies. The targets use folder-synced groups, so a new file in a 
 the target without a project edit.
 
 **Tabs** (`App/ContentView.swift`): **Inventory · Tools · Light Meter · Shoots · Settings**.
-Tools, Light Meter and Shoots are placeholders until M2–M4.
+Light Meter and Shoots are placeholders until M3 and M4.
 
 **Folders (`ShutterManager/`):**
 - `App/`: entry point (library or `StoreRecoveryView`) and root tabs.
 - `Models/`: the `@Model` types.
-  - `Catalog/`: Foundation-only catalogs (`GearCategory`, `SensorFormat`, `LensMount`).
+  - `Catalog/`: Foundation-only catalogs (`GearCategory`, `SensorFormat`, `LensMount`,
+    `FilmStock` with `FilmStockCatalog`).
+  - `PhotoMath/`: Foundation-only photography math (exposure scales, equivalent exposure, ND,
+    Sunny 16, optics, astro, time-lapse, flash, print size, reciprocity, development timing).
+    Sources are in `docs/PHOTO_MATH_REFERENCES.md`; comments cite it rather than re-deriving.
   - `Export/`: `LibraryExport` and its DTOs.
-- `Services/`: persistence, export/import, backups, reminders, EXIF, Tip Jar, iCloud status.
-- `Views/`: `Inventory/`, `Settings/`, `Shared/`.
+- `Services/`: persistence, export/import, backups, reminders, EXIF, Tip Jar, iCloud status, and
+  `ToolTimers` (the running bulb and development timers).
+- `Views/`: `Inventory/`, `Tools/`, `Settings/`, `Shared/`.
 - `Utilities/`: constants, schema, formatters, import validation, photo ingest, marketplace links.
 - `Extensions/`: small helpers on Swift types.
 
@@ -85,13 +94,15 @@ Tools, Light Meter and Shoots are placeholders until M2–M4.
 
 ### Data layer
 
-Six `@Model` types, registered once in `Utilities/AppSchema.swift`:
+Eight `@Model` types, registered once in `Utilities/AppSchema.swift`:
 - `GearItem`
 - `GearPhoto`
 - `MaintenanceRecord`
 - `MaintenanceReminder`
 - `ShutterCountReading`
 - `GearLoan`
+- `DevelopmentRecipe`
+- `DevelopmentStep`
 
 The app container, previews (`PreviewModelContainer`) and tests all build from `AppSchema`, so a
 new model only needs listing there.
@@ -138,6 +149,14 @@ Development schema. Deploying to Production is done by hand in CloudKit Console.
   only for a change older versions can't read; a newer file is refused with a clear message.
 - **Import strategies.** Import writes through an isolated context with one final save. Merge skips
   records whose ID already exists; replace removes what the file doesn't have.
+- **One place for "everything".**
+  - Export and backups read the library through `LibraryContents.fetch(from:)`. A new top-level
+    model is added there, and to `LibraryExport` as an optional array so older files still decode.
+  - Replace-import and "Delete All Data" use `ModelContext.deleteEveryRecord()`, which covers every
+    model in `AppSchema`.
+  - Recipe steps travel nested inside their recipe's DTO.
+- **Recipe edits use a value draft.** `DevelopmentRecipeDraft` holds the edits, and `apply(to:in:)`
+  writes them on Save, matching steps by ID.
 - **Settings in exports.** Every key in `Constants.UserDefaultsKeys.exportableSettings` needs a
   typed rule in `ImportedSettings`; a test checks this.
 - **Photos.** Read EXIF (`PhotoMetadataReader`) from the original bytes *before* `PhotoIngest`
@@ -149,6 +168,28 @@ Development schema. Deploying to Production is done by hand in CloudKit Console.
 - **Gear reminders** (sensor cleaning, loan due dates) go through `NotificationManager`. Its
   notification-center calls are injectable for tests. Reminders are reconciled on foreground,
   import, restore and CloudKit remote changes.
+- **Timer alerts** (bulb exposures; development agitations, pour warnings and step ends) go through
+  `NotificationManager.scheduleTimerAlerts(_:group:)`.
+  - Their identifiers start with `timer_`, so a gear-reminder refresh never removes them.
+  - They don't depend on the Gear Reminders setting.
+  - `ToolTimers.shared` holds the running timers for the session. Timing comes from wall-clock
+    dates, so it stays right in the background.
+- **Photography math.**
+  - `Models/PhotoMath/` stays Foundation-only, with lengths in millimetres, times in seconds and
+    temperatures in °C.
+  - Exposure math uses the exact scale values (`ExposureScale`: f/5.6 is 2^2.5) and shows the
+    camera labels.
+  - Views convert to the user's units with `MeasurementUnits` (Settings → Units).
+  - When adding a Foundation-only file or test, list it in `Tools/linux/run_foundation_tests.sh`.
+- **Film data comes only from makers' datasheets.**
+  - Each `FilmStock` cites its `source`, and `docs/PHOTO_MATH_REFERENCES.md` records how each table
+    was read.
+  - A stock whose maker publishes no figures is `.unpublished` or `.noCorrectionUpTo`; never fill
+    it from third-party tables.
+  - Film stock IDs are stored and synced like the other catalog IDs: never rename or remove one.
+- **Tool inputs** persist per device with `@AppStorage` under
+  `Constants.UserDefaultsKeys.toolValuesPrefix`. They aren't exported; the units and
+  depth-of-field settings are.
 - **No Pro mode, ever.** Money is a Tip Jar only (`TipJarStore`,
   `jcameronfurey.shuttermanager.tip.*`). Every feature is free.
 - **Logging and formatting.** Log with `os.Logger` (subsystem `Constants.App.loggerSubsystem`),

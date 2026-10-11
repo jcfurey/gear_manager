@@ -10,7 +10,7 @@ milestones.
 
 The five tabs are **Inventory · Tools · Light Meter · Shoots · Settings**.
 
-## What works today (Milestone 1)
+## What works today (Milestones 1 and 2)
 
 **Inventory**
 - Category-aware forms for:
@@ -35,13 +35,31 @@ The five tabs are **Inventory · Tools · Light Meter · Shoots · Settings**.
   shutter's rated life.
 - Barcode lookup, photo galleries, search, sort and category filters.
 
+**Tools**
+- **Exposure:**
+  - equivalent exposure;
+  - ND filters (stacked, from your inventory) with a bulb timer;
+  - Sunny 16.
+- **Optics:** depth of field and hyperfocal distance, field of view, and crop equivalents.
+- **Astro:** the NPF and 500 rules from your camera's pixel pitch; star trails.
+- **Calculators:** time-lapse, flash guide numbers, print size and resolution.
+- **Film:**
+  - long-exposure (reciprocity) correction from the makers' datasheets. There are 33 film stocks;
+    the makers publish figures for 29 of them;
+  - a development timer that runs your saved recipes step by step, with agitation and pour alerts.
+- The tools fill in from your inventory: a camera's format and resolution, a lens's focal length
+  and aperture, an ND filter's strength, a flash's guide number.
+- Metric or imperial units.
+
 **Your data**
 - Private iCloud sync across your devices, with a local-only fallback.
-- Export to JSON (restorable, photos optional), CSV and PDF; import by merge or replace.
+- Export to JSON (restorable, photos and development recipes included), CSV and PDF; import by
+  merge or replace.
 - Automatic and manual backups, with retention.
 
-The Tools, Light Meter and Shoots tabs arrive in milestones 2–4: exposure, depth of field and
-astro calculators, a light meter, sun and moon planning, shoot logs, kits, shot lists, and film.
+The Light Meter and Shoots tabs arrive in milestones 3 and 4: a light meter, sun and moon
+planning, shoot logs, kits, shot lists, and a film roll log. The formulas and sources behind the
+tools are in [docs/PHOTO_MATH_REFERENCES.md](docs/PHOTO_MATH_REFERENCES.md).
 
 ## Build and test
 
