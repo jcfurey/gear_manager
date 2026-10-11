@@ -6,10 +6,106 @@ is still to check on a device. Add a section when a milestone finishes.
 | Milestone | Status |
 |---|---|
 | M1 — Foundation and inventory | Done (2026-10-11) |
-| M2 — Tools: calculators and film | In progress |
+| M2 — Tools: calculators and film | Done (2026-10-11) |
 | M3 — Light Meter and sky planning | Not started |
 | M4 — Shoots | Not started |
 | M5 — 1.0 release prep | Not started |
+
+---
+
+## M2 — Tools: calculators and film
+
+**Done 2026-10-11** on `claude/camera-gear-manager-e1zzxt` (commits `087f888`…`df75477`).
+
+### What shipped
+- **The Tools tab:** eleven calculators in five groups.
+  - Exposure:
+    - equivalent exposure;
+    - ND filters, stacked, from inventory or presets, with optional film reciprocity and a bulb
+      timer;
+    - Sunny 16.
+  - Optics:
+    - depth of field, with near and far limits, hyperfocal distance and a sharp-zone bar;
+    - field of view, with angles, 35mm equivalent, frame size at a distance and matching focal
+      length on another format.
+  - Sky: the NPF and 500 rules from the camera's pixel pitch, and star trails.
+  - Calculators: time-lapse, flash guide numbers, and print size with paper sizes.
+  - Film: reciprocity correction and the development timer.
+- **Filling from inventory:**
+  - a camera's format and resolution;
+  - a lens's focal length (the short end of a zoom) and widest aperture;
+  - ND filters' stops;
+  - a flash's guide number.
+
+  Each calculator remembers its last inputs on the device.
+- **`PhotoMath`** (`Models/PhotoMath/`, Foundation-only): the math behind every tool, with
+  sources in [PHOTO_MATH_REFERENCES.md](PHOTO_MATH_REFERENCES.md).
+- **Film stocks:**
+  - 33 stocks from Ilford, Kentmere, Kodak, Fujifilm, Foma and CineStill;
+  - reciprocity figures from each maker's datasheet for the 29 that publish them;
+  - custom stocks with an optional reciprocity exponent.
+- **Development recipes:**
+  - `DevelopmentRecipe` and `DevelopmentStep`: film, developer, dilution, temperature, and
+    ordered steps with agitation;
+  - starting templates for B&W, C-41 and E-6 that name the steps but leave the times to the user;
+  - covered by export, import (merge and replace), backups and "Delete All Data".
+- **Timers:**
+  - the bulb timer and the development timer keep running across screens;
+  - notifications cover each agitation, a pour warning 10 seconds before a step ends, and the end
+    of each step and exposure;
+  - the development timer keeps the screen on while it's showing.
+- **Settings:** units (automatic, metric or imperial) and the depth-of-field standard (circle of
+  confusion d/1000, d/1500, d/1730 or d/3000). Both export and import.
+- **Tests:**
+  - 37 Foundation-only tests (math and film catalog), which run on Linux too;
+  - unit tests for recipes, timer alerts, timers and settings, bringing the total to 122;
+  - 3 new UI tests: every tool opens, depth of field shows results, and create a recipe and run
+    its timer.
+
+### Verified
+[CI run 38141822666](https://github.com/jcfurey/gear_manager/actions/runs/38141822666) passed
+every job:
+- the Foundation tests in the Swift 6.2 Linux image;
+- the Debug and Release builds with warnings as errors;
+- 122 unit tests;
+- 8 UI tests on each of iPhone 17 and iPad (iOS 26.5).
+
+### Changes from the plan
+- **Reciprocity data comes only from makers' datasheets.**
+  - Kodak ColorPlus 200 and the three CineStill films have no published figures, so the app shows
+    the metered time and says so. Kodak's colour negatives have figures only up to 1 second.
+  - Ilford's sheets were read from Wayback Machine captures, because ilfordphoto.com blocks
+    automated downloads.
+- **Agitation presets were checked against the datasheets.**
+  - Ilford: four inversions in the first 10 s of each minute.
+  - Kodak: 5–7 inversions in 5 s, every 30 s. The first draft's Kodak preset was wrong and was
+    corrected before shipping.
+- **Not in the plan:**
+  - the ND calculator can apply a film's reciprocity correction;
+  - the development timer has a pour warning;
+  - recipes carry no built-in development times (they depend on film, developer, dilution and
+    temperature).
+- **New shared code:**
+  - `LibraryContents`, the one place export and backups read the library from;
+  - `ModelContext.deleteEveryRecord()`, which covers every model for replace-import and Delete All
+    Data.
+
+  Both keep M3 and M4's new models from being missed.
+- **CI:** a Linux job runs the Foundation-only tests in the official Swift image, pinned by
+  digest. It also keeps `PhotoMath` free of Apple-only frameworks.
+- **The sun and moon planner** stays in M3, as planned. The Sky group has Astro Exposure for now.
+
+### Found by CI and fixed
+- A default argument (`= .shared`) read a main-actor singleton from outside the main actor. It
+  was the only compile error.
+
+### Still to check on a device
+- Timer notifications with the phone locked and silent; the development timer through a real
+  development; the bulb timer on a long exposure.
+- The new models need the CloudKit schema updated. Run `-initializeCloudKitSchema` again and
+  review `DevelopmentRecipe` and `DevelopmentStep` in CloudKit Console, then check recipe sync
+  between two devices.
+- The units setting in a US region (Automatic should show feet and °F).
 
 ---
 

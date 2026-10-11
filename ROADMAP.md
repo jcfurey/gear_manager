@@ -263,7 +263,7 @@ from this plan, and what is still to check on a device.
   CloudKit compatibility.
 
 ### M2 — Tools: calculators and film
-**Status:** in progress.
+**Status:** done 2026-10-11. See [docs/PROGRESS.md](docs/PROGRESS.md).
 
 - `PhotoMath`, its references doc, and tests.
 - Equivalent exposure, ND with bulb timer, Sunny 16, depth of field and hyperfocal, field of view,
