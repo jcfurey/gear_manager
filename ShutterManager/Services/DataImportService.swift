@@ -70,14 +70,9 @@ final class DataImportService {
 
     private func write(_ document: LibraryExport, to context: ModelContext, strategy: ImportStrategy) throws {
         if strategy == .replace {
-            // Deleting gear cascades to its photos and child records; the explicit deletes also
-            // clear children whose gear item was already gone.
-            try deleteAll(GearItem.self, from: context)
-            try deleteAll(GearPhoto.self, from: context)
-            try deleteAll(MaintenanceRecord.self, from: context)
-            try deleteAll(MaintenanceReminder.self, from: context)
-            try deleteAll(ShutterCountReading.self, from: context)
-            try deleteAll(GearLoan.self, from: context)
+            // Every model in the schema, children included, so orphans go too and a new model
+            // can't be missed.
+            try context.deleteEveryRecord()
         }
 
         // Gear first, keeping a lookup of every item a child record can link to: the ones
@@ -105,11 +100,13 @@ final class DataImportService {
         for dto in document.loans where !existing.loans.contains(dto.id) {
             context.insert(dto.toLoan(gearByID: gearByID))
         }
+        // A recipe merges whole: one already in the library keeps its own steps.
+        for dto in document.recipes where !existing.developmentRecipes.contains(dto.id) {
+            let (recipe, steps) = dto.toRecipe()
+            context.insert(recipe)
+            steps.forEach(context.insert)
+        }
         try saveChanges(context)
-    }
-
-    private func deleteAll<T: PersistentModel>(_ type: T.Type, from context: ModelContext) throws {
-        for model in try context.fetch(FetchDescriptor<T>()) { context.delete(model) }
     }
 
     /// IDs already in the library, so a merge skips records it has (one fetch per type instead
@@ -119,6 +116,7 @@ final class DataImportService {
         var maintenanceReminders: Set<UUID> = []
         var shutterCountReadings: Set<UUID> = []
         var loans: Set<UUID> = []
+        var developmentRecipes: Set<UUID> = []
 
         init() {}
 
@@ -127,6 +125,7 @@ final class DataImportService {
             maintenanceReminders = Set(try context.fetch(FetchDescriptor<MaintenanceReminder>()).map(\.id))
             shutterCountReadings = Set(try context.fetch(FetchDescriptor<ShutterCountReading>()).map(\.id))
             loans = Set(try context.fetch(FetchDescriptor<GearLoan>()).map(\.id))
+            developmentRecipes = Set(try context.fetch(FetchDescriptor<DevelopmentRecipe>()).map(\.id))
         }
     }
 }
@@ -150,6 +149,7 @@ struct ImportPreview {
     let maintenanceCount: Int
     let shutterCountCount: Int
     let loanCount: Int
+    let recipeCount: Int
     let hasSettings: Bool
     let includesPhotos: Bool
 
@@ -162,11 +162,12 @@ struct ImportPreview {
         maintenanceCount = document.maintenanceRecords.count + document.maintenanceReminders.count
         shutterCountCount = document.shutterCountReadings.count
         loanCount = document.loans.count
+        recipeCount = document.recipes.count
         hasSettings = document.settings != nil
         includesPhotos = document.includesPhotos
     }
 
-    var totalItems: Int { gearCount + maintenanceCount + shutterCountCount + loanCount }
+    var totalItems: Int { gearCount + maintenanceCount + shutterCountCount + loanCount + recipeCount }
 
     var formattedDate: String { exportDate.formatted(date: .abbreviated, time: .shortened) }
 }

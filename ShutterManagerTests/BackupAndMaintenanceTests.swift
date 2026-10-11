@@ -22,23 +22,30 @@ struct BackupTests {
         try context.save()
 
         let manager = BackupManager(directory: directory, defaults: defaults)
-        try await manager.createBackup(gearItems: [body])
+        let recipe = TestSupport.insertSampleRecipe(into: context)
+        try context.save()
+        try await manager.createBackup(library: LibraryContents(gearItems: [body], developmentRecipes: [recipe]))
         #expect(manager.availableBackups.count == 1)
         let backup = try #require(manager.availableBackups.first)
         #expect(backup.itemCounts.gearItems == 1)
-        #expect(backup.itemCounts.otherRecords == 5, "Two readings, a loan, a maintenance record and a reminder")
+        #expect(backup.itemCounts.otherRecords == 9,
+                "Two readings, a loan, a maintenance record, a reminder, and a recipe with three steps")
         #expect(backup.includesPhotos == true)
         #expect(manager.lastBackupDate != nil)
 
         // Change the library, then restore.
         body.model = "Changed"
         TestSupport.insertSampleLens(into: context)
+        context.delete(recipe)
         try context.save()
         try await manager.restoreBackup(backup, to: context)
         let items = try context.fetch(FetchDescriptor<GearItem>())
         #expect(items.count == 1)
         #expect(items.first?.model == "Z6 III")
         #expect(items.first?.shutterCountReadings?.count == 2)
+        let recipes = try context.fetch(FetchDescriptor<DevelopmentRecipe>())
+        #expect(recipes.map(\.name) == ["HP5 in Ilfosol 3"])
+        #expect(recipes.first?.orderedSteps.count == 3)
     }
 
     @Test func retentionKeepsTheNewestBackups() async throws {
@@ -47,7 +54,7 @@ struct BackupTests {
         let manager = BackupManager(directory: directory, defaults: TestSupport.makeDefaults())
         manager.configuration.maxBackups = 2
         for _ in 0..<3 {
-            try await manager.createBackup(gearItems: [])
+            try await manager.createBackup(library: .empty)
         }
         #expect(manager.availableBackups.count == 2)
     }

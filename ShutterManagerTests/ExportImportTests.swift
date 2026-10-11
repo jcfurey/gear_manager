@@ -13,13 +13,19 @@ import Testing
 
 @MainActor
 struct ExportImportTests {
-    private func exportJSON(_ items: [GearItem], defaults: UserDefaults, photos: Bool = true) async throws -> Data {
+    private func exportJSON(_ items: [GearItem], recipes: [DevelopmentRecipe] = [], defaults: UserDefaults,
+                            photos: Bool = true) async throws -> Data {
         let service = DataExportService(settingsStore: defaults)
         var configuration = DataExportService.ExportConfiguration(format: .json)
         configuration.includePhotos = photos
-        let url = try await service.exportData(configuration: configuration, gearItems: items)
+        let url = try await service.exportData(configuration: configuration,
+                                               library: LibraryContents(gearItems: items, developmentRecipes: recipes))
         defer { try? FileManager.default.removeItem(at: url) }
         return try Data(contentsOf: url)
+    }
+
+    private func gear(_ items: [GearItem]) -> LibraryContents {
+        LibraryContents(gearItems: items, developmentRecipes: [])
     }
 
     @Test func jsonRoundTripRestoresEveryRecord() async throws {
@@ -125,6 +131,8 @@ struct ExportImportTests {
         let exportDefaults = TestSupport.makeDefaults()
         exportDefaults.set(false, forKey: Constants.UserDefaultsKeys.hapticFeedback)
         exportDefaults.set("dark", forKey: Constants.UserDefaultsKeys.darkModePreference)
+        exportDefaults.set("imperial", forKey: Constants.UserDefaultsKeys.measurementUnits)
+        exportDefaults.set(3000, forKey: Constants.UserDefaultsKeys.depthOfFieldStandard)
         let data = try await exportJSON([], defaults: exportDefaults)
 
         let importDefaults = TestSupport.makeDefaults()
@@ -132,6 +140,8 @@ struct ExportImportTests {
         try await DataImportService(settingsStore: importDefaults).importData(from: data, to: destination.mainContext)
         #expect(importDefaults.object(forKey: Constants.UserDefaultsKeys.hapticFeedback) as? Bool == false)
         #expect(importDefaults.string(forKey: Constants.UserDefaultsKeys.darkModePreference) == "dark")
+        #expect(importDefaults.string(forKey: Constants.UserDefaultsKeys.measurementUnits) == "imperial")
+        #expect(importDefaults.object(forKey: Constants.UserDefaultsKeys.depthOfFieldStandard) as? Int == 3000)
     }
 
     @Test func everyExportableSettingHasAnImportRule() {
@@ -143,6 +153,8 @@ struct ExportImportTests {
         let written = ImportedSettings.apply([
             Constants.UserDefaultsKeys.hapticFeedback: "maybe",
             Constants.UserDefaultsKeys.darkModePreference: "neon",
+            Constants.UserDefaultsKeys.measurementUnits: "cubits",
+            Constants.UserDefaultsKeys.depthOfFieldStandard: "1234",
             "someOtherKey": "true"
         ], to: defaults)
         #expect(written.isEmpty)
@@ -158,7 +170,7 @@ struct ExportImportTests {
         lens.filterThread = .infinity
         lens.guideNumber = 5e12
         let service = DataExportService(settingsStore: TestSupport.makeDefaults())
-        let data = service.buildExportData(configuration: .init(format: .json), gearItems: [lens])
+        let data = service.buildExportData(configuration: .init(format: .json), library: gear([lens]))
         #expect(service.lastReplacedValueCount == 3)
         #expect(data.gearItems.first?.focalLengthMin == nil)
         #expect(data.gearItems.first?.focalLengthMax == 70)
@@ -167,7 +179,7 @@ struct ExportImportTests {
 
     @Test func validationRejectsOutOfRangeNumbers() throws {
         let service = DataExportService(settingsStore: TestSupport.makeDefaults())
-        var data = service.buildExportData(configuration: .init(format: .json), gearItems: [])
+        var data = service.buildExportData(configuration: .init(format: .json), library: .empty)
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         let decoder = JSONDecoder()
@@ -194,7 +206,7 @@ struct ExportImportTests {
 
     @Test func rejectsFilesFromANewerFormat() throws {
         let service = DataExportService(settingsStore: TestSupport.makeDefaults())
-        var data = service.buildExportData(configuration: .init(format: .json), gearItems: [])
+        var data = service.buildExportData(configuration: .init(format: .json), library: .empty)
         data.formatVersion = LibraryExport.currentFormatVersion + 1
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
@@ -217,7 +229,7 @@ struct ExportImportTests {
         let lens = TestSupport.insertSampleLens(into: source.mainContext)
         try source.mainContext.save()
         let service = DataExportService(settingsStore: TestSupport.makeDefaults())
-        let csv = service.buildCSV(service.buildExportData(configuration: .init(format: .csv), gearItems: [body, lens]))
+        let csv = service.buildCSV(service.buildExportData(configuration: .init(format: .csv), library: gear([body, lens])))
         let lines = csv.split(separator: "\n")
         #expect(lines.count == 3)
         #expect(lines[0].contains("\"Serial Number\""))

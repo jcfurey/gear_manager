@@ -85,6 +85,15 @@ enum ImportDocument {
         for reading in document.shutterCountReadings {
             try check(Double(reading.count), Limits.maximumCount)
         }
+        for recipe in document.recipes {
+            try check(recipe.temperatureCelsius, Limits.maximumMeasurement)
+            for step in recipe.steps {
+                for value in [step.order, step.durationSeconds, step.agitationInitialSeconds,
+                              step.agitationIntervalSeconds, step.agitationDurationSeconds] as [Int?] {
+                    try check(value.map { Double($0) }, Limits.maximumMeasurement)
+                }
+            }
+        }
     }
 
     /// Finite and within ±`maximum`; nil passes. Negative values pass too: every display path

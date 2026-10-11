@@ -118,10 +118,18 @@ enum Constants {
         // Exportable app settings (the export/import "settings" contract)
         static let hapticFeedback = "hapticFeedback"
         static let darkModePreference = "darkModePreference"
+        /// A `UnitPreference` raw value: distances and temperatures in the tools.
+        static let measurementUnits = "tools.measurementUnits"
+        /// A `CircleOfConfusionStandard` raw value (the diagonal divisor) for depth of field.
+        static let depthOfFieldStandard = "tools.depthOfFieldStandard"
 
         /// The settings keys that export writes and import is allowed to restore. Each one needs
         /// a validation rule in `ImportedSettings`; a key without one is never imported.
-        static let exportableSettings: [String] = [hapticFeedback, darkModePreference]
+        static let exportableSettings: [String] = [hapticFeedback, darkModePreference, measurementUnits,
+                                                    depthOfFieldStandard]
+
+        // Per-device tool state, not exported: the last values typed into each calculator.
+        static let toolValuesPrefix = "tools.values."
     }
 
     // MARK: - UI Constants

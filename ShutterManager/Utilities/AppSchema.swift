@@ -21,7 +21,8 @@ enum AppSchema {
     static let models: [any PersistentModel.Type] = [
         GearItem.self, GearPhoto.self,
         MaintenanceRecord.self, MaintenanceReminder.self,
-        ShutterCountReading.self, GearLoan.self
+        ShutterCountReading.self, GearLoan.self,
+        DevelopmentRecipe.self, DevelopmentStep.self
     ]
 
     /// The full schema, built from `models`.

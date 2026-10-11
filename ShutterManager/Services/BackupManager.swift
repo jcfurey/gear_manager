@@ -84,7 +84,7 @@ class BackupManager: ObservableObject {
     // MARK: - Backup Operations
     
     /// Create a new backup of all app data
-    func createBackup(gearItems: [GearItem]) async throws {
+    func createBackup(library: LibraryContents) async throws {
         guard Self.busyDirectories.insert(backupsDirectory).inserted else { throw BackupError.busy }
 
         defer { Self.busyDirectories.remove(backupsDirectory) }
@@ -96,7 +96,7 @@ class BackupManager: ObservableObject {
             var backupConfig = DataExportService.ExportConfiguration(format: .json)
             backupConfig.includePhotos = configuration.includePhotos
 
-            let exportURL = try await exportService.exportData(configuration: backupConfig, gearItems: gearItems)
+            let exportURL = try await exportService.exportData(configuration: backupConfig, library: library)
             
             defer { try? fileManager.removeItem(at: exportURL) }
             let replacedValues = exportService.lastReplacedValueCount
@@ -118,13 +118,8 @@ class BackupManager: ObservableObject {
                 date: Date(),
                 fileURL: backupURL,
                 fileSize: try fileSize(at: backupURL),
-                itemCounts: BackupItemCounts(
-                    gearItems: gearItems.count,
-                    otherRecords: gearItems.reduce(0) { total, item in
-                        total + (item.maintenanceRecords?.count ?? 0) + (item.maintenanceReminders?.count ?? 0)
-                            + (item.shutterCountReadings?.count ?? 0) + (item.loans?.count ?? 0)
-                    }
-                ),
+                itemCounts: BackupItemCounts(gearItems: library.gearItems.count,
+                                             otherRecords: library.otherRecordCount),
                 includesPhotos: backupConfig.includePhotos
             )
             
@@ -196,7 +191,7 @@ class BackupManager: ObservableObject {
     func performAutomaticBackupIfDue(from context: ModelContext) async -> Bool {
         guard shouldCreateAutomaticBackup() else { return false }
         do {
-            try await createBackup(gearItems: try context.fetch(FetchDescriptor<GearItem>()))
+            try await createBackup(library: try LibraryContents.fetch(from: context))
             return true
         } catch BackupError.busy {
             // A manual backup or restore is running; the schedule tries again next time.

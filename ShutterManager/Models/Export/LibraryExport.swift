@@ -27,6 +27,8 @@ struct LibraryExport: Codable {
     var maintenanceReminders: [MaintenanceReminderDTO]
     var shutterCountReadings: [ShutterCountReadingDTO]
     var loans: [GearLoanDTO]
+    /// Added in 1.0 development (M2); absent from earlier files, so optional.
+    var developmentRecipes: [DevelopmentRecipeDTO]? = nil
     let settings: [String: String]?
     /// Whether photos were included, so a restore can warn before replacing photos with none.
     let includesPhotos: Bool
@@ -36,7 +38,11 @@ struct LibraryExport: Codable {
         gearItems.count + maintenanceRecords.count + maintenanceReminders.count
             + shutterCountReadings.count + loans.count
             + gearItems.reduce(0) { $0 + ($1.photos?.count ?? 0) }
+            + recipes.reduce(0) { $0 + 1 + $1.steps.count }
     }
+
+    /// `developmentRecipes`, empty for files written before recipes existed.
+    var recipes: [DevelopmentRecipeDTO] { developmentRecipes ?? [] }
 }
 
 /// Header written into every export file.
@@ -411,6 +417,78 @@ struct GearLoanDTO: Codable {
     }
 }
 
+// MARK: - Development recipes
+
+/// A recipe with its steps nested: steps belong to exactly one recipe and never move.
+struct DevelopmentRecipeDTO: Codable {
+    let id: UUID
+    let name: String
+    let filmStockID: String?
+    let developer: String?
+    let dilution: String?
+    var temperatureCelsius: Double?
+    let notes: String?
+    let dateCreated: Date
+    let dateModified: Date?
+    let steps: [DevelopmentStepDTO]
+
+    init(from recipe: DevelopmentRecipe) {
+        id = recipe.id
+        name = recipe.name
+        filmStockID = recipe.filmStockID
+        developer = recipe.developer
+        dilution = recipe.dilution
+        temperatureCelsius = recipe.temperatureCelsius
+        notes = recipe.notes
+        dateCreated = recipe.dateCreated
+        dateModified = recipe.dateModified
+        steps = recipe.orderedSteps.map(DevelopmentStepDTO.init(from:))
+    }
+
+    /// The recipe and its steps, not yet inserted anywhere.
+    func toRecipe() -> (recipe: DevelopmentRecipe, steps: [DevelopmentStep]) {
+        let recipe = DevelopmentRecipe(name: name, filmStockID: filmStockID ?? "", developer: developer ?? "",
+                                       dilution: dilution ?? "", temperatureCelsius: temperatureCelsius ?? 20,
+                                       notes: notes ?? "")
+        recipe.id = id
+        recipe.dateCreated = dateCreated
+        recipe.dateModified = dateModified ?? dateCreated
+        return (recipe, steps.map { $0.toStep(recipe: recipe) })
+    }
+}
+
+struct DevelopmentStepDTO: Codable {
+    let id: UUID
+    let name: String
+    let order: Int
+    let durationSeconds: Int
+    let agitationInitialSeconds: Int?
+    let agitationIntervalSeconds: Int?
+    let agitationDurationSeconds: Int?
+    let notes: String?
+
+    init(from step: DevelopmentStep) {
+        id = step.id
+        name = step.name
+        order = step.order
+        durationSeconds = step.durationSeconds
+        agitationInitialSeconds = step.agitationInitialSeconds
+        agitationIntervalSeconds = step.agitationIntervalSeconds
+        agitationDurationSeconds = step.agitationDurationSeconds
+        notes = step.notes
+    }
+
+    func toStep(recipe: DevelopmentRecipe) -> DevelopmentStep {
+        let step = DevelopmentStep(recipe: recipe, name: name, order: order, durationSeconds: durationSeconds,
+                                   notes: notes ?? "")
+        step.id = id
+        step.agitationInitialSeconds = agitationInitialSeconds ?? 0
+        step.agitationIntervalSeconds = agitationIntervalSeconds ?? 0
+        step.agitationDurationSeconds = agitationDurationSeconds ?? 0
+        return step
+    }
+}
+
 // MARK: - Unrestorable numbers
 
 extension LibraryExport {
@@ -445,6 +523,12 @@ extension LibraryExport {
         }
         for i in maintenanceRecords.indices {
             restorable(&maintenanceRecords[i].cost, limit: Limits.maximumMoney)
+        }
+        if var recipes = developmentRecipes {
+            for i in recipes.indices {
+                restorable(&recipes[i].temperatureCelsius, limit: Limits.maximumMeasurement)
+            }
+            developmentRecipes = recipes
         }
         return replaced
     }

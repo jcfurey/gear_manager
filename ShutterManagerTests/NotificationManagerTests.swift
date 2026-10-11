@@ -18,12 +18,19 @@ struct NotificationManagerTests {
     final class FakeCenter {
         var pending: [UNNotificationRequest] = []
         var status: UNAuthorizationStatus = .authorized
+        /// What the permission prompt answers.
+        var grantsPermission = true
+        var permissionRequests = 0
 
         func make(defaults: UserDefaults) -> NotificationManager {
             NotificationManager(
                 defaults: defaults,
                 authorizationProvider: { [unowned self] in self.status },
-                requestAuthorization: { true },
+                requestAuthorization: { [unowned self] in
+                    self.permissionRequests += 1
+                    self.status = self.grantsPermission ? .authorized : .denied
+                    return self.grantsPermission
+                },
                 deliverRequest: { [unowned self] request in
                     self.pending.removeAll { $0.identifier == request.identifier }
                     self.pending.append(request)
@@ -114,5 +121,132 @@ struct NotificationManagerTests {
         #expect(center.pending.count == 1)
         await manager.refreshGearReminders(for: [])
         #expect(center.pending.isEmpty)
+    }
+}
+
+@MainActor
+struct TimerAlertTests {
+    private typealias FakeCenter = NotificationManagerTests.FakeCenter
+
+    @Test func alertsAreScheduledReplacedAndCancelledByGroup() async {
+        let center = FakeCenter()
+        // Timer alerts don't depend on the Gear Reminders setting, which is off here.
+        let manager = center.make(defaults: TestSupport.makeDefaults())
+        let now = Date()
+        manager.scheduleTimerAlerts([.init(date: now.addingTimeInterval(60), title: "A", body: "a"),
+                                     .init(date: now.addingTimeInterval(120), title: "B", body: "b"),
+                                     .init(date: now.addingTimeInterval(-5), title: "Past", body: "")],
+                                    group: "dev")
+        await manager.waitForPendingWork()
+        #expect(center.pending.map(\.identifier) == ["timer_dev_0", "timer_dev_1"])
+        #expect(center.pending.first?.content.title == "A")
+
+        manager.scheduleTimerAlerts([.init(date: now.addingTimeInterval(30), title: "C", body: "")], group: "dev")
+        manager.scheduleTimerAlerts([.init(date: now.addingTimeInterval(30), title: "D", body: "")], group: "exposure")
+        await manager.waitForPendingWork()
+        #expect(Set(center.pending.map(\.identifier)) == ["timer_dev_0", "timer_exposure_0"])
+
+        // Reconciling gear reminders leaves timer alerts alone.
+        await manager.refreshGearReminders(for: [])
+        #expect(center.pending.count == 2)
+
+        manager.cancelTimerAlerts(group: "dev")
+        await manager.waitForPendingWork()
+        #expect(center.pending.map(\.identifier) == ["timer_exposure_0"])
+    }
+
+    @Test func theFirstTimerAsksForPermission() async {
+        let center = FakeCenter()
+        center.status = .notDetermined
+        let manager = center.make(defaults: TestSupport.makeDefaults())
+        await manager.refreshAuthorizationStatus()
+        manager.scheduleTimerAlerts([.init(date: Date().addingTimeInterval(60), title: "A", body: "")], group: "x")
+        await manager.waitForPendingWork()
+        #expect(center.permissionRequests == 1)
+        #expect(center.pending.count == 1)
+    }
+
+    @Test func nothingIsScheduledWithoutPermission() async {
+        let center = FakeCenter()
+        center.status = .notDetermined
+        center.grantsPermission = false
+        let manager = center.make(defaults: TestSupport.makeDefaults())
+        await manager.refreshAuthorizationStatus()
+        manager.scheduleTimerAlerts([.init(date: Date().addingTimeInterval(60), title: "A", body: "")], group: "x")
+        await manager.waitForPendingWork()
+        #expect(center.pending.isEmpty)
+    }
+}
+
+@MainActor
+struct ToolTimersTests {
+    private typealias FakeCenter = NotificationManagerTests.FakeCenter
+
+    private func makeTimers() async -> (ToolTimers, NotificationManager, FakeCenter) {
+        let center = FakeCenter()
+        let manager = center.make(defaults: TestSupport.makeDefaults())
+        await manager.refreshAuthorizationStatus()
+        return (ToolTimers(notifications: manager), manager, center)
+    }
+
+    @Test func exposureCountdownAlertsWhenDone() async {
+        let (timers, manager, center) = await makeTimers()
+        let now = Date()
+        timers.startExposure(seconds: 120, title: "2 min exposure", now: now)
+        await manager.waitForPendingWork()
+        #expect(timers.exposure?.endsAt == now.addingTimeInterval(120))
+        #expect(timers.exposure?.remaining(at: now.addingTimeInterval(20)) == 100)
+        #expect(center.pending.map(\.identifier) == ["timer_exposure_0"])
+        #expect(center.pending.first?.content.title == "Exposure done")
+        #expect(timers.hasActiveTimer)
+
+        timers.cancelExposure()
+        await manager.waitForPendingWork()
+        #expect(timers.exposure == nil)
+        #expect(center.pending.isEmpty)
+    }
+
+    @Test func developmentAlertsFollowTheRunningStep() async {
+        let (timers, manager, center) = await makeTimers()
+        timers.beginDevelopment(recipeName: "HP5", recipeID: nil, steps: [
+            DevelopmentStepPlan(name: "Developer", duration: 600, agitation: .everyMinute),
+            DevelopmentStepPlan(name: "Stop", duration: 30, agitation: .none)
+        ])
+        await manager.waitForPendingWork()
+        #expect(center.pending.isEmpty, "Nothing runs until the step is started")
+
+        timers.startStep()
+        await manager.waitForPendingWork()
+        // Agitations at 1:00 … 9:00, the pour warning, and the end.
+        #expect(center.pending.count == 11)
+
+        timers.pauseStep()
+        await manager.waitForPendingWork()
+        #expect(center.pending.isEmpty, "A paused step has nothing to alert")
+
+        timers.nextStep()
+        timers.startStep()
+        await manager.waitForPendingWork()
+        #expect(center.pending.count == 1, "A short step with no agitation only alerts at its end")
+        #expect(center.pending.first?.content.title == "Stop done")
+        #expect(center.pending.first?.content.body == "That was the last step.")
+
+        timers.endDevelopment()
+        await manager.waitForPendingWork()
+        #expect(timers.development == nil)
+        #expect(center.pending.isEmpty)
+    }
+
+    @Test func stepAlertsNameWhatComesNext() {
+        var session = DevelopmentSession(steps: [
+            DevelopmentStepPlan(name: "Developer", duration: 120, agitation: .none),
+            DevelopmentStepPlan(name: "Fixer", duration: 300, agitation: .none)
+        ])
+        let now = Date(timeIntervalSince1970: 1_000)
+        session.start(at: now)
+        let alerts = ToolTimers.alerts(for: session, now: now)
+        #expect(alerts.map(\.title) == ["Developer: pour out", "Developer done"])
+        #expect(alerts.last?.body == "Next: Fixer.")
+        #expect(alerts.first?.date == now.addingTimeInterval(110))
     }
 }

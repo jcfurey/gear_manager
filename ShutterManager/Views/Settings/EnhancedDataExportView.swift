@@ -11,8 +11,10 @@ import SwiftData
 
 struct EnhancedDataExportView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
 
     @Query(sort: \GearItem.dateAdded, order: .reverse) private var gearItems: [GearItem]
+    @Query private var recipes: [DevelopmentRecipe]
 
     @State private var selectedFormat = EnhancedExportFormat.json
     @State private var includePhotos = true
@@ -48,7 +50,7 @@ struct EnhancedDataExportView: View {
                     } header: {
                         Text("Include")
                     } footer: {
-                        Text("Gear, maintenance, shutter counts and loans are always included. Leaving photos out makes a much smaller file.")
+                        Text("Gear, maintenance, shutter counts, loans and development recipes are always included. Leaving photos out makes a much smaller file.")
                     }
                 }
 
@@ -57,6 +59,9 @@ struct EnhancedDataExportView: View {
                     if selectedFormat == .json && includePhotos {
                         StatRow(icon: "photo.on.rectangle", label: "Photos",
                                 value: "\(gearItems.reduce(0) { $0 + $1.totalPhotoCount })", color: .blue)
+                    }
+                    if selectedFormat == .json && !recipes.isEmpty {
+                        StatRow(icon: "flask", label: "Development Recipes", value: "\(recipes.count)", color: .purple)
                     }
                 }
 
@@ -73,7 +78,7 @@ struct EnhancedDataExportView: View {
                         }
                         .frame(maxWidth: .infinity)
                     }
-                    .disabled(isExporting || gearItems.isEmpty && !(selectedFormat == .json && includeSettings))
+                    .disabled(isExporting || !hasAnythingToExport)
                     .buttonStyle(.borderedProminent)
                     .accessibilityIdentifier("exportButton")
                 } footer: {
@@ -97,6 +102,11 @@ struct EnhancedDataExportView: View {
         }
     }
 
+    /// CSV and PDF list gear; JSON also carries recipes and settings.
+    private var hasAnythingToExport: Bool {
+        !gearItems.isEmpty || (selectedFormat == .json && (includeSettings || !recipes.isEmpty))
+    }
+
     private func performExport() {
         guard !isExporting else { return }
         isExporting = true
@@ -107,10 +117,11 @@ struct EnhancedDataExportView: View {
         configuration.includeSettings = selectedFormat == .json && includeSettings
         Task {
             do {
+                let library = try LibraryContents.fetch(from: modelContext)
                 if selectedFormat == .pdf {
-                    exportedFileURL = try await exportService.exportPDF(configuration: configuration, gearItems: gearItems)
+                    exportedFileURL = try await exportService.exportPDF(configuration: configuration, library: library)
                 } else {
-                    exportedFileURL = try await exportService.exportData(configuration: configuration, gearItems: gearItems)
+                    exportedFileURL = try await exportService.exportData(configuration: configuration, library: library)
                 }
                 showingShareSheet = true
             } catch {

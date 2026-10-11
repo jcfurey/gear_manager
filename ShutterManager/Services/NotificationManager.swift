@@ -237,6 +237,69 @@ final class NotificationManager: ObservableObject {
         return task
     }
 
+    // MARK: - Timer alerts
+
+    /// A one-off alert for a running timer: a long exposure ending, or a development step's
+    /// agitation and end. Timer alerts are never gear reminders, so refreshing reminders leaves
+    /// them alone, and they don't depend on the Gear Reminders setting.
+    struct TimerAlert: Equatable {
+        let date: Date
+        let title: String
+        let body: String
+    }
+
+    static let timerPrefix = "timer_"
+    /// iOS keeps at most 64 pending notifications per app; leave room for gear reminders.
+    static let maximumTimerAlerts = 40
+
+    /// Replaces `group`'s pending alerts with `alerts` (past ones are skipped). Asks for
+    /// permission the first time a timer runs.
+    func scheduleTimerAlerts(_ alerts: [TimerAlert], group: String) {
+        enqueue { [self] in
+            await removeTimerAlerts(group: group)
+            if authorizationStatus == .notDetermined {
+                await requestAuthorization()
+            } else {
+                await refreshAuthorizationStatus()
+            }
+            guard canDeliver else { return }
+            let upcoming = alerts.filter { $0.date.timeIntervalSinceNow > 0.5 }.sorted { $0.date < $1.date }
+            for (index, alert) in upcoming.prefix(Self.maximumTimerAlerts).enumerated() {
+                let content = UNMutableNotificationContent()
+                content.title = alert.title
+                content.body = alert.body
+                content.sound = .default
+                let trigger = UNTimeIntervalNotificationTrigger(timeInterval: max(alert.date.timeIntervalSinceNow, 1),
+                                                                repeats: false)
+                do {
+                    try await deliverRequest(UNNotificationRequest(identifier: Self.timerIdentifier(group, index),
+                                                                   content: content, trigger: trigger))
+                } catch {
+                    logger.error("Timer alert could not be scheduled: \(error.localizedDescription, privacy: .public)")
+                }
+            }
+        }
+    }
+
+    func cancelTimerAlerts(group: String) {
+        enqueue { [self] in await removeTimerAlerts(group: group) }
+    }
+
+    /// Waits until every queued schedule or cancel has run (for tests).
+    func waitForPendingWork() async {
+        await queueTail?.value
+    }
+
+    private static func timerIdentifier(_ group: String, _ index: Int) -> String {
+        "\(timerPrefix)\(group)_\(index)"
+    }
+
+    private func removeTimerAlerts(group: String) async {
+        let prefix = "\(Self.timerPrefix)\(group)_"
+        let pending = await pendingRequests()
+        removeRequests(pending.map(\.identifier).filter { $0.hasPrefix(prefix) })
+    }
+
     // MARK: - Badge
 
     /// Clears the app icon badge; called whenever the app becomes active.

@@ -3,6 +3,8 @@
 #
 #   changes        Linux  Docs-only changes skip the macOS jobs.
 #   conventions    Linux  Project rules, workflow lint and script checks. Fast, and gates macOS.
+#   foundation     Linux  The Foundation-only tests (photography math, catalogs) on Swift for Linux,
+#                         which also keeps that code free of Apple-only frameworks.
 #   build-test     macOS  Builds the app and both test targets with warnings as errors, then runs
 #                         the unit tests with coverage.
 #   release-build  macOS  Release configuration for a device: what an archive compiles.
@@ -73,8 +75,23 @@ jobs:
           "$actionlint" -color
       - name: Check CI scripts
         run: |
-          shellcheck Tools/ci/*.sh
+          shellcheck Tools/ci/*.sh Tools/linux/*.sh
           python3 -m py_compile Tools/ci/*.py Tools/*.py
+
+  foundation:
+    name: Foundation tests (Linux)
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # The official Swift image, pinned by digest. Update the digest and the tag together, by hand
+    # (Dependabot doesn't update job containers).
+    container:
+      image: swift@sha256:471acf16d3ce9b270d2f15ea177b0e150bdf1595ae2acfcc4932d1a03f43c3fd # 6.2.0-noble
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Photography math and catalogs
+        run: Tools/linux/run_foundation_tests.sh
 
   build-test:
     name: Build and unit tests
@@ -236,7 +253,7 @@ jobs:
   result:
     name: CI result
     if: always()
-    needs: [changes, conventions, build-test, release-build, ui-tests]
+    needs: [changes, conventions, foundation, build-test, release-build, ui-tests]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

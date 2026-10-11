@@ -24,6 +24,8 @@ struct SettingsView: View {
     @AppStorage(Constants.UserDefaultsKeys.darkModePreference) private var darkModePreference = "system"
     /// Master switch for gear reminders. The schedule and time are per item.
     @AppStorage(Constants.UserDefaultsKeys.gearRemindersEnabled) private var gearRemindersEnabled = false
+    @AppStorage(Constants.UserDefaultsKeys.measurementUnits) private var measurementUnits = UnitPreference.automatic
+    @AppStorage(Constants.UserDefaultsKeys.depthOfFieldStandard) private var depthOfFieldStandard = CircleOfConfusionStandard.standard
 
     @State private var showingDataExport = false
     @State private var showingDataImport = false
@@ -81,6 +83,28 @@ struct SettingsView: View {
                         Text("Reminders")
                     } footer: {
                         Text("Sensor cleanings due and loans due back. Set each item's schedule and reminder time in Inventory.")
+                    }
+
+                    Section {
+                        SettingsRow(icon: "ruler", iconColor: .teal, title: "Units", constants: constants) {
+                            Picker("Units", selection: $measurementUnits) {
+                                ForEach(UnitPreference.allCases) { Text($0.displayName).tag($0) }
+                            }
+                            .pickerStyle(.menu)
+                            .font(constants.bodyFont)
+                            .accessibilityIdentifier("settings.units")
+                        }
+                        SettingsRow(icon: "scope", iconColor: .indigo, title: "Depth of Field", constants: constants) {
+                            Picker("Depth of Field", selection: $depthOfFieldStandard) {
+                                ForEach(CircleOfConfusionStandard.allCases) { Text($0.displayName).tag($0) }
+                            }
+                            .pickerStyle(.menu)
+                            .font(constants.bodyFont)
+                        }
+                    } header: {
+                        Text("Tools")
+                    } footer: {
+                        Text("Automatic units follow your region. The depth-of-field standard sets how strict \"sharp\" is: \(depthOfFieldStandard.detail.lowercased()).")
                     }
 
                     Section("iCloud Sync") {
@@ -186,7 +210,7 @@ struct SettingsView: View {
             }
             Button("Cancel", role: .cancel) { }
         } message: {
-            Text("This permanently deletes all your gear, photos, maintenance history, shutter counts and loans, on every device signed in to your iCloud account. Settings and local backups are kept.")
+            Text("This permanently deletes all your gear, photos, maintenance history, shutter counts, loans and development recipes, on every device signed in to your iCloud account. Settings and local backups are kept.")
         }
         .alert("Couldn't Clear Data", isPresented: $clearFailed) {
             Button("OK", role: .cancel) { }
@@ -203,13 +227,8 @@ struct SettingsView: View {
 
     private func clearAllData() {
         do {
-            // Children first, then gear, so nothing is left orphaned.
-            try modelContext.delete(model: GearPhoto.self)
-            try modelContext.delete(model: MaintenanceRecord.self)
-            try modelContext.delete(model: MaintenanceReminder.self)
-            try modelContext.delete(model: ShutterCountReading.self)
-            try modelContext.delete(model: GearLoan.self)
-            try modelContext.delete(model: GearItem.self)
+            // Every model in the schema, so nothing is left orphaned or forgotten.
+            try modelContext.deleteEveryRecord()
             try modelContext.save()
             // No gear means no reminders: this removes every pending one.
             Task { await NotificationManager.shared.refreshGearReminders(for: []) }

@@ -64,6 +64,20 @@ enum TestSupport {
         return body
     }
 
+    /// A three-step black-and-white recipe.
+    @discardableResult
+    static func insertSampleRecipe(into context: ModelContext) -> DevelopmentRecipe {
+        let recipe = DevelopmentRecipe(name: "HP5 in Ilfosol 3", filmStockID: "ilfordHP5Plus", developer: "Ilfosol 3",
+                                       dilution: "1+9", temperatureCelsius: 20, notes: "Box speed")
+        context.insert(recipe)
+        context.insert(DevelopmentStep(recipe: recipe, name: "Developer", order: 0, durationSeconds: 390,
+                                       agitation: .everyMinute))
+        context.insert(DevelopmentStep(recipe: recipe, name: "Stop", order: 1, durationSeconds: 10))
+        context.insert(DevelopmentStep(recipe: recipe, name: "Fixer", order: 2, durationSeconds: 300,
+                                       agitation: .everyMinute, notes: "Rapid Fixer 1+4"))
+        return recipe
+    }
+
     /// A zoom lens with lens fields set.
     @discardableResult
     static func insertSampleLens(into context: ModelContext) -> GearItem {

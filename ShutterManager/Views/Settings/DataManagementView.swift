@@ -67,6 +67,7 @@ struct DataImportView: View {
                         previewRow("wrench.and.screwdriver", "Maintenance records", preview.maintenanceCount)
                         previewRow("chart.xyaxis.line", "Shutter-count readings", preview.shutterCountCount)
                         previewRow("arrow.left.arrow.right", "Loans", preview.loanCount)
+                        previewRow("flask", "Development recipes", preview.recipeCount)
                         if preview.hasSettings {
                             Label("App settings", systemImage: "gearshape")
                         }

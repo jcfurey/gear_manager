@@ -31,8 +31,7 @@ struct ContentView: View {
                 InventoryView()
             }
             Tab("Tools", systemImage: "wrench.and.screwdriver") {
-                ComingSoonTab(title: "Tools", systemImage: "wrench.and.screwdriver",
-                              message: "Exposure, depth of field, sun and moon, astro and film tools are on the way.")
+                ToolsView()
             }
             Tab("Light Meter", systemImage: "camera.aperture") {
                 ComingSoonTab(title: "Light Meter", systemImage: "camera.aperture",

@@ -11,6 +11,7 @@ protection (Settings → Branches → `main` → Require status checks → `CI r
 |---|---|---|---|
 | Detect changes | Linux | Whether anything besides docs changed. Docs-only changes skip the macOS jobs | Always |
 | Conventions and lint | Linux | `Tools/ci/check_conventions.py`, actionlint on the workflows, ShellCheck and Python syntax on the CI scripts | Always; the macOS jobs wait for it |
+| Foundation tests (Linux) | Linux, in the official Swift image | The Foundation-only unit tests (photography math, film and format catalogs) built with Swift for Linux | App changes |
 | Build and unit tests | macOS | Builds the app and both test targets with **warnings as errors**, then runs the unit tests with coverage | App changes |
 | Release build (device) | macOS | The Release configuration for a device, unsigned: what an archive compiles | App changes |
 | UI tests (iPhone, iPad) | macOS | The XCUITest suite on an iPhone and an iPad simulator | App changes on pull requests, `main`, and manual runs |
@@ -47,6 +48,11 @@ screenshots, logs and the full test report.
   on `main`, and on demand. They run on iPhone and iPad, since the app supports both.
 - **The Release build is a separate job** so it runs alongside the Debug build. It catches code
   that only compiles in Debug or only for the simulator.
+- **The Foundation-only code is also tested on Linux.** `Models/PhotoMath/` and the catalogs must
+  not import Apple-only frameworks, so a cloud session without Xcode can test them
+  (`Tools/linux/run_foundation_tests.sh`). Building them on Linux enforces that, and the job
+  finishes in a couple of minutes, before the macOS ones. The Swift image is pinned by digest
+  and updated by hand, as Dependabot doesn't update job containers.
 - **The convention checks gate the macOS jobs.** They take seconds, and a rule break caught there
   doesn't spend macOS time.
 - **Actions are pinned by commit SHA**, and Dependabot (`.github/dependabot.yml`) proposes updates
@@ -61,6 +67,12 @@ On any machine with Python 3:
 
 ```bash
 python3 Tools/ci/check_conventions.py
+```
+
+With a Swift toolchain (Linux or macOS), the Foundation-only tests:
+
+```bash
+Tools/linux/run_foundation_tests.sh            # or: Tools/linux/run_foundation_tests.sh /path/to/swift
 ```
 
 On a Mac with Xcode (the commands CI runs):

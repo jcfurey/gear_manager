@@ -16,8 +16,7 @@ struct BackupManagementView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
 
-    @Query private var gearItems: [GearItem]
-    
+
     @StateObject private var backupManager = BackupManager()
     @State private var showingRestoreConfirmation = false
     @State private var selectedBackup: BackupMetadata?
@@ -227,7 +226,7 @@ struct BackupManagementView: View {
         HapticFeedbackManager.shared.buttonTap()
         Task {
             do {
-                try await backupManager.createBackup(gearItems: gearItems)
+                try await backupManager.createBackup(library: try LibraryContents.fetch(from: modelContext))
                 HapticFeedbackManager.shared.exportSuccess()
             } catch {
                 HapticFeedbackManager.shared.error()

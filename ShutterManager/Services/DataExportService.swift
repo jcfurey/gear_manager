@@ -34,6 +34,8 @@ final class DataExportService {
         var includeMaintenance = true
         var includeShutterCounts = true
         var includeLoans = true
+        /// Development recipes and their steps (JSON only; CSV and PDF list gear).
+        var includeDevelopmentRecipes = true
         var includePhotos = true
         var includeSettings = true
         var format: ExportFormat
@@ -44,8 +46,8 @@ final class DataExportService {
     // MARK: - Export
 
     /// Writes a JSON or CSV file to the temporary directory and returns its URL.
-    func exportData(configuration: ExportConfiguration, gearItems: [GearItem]) async throws -> URL {
-        let data = buildExportData(configuration: configuration, gearItems: gearItems)
+    func exportData(configuration: ExportConfiguration, library: LibraryContents) async throws -> URL {
+        let data = buildExportData(configuration: configuration, library: library)
         switch configuration.format {
         case .json: return try await exportJSON(data)
         case .csv: return try await exportCSV(data)
@@ -53,8 +55,8 @@ final class DataExportService {
     }
 
     /// Writes a PDF inventory report from the same selection-gated snapshot.
-    func exportPDF(configuration: ExportConfiguration, gearItems: [GearItem]) async throws -> URL {
-        let data = buildExportData(configuration: configuration, gearItems: gearItems)
+    func exportPDF(configuration: ExportConfiguration, library: LibraryContents) async throws -> URL {
+        let data = buildExportData(configuration: configuration, library: library)
         let pdf = PDFRenderer().createPDF(
             title: "\(Constants.App.name) Inventory",
             subtitle: "Prepared \(data.metadata.exportDate.formatted(date: .long, time: .shortened))",
@@ -62,8 +64,8 @@ final class DataExportService {
         return try await saveToFile(data: pdf, extension: "pdf")
     }
 
-    func buildExportData(configuration: ExportConfiguration, gearItems: [GearItem]) -> LibraryExport {
-        let gear = configuration.includeGear ? gearItems : []
+    func buildExportData(configuration: ExportConfiguration, library: LibraryContents) -> LibraryExport {
+        let gear = configuration.includeGear ? library.gearItems : []
         var data = LibraryExport(
             metadata: ExportMetadata(appName: Constants.App.name, appVersion: Constants.App.version,
                                      exportDate: Date(), format: configuration.format),
@@ -76,6 +78,8 @@ final class DataExportService {
                 ? gear.flatMap { ($0.shutterCountReadings ?? []).map(ShutterCountReadingDTO.init(from:)) } : [],
             loans: configuration.includeLoans
                 ? gear.flatMap { ($0.loans ?? []).map(GearLoanDTO.init(from:)) } : [],
+            developmentRecipes: configuration.includeDevelopmentRecipes
+                ? library.developmentRecipes.map(DevelopmentRecipeDTO.init(from:)) : [],
             settings: configuration.includeSettings ? exportSettings() : nil,
             includesPhotos: configuration.includePhotos)
         lastReplacedValueCount = data.replaceUnrestorableNumbers()
@@ -229,7 +233,10 @@ final class DataExportService {
         typealias K = Constants.UserDefaultsKeys
         return [
             K.hapticFeedback: String(settingsStore.object(forKey: K.hapticFeedback) as? Bool ?? true),
-            K.darkModePreference: settingsStore.string(forKey: K.darkModePreference) ?? "system"
+            K.darkModePreference: settingsStore.string(forKey: K.darkModePreference) ?? "system",
+            K.measurementUnits: settingsStore.string(forKey: K.measurementUnits) ?? UnitPreference.automatic.rawValue,
+            K.depthOfFieldStandard: String(settingsStore.object(forKey: K.depthOfFieldStandard) as? Int
+                                           ?? CircleOfConfusionStandard.standard.rawValue)
         ]
     }
 
