@@ -93,14 +93,16 @@ jobs:
         env:
           UDID: ${{ steps.sim.outputs.udid }}
         run: nohup xcrun simctl bootstatus "$UDID" -b > "$RUNNER_TEMP/simulator-boot.log" 2>&1 &
+      # Builds for the generic simulator, not the booted device: resolving a specific simulator
+      # waits on CoreSimulator while that simulator is still booting, which cost minutes. ARCHS
+      # keeps the generic build to the runner's own architecture.
       - name: Build for testing
         id: build
-        env:
-          UDID: ${{ steps.sim.outputs.udid }}
         run: |
           xcodebuild build-for-testing \
             -project "$PROJECT" -scheme "$SCHEME" \
-            -destination "platform=iOS Simulator,id=$UDID" \
+            -destination "generic/platform=iOS Simulator" \
+            ARCHS="$(uname -m)" \
             -derivedDataPath "$RUNNER_TEMP/DerivedData" \
             -resultBundlePath "$RUNNER_TEMP/Build.xcresult" \
             -enableCodeCoverage YES \
@@ -201,12 +203,21 @@ jobs:
         env:
           UDID: ${{ steps.sim.outputs.udid }}
         run: nohup xcrun simctl bootstatus "$UDID" -b > "$RUNNER_TEMP/simulator-boot.log" 2>&1 &
+      - name: Build for testing
+        id: build
+        run: |
+          xcodebuild build-for-testing \
+            -project "$PROJECT" -scheme "$SCHEME" \
+            -destination "generic/platform=iOS Simulator" \
+            ARCHS="$(uname -m)" \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            -quiet
       - name: UI tests
         id: test
         env:
           UDID: ${{ steps.sim.outputs.udid }}
         run: |
-          xcodebuild test \
+          xcodebuild test-without-building \
             -project "$PROJECT" -scheme "$SCHEME" \
             -destination "platform=iOS Simulator,id=$UDID" \
             -derivedDataPath "$RUNNER_TEMP/DerivedData" \
@@ -216,7 +227,7 @@ jobs:
             -test-timeouts-enabled YES \
             -maximum-test-execution-time-allowance 600
       - name: Summarize UI tests
-        if: always() && steps.sim.outcome == 'success'
+        if: always() && steps.build.outcome == 'success'
         run: python3 Tools/ci/summarize_xcresult.py test "$RUNNER_TEMP/UITests.xcresult" "UI tests (${{ matrix.family }}, ${{ steps.sim.outputs.name }})"
       # The log names the failing UI tests; the result bundle has why: messages, screenshots and
       # the app's own log.
