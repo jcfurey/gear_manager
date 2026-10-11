@@ -60,3 +60,17 @@ fastlane/report.xml
 fastlane/Preview.html
 fastlane/screenshots/**/*.png
 fastlane/test_output
+
+# CI tools installed locally by Tools/ci scripts
+.tools/
+
+# Build output and result bundles from local xcodebuild runs
+build/
+DerivedData/
+*.xcresult
+
+# macOS
+.DS_Store
+
+# Python
+__pycache__/

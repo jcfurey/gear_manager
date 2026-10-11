@@ -1,0 +1,256 @@
+# Continuous integration for Shutter Manager. See docs/CI.md for the design and how to run each
+# step locally.
+#
+#   changes        Linux  Docs-only changes skip the macOS jobs.
+#   conventions    Linux  Project rules, workflow lint and script checks. Fast, and gates macOS.
+#   build-test     macOS  Builds the app and both test targets with warnings as errors, then runs
+#                         the unit tests with coverage.
+#   release-build  macOS  Release configuration for a device: what an archive compiles.
+#   ui-tests       macOS  XCUITest on iPhone and iPad. Pull requests, main, and manual runs.
+#   result         Linux  One status that sums up the rest, for branch protection.
+
+name: CI
+
+on:
+  push:
+    branches: [main, "claude/**"]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      ui_tests:
+        description: Run the UI tests too
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+# A newer push to the same branch or pull request cancels the run in progress. Runs on main
+# always finish, so every main commit has a result.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+defaults:
+  run:
+    # Explicit bash runs with -eo pipefail, so `xcodebuild ... | tee` fails when xcodebuild does.
+    shell: bash
+
+env:
+  PROJECT: ShutterManager.xcodeproj
+  SCHEME: ShutterManager
+
+jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      app: ${{ steps.diff.outputs.app }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Compare with the base commit
+        id: diff
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BEFORE: ${{ github.event.before }}
+        run: Tools/ci/detect-changes.sh
+
+  conventions:
+    name: Conventions and lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Project conventions
+        run: python3 Tools/ci/check_conventions.py
+      - name: Lint workflows
+        run: |
+          actionlint="$(Tools/ci/install-actionlint.sh)"
+          "$actionlint" -color
+      - name: Check CI scripts
+        run: |
+          shellcheck Tools/ci/*.sh
+          python3 -m py_compile Tools/ci/*.py Tools/*.py
+
+  build-test:
+    name: Build and unit tests
+    needs: [changes, conventions]
+    if: needs.changes.outputs.app == 'true'
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Select Xcode
+        run: Tools/ci/select-xcode.sh
+      - name: Select simulator
+        id: sim
+        run: python3 Tools/ci/select_simulator.py iPhone
+      - name: Boot the simulator while building
+        env:
+          UDID: ${{ steps.sim.outputs.udid }}
+        run: nohup xcrun simctl bootstatus "$UDID" -b > "$RUNNER_TEMP/simulator-boot.log" 2>&1 &
+      - name: Build for testing
+        id: build
+        env:
+          UDID: ${{ steps.sim.outputs.udid }}
+        run: |
+          xcodebuild build-for-testing \
+            -project "$PROJECT" -scheme "$SCHEME" \
+            -destination "platform=iOS Simulator,id=$UDID" \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            -resultBundlePath "$RUNNER_TEMP/Build.xcresult" \
+            -enableCodeCoverage YES \
+            -quiet \
+            SWIFT_TREAT_WARNINGS_AS_ERRORS=YES \
+            GCC_TREAT_WARNINGS_AS_ERRORS=YES
+      - name: Summarize build
+        if: always() && steps.sim.outcome == 'success'
+        run: python3 Tools/ci/summarize_xcresult.py build "$RUNNER_TEMP/Build.xcresult" "Debug build (simulator)"
+      - name: Unit tests
+        env:
+          UDID: ${{ steps.sim.outputs.udid }}
+        run: |
+          xcodebuild test-without-building \
+            -project "$PROJECT" -scheme "$SCHEME" \
+            -destination "platform=iOS Simulator,id=$UDID" \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            -resultBundlePath "$RUNNER_TEMP/UnitTests.xcresult" \
+            -only-testing:ShutterManagerTests \
+            -enableCodeCoverage YES \
+            -parallel-testing-enabled NO
+      - name: Summarize unit tests
+        if: always() && steps.build.outcome == 'success'
+        run: python3 Tools/ci/summarize_xcresult.py test "$RUNNER_TEMP/UnitTests.xcresult" "Unit tests"
+      - name: Upload result bundles
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: build-test-results
+          path: |
+            ${{ runner.temp }}/Build.xcresult
+            ${{ runner.temp }}/UnitTests.xcresult
+            ${{ runner.temp }}/simulator-boot.log
+          if-no-files-found: ignore
+          retention-days: 7
+
+  release-build:
+    name: Release build (device)
+    needs: [changes, conventions]
+    if: needs.changes.outputs.app == 'true'
+    runs-on: macos-26
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Select Xcode
+        run: Tools/ci/select-xcode.sh
+      # Catches code that only compiles in Debug (a missing #if DEBUG) or only for the simulator.
+      # Signing is off: CI has no certificates, and compiling is what's being checked.
+      - name: Build Release for a device
+        run: |
+          xcodebuild build \
+            -project "$PROJECT" -scheme "$SCHEME" \
+            -configuration Release \
+            -destination "generic/platform=iOS" \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            -resultBundlePath "$RUNNER_TEMP/Release.xcresult" \
+            -quiet \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            SWIFT_TREAT_WARNINGS_AS_ERRORS=YES \
+            GCC_TREAT_WARNINGS_AS_ERRORS=YES
+      - name: Summarize build
+        if: always()
+        run: python3 Tools/ci/summarize_xcresult.py build "$RUNNER_TEMP/Release.xcresult" "Release build (device)"
+      - name: Upload result bundle
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-build-results
+          path: ${{ runner.temp }}/Release.xcresult
+          if-no-files-found: ignore
+          retention-days: 7
+
+  ui-tests:
+    name: UI tests (${{ matrix.family }})
+    needs: [changes, conventions]
+    # Slower than unit tests, so they gate pull requests and main rather than every branch push.
+    if: >-
+      needs.changes.outputs.app == 'true' &&
+      (github.event_name == 'pull_request' ||
+       github.ref == 'refs/heads/main' ||
+       (github.event_name == 'workflow_dispatch' && inputs.ui_tests))
+    runs-on: macos-26
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        family: [iPhone, iPad]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Select Xcode
+        run: Tools/ci/select-xcode.sh
+      - name: Select simulator
+        id: sim
+        run: python3 Tools/ci/select_simulator.py "${{ matrix.family }}"
+      - name: Boot the simulator while building
+        env:
+          UDID: ${{ steps.sim.outputs.udid }}
+        run: nohup xcrun simctl bootstatus "$UDID" -b > "$RUNNER_TEMP/simulator-boot.log" 2>&1 &
+      - name: UI tests
+        id: test
+        env:
+          UDID: ${{ steps.sim.outputs.udid }}
+        run: |
+          xcodebuild test \
+            -project "$PROJECT" -scheme "$SCHEME" \
+            -destination "platform=iOS Simulator,id=$UDID" \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            -resultBundlePath "$RUNNER_TEMP/UITests.xcresult" \
+            -only-testing:ShutterManagerUITests \
+            -parallel-testing-enabled NO \
+            -test-timeouts-enabled YES \
+            -maximum-test-execution-time-allowance 600
+      - name: Summarize UI tests
+        if: always() && steps.sim.outcome == 'success'
+        run: python3 Tools/ci/summarize_xcresult.py test "$RUNNER_TEMP/UITests.xcresult" "UI tests (${{ matrix.family }}, ${{ steps.sim.outputs.name }})"
+      # The log names the failing UI tests; the result bundle has why: messages, screenshots and
+      # the app's own log.
+      - name: Upload result bundle
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ui-test-results-${{ matrix.family }}
+          path: |
+            ${{ runner.temp }}/UITests.xcresult
+            ${{ runner.temp }}/simulator-boot.log
+          if-no-files-found: ignore
+          retention-days: 7
+
+  result:
+    name: CI result
+    if: always()
+    needs: [changes, conventions, build-test, release-build, ui-tests]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check every job passed or was skipped on purpose
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          python3 - <<'PY'
+          import json, os, sys
+          needs = json.loads(os.environ["NEEDS"])
+          failed = []
+          for name, job in needs.items():
+              print(f"{name}: {job['result']}")
+              if job["result"] not in ("success", "skipped"):
+                  failed.append(name)
+          if failed:
+              print(f"::error title=CI failed::{', '.join(failed)}")
+              sys.exit(1)
+          PY
