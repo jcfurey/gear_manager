@@ -85,6 +85,10 @@ enum ImportDocument {
         for reading in document.shutterCountReadings {
             try check(Double(reading.count), Limits.maximumCount)
         }
+        for place in document.places {
+            try check(place.latitude, Limits.maximumMeasurement)
+            try check(place.longitude, Limits.maximumMeasurement)
+        }
         for recipe in document.recipes {
             try check(recipe.temperatureCelsius, Limits.maximumMeasurement)
             for step in recipe.steps {

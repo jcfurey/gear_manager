@@ -22,7 +22,8 @@ enum AppSchema {
         GearItem.self, GearPhoto.self,
         MaintenanceRecord.self, MaintenanceReminder.self,
         ShutterCountReading.self, GearLoan.self,
-        DevelopmentRecipe.self, DevelopmentStep.self
+        DevelopmentRecipe.self, DevelopmentStep.self,
+        SavedPlace.self
     ]
 
     /// The full schema, built from `models`.

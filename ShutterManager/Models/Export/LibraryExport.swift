@@ -29,6 +29,8 @@ struct LibraryExport: Codable {
     var loans: [GearLoanDTO]
     /// Added in 1.0 development (M2); absent from earlier files, so optional.
     var developmentRecipes: [DevelopmentRecipeDTO]? = nil
+    /// Added in 1.0 development (M3); absent from earlier files, so optional.
+    var savedPlaces: [SavedPlaceDTO]? = nil
     let settings: [String: String]?
     /// Whether photos were included, so a restore can warn before replacing photos with none.
     let includesPhotos: Bool
@@ -39,10 +41,14 @@ struct LibraryExport: Codable {
             + shutterCountReadings.count + loans.count
             + gearItems.reduce(0) { $0 + ($1.photos?.count ?? 0) }
             + recipes.reduce(0) { $0 + 1 + $1.steps.count }
+            + places.count
     }
 
     /// `developmentRecipes`, empty for files written before recipes existed.
     var recipes: [DevelopmentRecipeDTO] { developmentRecipes ?? [] }
+
+    /// `savedPlaces`, empty for files written before places existed.
+    var places: [SavedPlaceDTO] { savedPlaces ?? [] }
 }
 
 /// Header written into every export file.
@@ -489,6 +495,41 @@ struct DevelopmentStepDTO: Codable {
     }
 }
 
+// MARK: - Places
+
+struct SavedPlaceDTO: Codable {
+    let id: UUID
+    let name: String
+    // Optional so `replaceUnrestorableNumbers()` can drop an unusable value; import skips a
+    // place without both.
+    var latitude: Double?
+    var longitude: Double?
+    let timeZoneIdentifier: String?
+    let notes: String?
+    let dateAdded: Date
+
+    init(from place: SavedPlace) {
+        id = place.id
+        name = place.name
+        latitude = place.latitude
+        longitude = place.longitude
+        timeZoneIdentifier = place.timeZoneIdentifier
+        notes = place.notes
+        dateAdded = place.dateAdded
+    }
+
+    /// The place, or nil when its coordinates are missing or off the globe.
+    func toPlace() -> SavedPlace? {
+        guard let latitude, let longitude,
+              GeoCoordinate(latitude: latitude, longitude: longitude).isValid else { return nil }
+        let place = SavedPlace(name: name, coordinate: GeoCoordinate(latitude: latitude, longitude: longitude),
+                               timeZoneIdentifier: timeZoneIdentifier ?? "", notes: notes ?? "")
+        place.id = id
+        place.dateAdded = dateAdded
+        return place
+    }
+}
+
 // MARK: - Unrestorable numbers
 
 extension LibraryExport {
@@ -529,6 +570,13 @@ extension LibraryExport {
                 restorable(&recipes[i].temperatureCelsius, limit: Limits.maximumMeasurement)
             }
             developmentRecipes = recipes
+        }
+        if var places = savedPlaces {
+            for i in places.indices {
+                restorable(&places[i].latitude, limit: Limits.maximumMeasurement)
+                restorable(&places[i].longitude, limit: Limits.maximumMeasurement)
+            }
+            savedPlaces = places
         }
         return replaced
     }

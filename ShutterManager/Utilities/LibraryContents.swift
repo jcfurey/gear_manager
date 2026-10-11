@@ -11,17 +11,20 @@ import SwiftData
 /// Everything an export or backup writes. Export, backups and the record counts read the library
 /// through this type, so a new top-level record type is added here once rather than at every
 /// call site. Child records (photos, maintenance, readings, loans, recipe steps) travel with
-/// their parents.
+/// their parents. Every property but `gearItems` and `developmentRecipes` has a default, so
+/// call sites that only deal with those keep compiling as records are added.
 struct LibraryContents {
     var gearItems: [GearItem]
     var developmentRecipes: [DevelopmentRecipe]
+    var savedPlaces: [SavedPlace] = []
 
     static let empty = LibraryContents(gearItems: [], developmentRecipes: [])
 
     static func fetch(from context: ModelContext) throws -> LibraryContents {
         LibraryContents(
             gearItems: try context.fetch(FetchDescriptor<GearItem>(sortBy: [SortDescriptor(\.dateAdded, order: .reverse)])),
-            developmentRecipes: try context.fetch(FetchDescriptor<DevelopmentRecipe>(sortBy: [SortDescriptor(\.name)])))
+            developmentRecipes: try context.fetch(FetchDescriptor<DevelopmentRecipe>(sortBy: [SortDescriptor(\.name)])),
+            savedPlaces: try context.fetch(FetchDescriptor<SavedPlace>(sortBy: [SortDescriptor(\.name)])))
     }
 
     /// Records other than gear items: their child records, and recipes with their steps.
@@ -31,9 +34,10 @@ struct LibraryContents {
                 + (item.shutterCountReadings?.count ?? 0) + (item.loans?.count ?? 0)
         }
         return gearChildren + developmentRecipes.reduce(0) { $0 + 1 + ($1.steps?.count ?? 0) }
+            + savedPlaces.count
     }
 
-    var isEmpty: Bool { gearItems.isEmpty && developmentRecipes.isEmpty }
+    var isEmpty: Bool { gearItems.isEmpty && developmentRecipes.isEmpty && savedPlaces.isEmpty }
 }
 
 extension ModelContext {

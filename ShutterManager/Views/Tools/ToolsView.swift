@@ -12,7 +12,7 @@ import SwiftUI
 enum Tool: String, CaseIterable, Identifiable, Hashable {
     case equivalentExposure, ndFilter, sunnySixteen
     case depthOfField, fieldOfView
-    case astro
+    case sunAndMoon, nightSky, astro
     case timeLapse, flash, printSize
     case reciprocity, development
 
@@ -30,7 +30,7 @@ enum Tool: String, CaseIterable, Identifiable, Hashable {
         switch self {
         case .equivalentExposure, .ndFilter, .sunnySixteen: return .exposure
         case .depthOfField, .fieldOfView: return .optics
-        case .astro: return .sky
+        case .sunAndMoon, .nightSky, .astro: return .sky
         case .timeLapse, .flash, .printSize: return .calculators
         case .reciprocity, .development: return .film
         }
@@ -43,6 +43,8 @@ enum Tool: String, CaseIterable, Identifiable, Hashable {
         case .sunnySixteen: return "Sunny 16"
         case .depthOfField: return "Depth of Field"
         case .fieldOfView: return "Field of View"
+        case .sunAndMoon: return "Sun & Moon"
+        case .nightSky: return "Milky Way"
         case .astro: return "Astro Exposure"
         case .timeLapse: return "Time-Lapse"
         case .flash: return "Flash"
@@ -59,6 +61,8 @@ enum Tool: String, CaseIterable, Identifiable, Hashable {
         case .sunnySixteen: return "Expose without a meter"
         case .depthOfField: return "Near and far limits, hyperfocal distance"
         case .fieldOfView: return "Angle of view and crop equivalents"
+        case .sunAndMoon: return "Golden and blue hours, twilight, moon phases"
+        case .nightSky: return "Dark, moonless nights with the core up"
         case .astro: return "Sharp stars (NPF and 500 rules), star trails"
         case .timeLapse: return "Interval, frames, clip length and storage"
         case .flash: return "Guide number, distance and aperture"
@@ -75,6 +79,8 @@ enum Tool: String, CaseIterable, Identifiable, Hashable {
         case .sunnySixteen: return "sun.max"
         case .depthOfField: return "camera.metering.center.weighted"
         case .fieldOfView: return "angle"
+        case .sunAndMoon: return "sun.horizon"
+        case .nightSky: return "moon.stars"
         case .astro: return "sparkles"
         case .timeLapse: return "timelapse"
         case .flash: return "bolt"
@@ -92,6 +98,8 @@ enum Tool: String, CaseIterable, Identifiable, Hashable {
         case .sunnySixteen: SunnySixteenView()
         case .depthOfField: DepthOfFieldView()
         case .fieldOfView: FieldOfViewView()
+        case .sunAndMoon: SunMoonView()
+        case .nightSky: NightSkyView()
         case .astro: AstroView()
         case .timeLapse: TimeLapseView()
         case .flash: FlashView()

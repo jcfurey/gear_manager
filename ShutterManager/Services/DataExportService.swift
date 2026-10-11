@@ -36,6 +36,8 @@ final class DataExportService {
         var includeLoans = true
         /// Development recipes and their steps (JSON only; CSV and PDF list gear).
         var includeDevelopmentRecipes = true
+        /// Saved places (JSON only).
+        var includeSavedPlaces = true
         var includePhotos = true
         var includeSettings = true
         var format: ExportFormat
@@ -80,6 +82,8 @@ final class DataExportService {
                 ? gear.flatMap { ($0.loans ?? []).map(GearLoanDTO.init(from:)) } : [],
             developmentRecipes: configuration.includeDevelopmentRecipes
                 ? library.developmentRecipes.map(DevelopmentRecipeDTO.init(from:)) : [],
+            savedPlaces: configuration.includeSavedPlaces
+                ? library.savedPlaces.map(SavedPlaceDTO.init(from:)) : [],
             settings: configuration.includeSettings ? exportSettings() : nil,
             includesPhotos: configuration.includePhotos)
         lastReplacedValueCount = data.replaceUnrestorableNumbers()

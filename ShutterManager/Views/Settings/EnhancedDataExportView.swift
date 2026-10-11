@@ -15,6 +15,7 @@ struct EnhancedDataExportView: View {
 
     @Query(sort: \GearItem.dateAdded, order: .reverse) private var gearItems: [GearItem]
     @Query private var recipes: [DevelopmentRecipe]
+    @Query private var places: [SavedPlace]
 
     @State private var selectedFormat = EnhancedExportFormat.json
     @State private var includePhotos = true
@@ -50,7 +51,7 @@ struct EnhancedDataExportView: View {
                     } header: {
                         Text("Include")
                     } footer: {
-                        Text("Gear, maintenance, shutter counts, loans and development recipes are always included. Leaving photos out makes a much smaller file.")
+                        Text("Gear, maintenance, shutter counts, loans, development recipes and saved places are always included. Leaving photos out makes a much smaller file.")
                     }
                 }
 
@@ -62,6 +63,9 @@ struct EnhancedDataExportView: View {
                     }
                     if selectedFormat == .json && !recipes.isEmpty {
                         StatRow(icon: "flask", label: "Development Recipes", value: "\(recipes.count)", color: .purple)
+                    }
+                    if selectedFormat == .json && !places.isEmpty {
+                        StatRow(icon: "mappin.and.ellipse", label: "Saved Places", value: "\(places.count)", color: .teal)
                     }
                 }
 
@@ -104,7 +108,7 @@ struct EnhancedDataExportView: View {
 
     /// CSV and PDF list gear; JSON also carries recipes and settings.
     private var hasAnythingToExport: Bool {
-        !gearItems.isEmpty || (selectedFormat == .json && (includeSettings || !recipes.isEmpty))
+        !gearItems.isEmpty || (selectedFormat == .json && (includeSettings || !recipes.isEmpty || !places.isEmpty))
     }
 
     private func performExport() {

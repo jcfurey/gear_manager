@@ -100,6 +100,9 @@ final class DataImportService {
         for dto in document.loans where !existing.loans.contains(dto.id) {
             context.insert(dto.toLoan(gearByID: gearByID))
         }
+        for dto in document.places where !existing.savedPlaces.contains(dto.id) {
+            if let place = dto.toPlace() { context.insert(place) }
+        }
         // A recipe merges whole: one already in the library keeps its own steps.
         for dto in document.recipes where !existing.developmentRecipes.contains(dto.id) {
             let (recipe, steps) = dto.toRecipe()
@@ -117,6 +120,7 @@ final class DataImportService {
         var shutterCountReadings: Set<UUID> = []
         var loans: Set<UUID> = []
         var developmentRecipes: Set<UUID> = []
+        var savedPlaces: Set<UUID> = []
 
         init() {}
 
@@ -126,6 +130,7 @@ final class DataImportService {
             shutterCountReadings = Set(try context.fetch(FetchDescriptor<ShutterCountReading>()).map(\.id))
             loans = Set(try context.fetch(FetchDescriptor<GearLoan>()).map(\.id))
             developmentRecipes = Set(try context.fetch(FetchDescriptor<DevelopmentRecipe>()).map(\.id))
+            savedPlaces = Set(try context.fetch(FetchDescriptor<SavedPlace>()).map(\.id))
         }
     }
 }
@@ -150,6 +155,7 @@ struct ImportPreview {
     let shutterCountCount: Int
     let loanCount: Int
     let recipeCount: Int
+    let placeCount: Int
     let hasSettings: Bool
     let includesPhotos: Bool
 
@@ -163,11 +169,12 @@ struct ImportPreview {
         shutterCountCount = document.shutterCountReadings.count
         loanCount = document.loans.count
         recipeCount = document.recipes.count
+        placeCount = document.places.count
         hasSettings = document.settings != nil
         includesPhotos = document.includesPhotos
     }
 
-    var totalItems: Int { gearCount + maintenanceCount + shutterCountCount + loanCount + recipeCount }
+    var totalItems: Int { gearCount + maintenanceCount + shutterCountCount + loanCount + recipeCount + placeCount }
 
     var formattedDate: String { exportDate.formatted(date: .abbreviated, time: .shortened) }
 }

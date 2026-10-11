@@ -260,7 +260,8 @@
 				INFOPLIST_KEY_CFBundleDisplayName = "Shutter Manager";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photography";
-				INFOPLIST_KEY_NSCameraUsageDescription = "Shutter Manager uses the camera to scan product barcodes when you add gear. Camera frames are processed on your device and are never stored or sent anywhere.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Shutter Manager uses the camera to scan product barcodes when you add gear, and as a light meter. Camera frames are processed on your device and are never stored or sent anywhere.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Shutter Manager uses your location, when you ask it to, to work out sun, moon and Milky Way times where you are. Your location stays on your device unless you save it as a place, which syncs to your private iCloud.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -301,7 +302,8 @@
 				INFOPLIST_KEY_CFBundleDisplayName = "Shutter Manager";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photography";
-				INFOPLIST_KEY_NSCameraUsageDescription = "Shutter Manager uses the camera to scan product barcodes when you add gear. Camera frames are processed on your device and are never stored or sent anywhere.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Shutter Manager uses the camera to scan product barcodes when you add gear, and as a light meter. Camera frames are processed on your device and are never stored or sent anywhere.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Shutter Manager uses your location, when you ask it to, to work out sun, moon and Milky Way times where you are. Your location stays on your device unless you save it as a place, which syncs to your private iCloud.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;

@@ -16,7 +16,8 @@ struct PlatformTests {
     @Test func everyModelIsRegistered() throws {
         let names = Set(AppSchema.models.map { String(describing: $0) })
         #expect(names == ["GearItem", "GearPhoto", "MaintenanceRecord", "MaintenanceReminder",
-                          "ShutterCountReading", "GearLoan", "DevelopmentRecipe", "DevelopmentStep"])
+                          "ShutterCountReading", "GearLoan", "DevelopmentRecipe", "DevelopmentStep",
+                          "SavedPlace"])
         let container = try TestSupport.makeContainer()
         #expect(container.schema.entities.count == AppSchema.models.count)
     }

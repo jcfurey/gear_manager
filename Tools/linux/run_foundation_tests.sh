@@ -21,6 +21,7 @@ SOURCES=(
 TESTS=(
   ShutterManagerTests/PhotoMathTests.swift
   ShutterManagerTests/FilmStockTests.swift
+  ShutterManagerTests/AstronomyTests.swift
 )
 
 WORK="$(mktemp -d)"

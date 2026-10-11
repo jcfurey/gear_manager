@@ -68,6 +68,7 @@ struct DataImportView: View {
                         previewRow("chart.xyaxis.line", "Shutter-count readings", preview.shutterCountCount)
                         previewRow("arrow.left.arrow.right", "Loans", preview.loanCount)
                         previewRow("flask", "Development recipes", preview.recipeCount)
+                        previewRow("mappin.and.ellipse", "Saved places", preview.placeCount)
                         if preview.hasSettings {
                             Label("App settings", systemImage: "gearshape")
                         }
