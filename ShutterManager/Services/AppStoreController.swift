@@ -78,8 +78,14 @@ final class AppStoreController: ObservableObject {
         // simulator's library or start CloudKit setup underneath them.
         if ProcessInfo.processInfo.arguments.contains("-uiTestInMemory")
             || ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil {
-            container = try ModelContainer(for: AppSchema.schema, configurations: ModelConfiguration(
+            let temporaryContainer = try ModelContainer(for: AppSchema.schema, configurations: ModelConfiguration(
                 schema: AppSchema.schema, isStoredInMemoryOnly: true, cloudKitDatabase: .none))
+            #if RELEASE_SCREENSHOTS
+            if ReleaseScreenshotData.isEnabled {
+                try ReleaseScreenshotData.seed(temporaryContainer.mainContext)
+            }
+            #endif
+            container = temporaryContainer
             syncManager.configure(storageMode: .localOnly("This session uses a temporary library with iCloud disabled."))
             return
         }

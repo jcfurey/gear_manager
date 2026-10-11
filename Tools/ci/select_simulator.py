@@ -8,8 +8,9 @@ with the highest N; an 11-inch iPad Pro or Air), and refers to it by UDID. Names
 ambiguous when a device type exists under several runtimes, which is how "name=iPhone 17"
 destinations end up on an unexpected OS.
 
-Set SIMULATOR_NAME to force a device by exact name (it must exist in the newest matching runtime
-that has it). Writes udid, name and runtime to $GITHUB_OUTPUT when that is set.
+Set SIMULATOR_NAME to force a device by exact name, or to several comma-separated names in order
+of preference (the first one available wins, on the newest runtime that has it). Writes udid, name
+and runtime to $GITHUB_OUTPUT when that is set.
 """
 
 import json
@@ -42,7 +43,7 @@ def main():
     family = sys.argv[1] if len(sys.argv) > 1 else "iPhone"
     if family not in ("iPhone", "iPad"):
         sys.exit(f"Unknown device family {family!r}; use iPhone or iPad.")
-    forced_name = os.environ.get("SIMULATOR_NAME", "").strip()
+    forced_names = [name.strip() for name in os.environ.get("SIMULATOR_NAME", "").split(",") if name.strip()]
 
     listing = json.loads(subprocess.check_output(
         ["xcrun", "simctl", "list", "devices", "available", "--json"]))
@@ -54,16 +55,20 @@ def main():
         for device in devices:
             if not device.get("isAvailable", True) or not device["name"].startswith(family):
                 continue
-            if forced_name and device["name"] != forced_name:
+            if forced_names and device["name"] not in forced_names:
                 continue
-            candidates.append((version, model_rank(family, device["name"]), device, runtime))
+            # A forced name ranks by its place in the list; otherwise the usual model preference.
+            rank = (-forced_names.index(device["name"]),) if forced_names else model_rank(family, device["name"])
+            candidates.append((version, rank, device, runtime))
 
     if not candidates:
-        print(f"::error title=No simulator::No available {forced_name or family} simulator.")
+        print(f"::error title=No simulator::No available {', '.join(forced_names) or family} simulator.")
         subprocess.call(["xcrun", "simctl", "list", "devices", "available"])
         sys.exit(1)
 
-    version, _, device, runtime = max(candidates, key=lambda c: (c[0], c[1]))
+    # A forced list prefers its earlier names over a newer runtime; otherwise the newest runtime wins.
+    key = (lambda c: (c[1], c[0])) if forced_names else (lambda c: (c[0], c[1]))
+    version, _, device, runtime = max(candidates, key=key)
     major, minor, patch = version
     runtime_name = f"iOS {major}.{minor}" + (f".{patch}" if patch else "")
     print(f"Selected {device['name']} ({runtime_name}) {device['udid']}")
