@@ -15,7 +15,7 @@ is still to check on a device. Add a section when a milestone finishes.
 
 ## M3 — Light Meter and sky planning
 
-**Done 2026-10-11** on `claude/camera-gear-manager-e1zzxt` (commits `ce01591` onward).
+**Done 2026-10-11** on `claude/camera-gear-manager-e1zzxt` (commits `ce01591`…`f4f46de`).
 
 ### What shipped
 - **The Light Meter tab:**
@@ -56,6 +56,14 @@ is still to check on a device. Add a section when a milestone finishes.
     bringing the total to 151;
   - 2 new UI tests: the sun and moon planner from typed coordinates, and a typed light-meter
     reading sent to the ND calculator. The tools test opens the two new tools.
+
+### Verified
+[CI run 38163447209](https://github.com/jcfurey/gear_manager/actions/runs/38163447209) passed
+every job:
+- the Foundation tests in the Swift 6.2 Linux image;
+- the Debug and Release builds with warnings as errors;
+- 151 unit tests;
+- 10 UI tests on each of iPhone 17 and iPad (iOS 26.5).
 
 ### Accuracy
 Against USNO's "Sun and Moon Data for One Day" for six places and dates (see
