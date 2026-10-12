@@ -36,10 +36,13 @@ screenshots, logs and the full test report.
 - **Simulators are picked by UDID** from the newest iOS runtime (`Tools/ci/select_simulator.py`).
   A name like "iPhone 17" can exist under several runtimes.
 - **Build first, then boot.** The build targets the generic simulator
-  (`generic/platform=iOS Simulator`, the runner's own architecture), and the simulator boots in
-  the test step. Booting it in the background during the build looked like a saving but made
-  the build take 4-5 minutes instead of under one: the build's asset tools wait on the same
-  simulator runtime the first boot is busy with.
+  (`generic/platform=iOS Simulator`, the runner's own architecture), and the simulator boots
+  after it. Booting it in the background during the build looked like a saving but made the
+  build take 4-5 minutes instead of under one: the build's asset tools wait on the same
+  simulator runtime the first boot is busy with. The UI-test and screenshot jobs then boot it
+  in the foreground and wait for `simctl bootstatus` before testing: left to `xcodebuild`, the
+  first UI test's app launch once landed mid-boot on iPad and timed out acquiring a background
+  assertion.
 - **The unit-test host app uses a temporary in-memory library.** The unit tests build their own
   containers, so the app hosting them doesn't open the simulator's library or start CloudKit
   setup. That alone took the unit-test step from about 7 minutes to under 4.
