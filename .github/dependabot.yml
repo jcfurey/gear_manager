@@ -1,0 +1,13 @@
+# Keeps the pinned GitHub Actions current. Actions are pinned by commit SHA in the workflows, and
+# Dependabot updates the SHA and its version comment together in one weekly pull request.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      github-actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: ci

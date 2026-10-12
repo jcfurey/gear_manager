@@ -1,0 +1,11 @@
+No account or sign-in is needed; every feature works as soon as the app opens.
+
+Camera: used to scan a product barcode (Inventory > + > Scan Barcode) and by the Light Meter tab. Frames are processed on the device and never stored or sent. Without a camera, choose "By Hand" in the Light Meter tab to type a reading.
+
+Location: asked for only when you tap "Use My Location" in Tools > Sun & Moon or Tools > Milky Way, and used only while the app is open. A place can also be chosen on the map or by typing coordinates.
+
+Notifications: asked for when you turn on Gear Reminders in Settings, start an exposure or development timer, or save a shoot with a golden-hour heads-up.
+
+Barcode lookup: a scanned barcode's number is sent to UPCitemdb (upcitemdb.com) to find the product. Marketplace searches open in the browser. Otherwise only iCloud sync, to the user's private database, and Apple Maps searches leave the device.
+
+In-app purchases: three consumable tips (Small, Medium and Large Tip) in Settings > Tip Jar. They unlock nothing; every feature is free.
