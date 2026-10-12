@@ -21,16 +21,16 @@ struct ShotListTemplatesView: View {
             Section {
                 if templates.isEmpty {
                     Text("Make your own here, or save any shoot's list from the shoot.")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Color.secondary)
                 }
                 ForEach(templates) { template in
                     Button {
                         editingTemplate = template
                     } label: {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(template.displayName).foregroundStyle(.primary)
+                            Text(template.displayName).foregroundStyle(Color.primary)
                             let count = template.items?.count ?? 0
-                            Text(count == 1 ? "1 shot" : "\(count) shots").font(.caption).foregroundStyle(.secondary)
+                            Text(count == 1 ? "1 shot" : "\(count) shots").font(.caption).foregroundStyle(Color.secondary)
                         }
                     }
                     .swipeActions {
@@ -98,7 +98,7 @@ private struct StarterPreview: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(entry.title)
                         if !entry.notes.isEmpty {
-                            Text(entry.notes).font(.caption).foregroundStyle(.secondary)
+                            Text(entry.notes).font(.caption).foregroundStyle(Color.secondary)
                         }
                     }
                 }
@@ -161,7 +161,7 @@ struct ShotListTemplateEditorView: View {
                             TextField("Shot", text: $item.title)
                             TextField("Notes", text: $item.notes)
                                 .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(Color.secondary)
                         }
                     }
                     .onDelete { draft.items.remove(atOffsets: $0) }

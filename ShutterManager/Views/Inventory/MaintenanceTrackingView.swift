@@ -10,6 +10,7 @@ import SwiftData
 /// Maintenance screen for one gear item: summary stats, active reminders, and a
 /// category-filterable history, plus a sheet to log new records.
 struct MaintenanceTrackingView: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.modelContext) private var modelContext
     
     let gearItem: GearItem
@@ -31,7 +32,7 @@ struct MaintenanceTrackingView: View {
     
     var body: some View {
         GeometryReader { geometry in
-            let constants = ResponsiveConstants(geometry)
+            let constants = ResponsiveConstants(geometry, dynamicTypeSize: dynamicTypeSize)
             // Filter the collection-wide queries ONCE per render. As computed properties read
             // inline, `records` re-scanned every maintenance record in the library (faulting each
             // one's gear relationship) about eight times per body evaluation — summary, empty
@@ -224,6 +225,8 @@ struct SummaryBadge: View {
             RoundedRectangle(cornerRadius: constants.cornerRadius)
                 .fill(color.opacity(0.1))
         )
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(label): \(value)")
     }
 }
 
@@ -237,6 +240,7 @@ struct ReminderRow: View {
                 .foregroundColor(reminder.isOverdue ? .red : .orange)
                 .font(.system(size: constants.iconSize))
                 .frame(width: constants.iconSize)
+                .accessibilityHidden(true)
             
             VStack(alignment: .leading, spacing: 2) {
                 Text(reminder.type.displayName)
@@ -250,6 +254,7 @@ struct ReminderRow: View {
             Spacer()
         }
         .padding(.vertical, constants.itemSpacing / 4)
+        .accessibilityElement(children: .combine)
     }
     
     private var dueDateText: String {
@@ -275,6 +280,7 @@ struct MaintenanceRecordRow: View {
                 .foregroundColor(categoryColor)
                 .font(.system(size: constants.iconSize))
                 .frame(width: constants.iconSize)
+                .accessibilityHidden(true)
             
             VStack(alignment: .leading, spacing: 2) {
                 Text(record.type.displayName)
@@ -288,6 +294,7 @@ struct MaintenanceRecordRow: View {
                     if let cost = record.cost {
                         Text("•")
                             .foregroundColor(.secondary)
+                            .accessibilityHidden(true)
                         Text(CurrencyFormatter.formatWithDecimals(cost))
                             .font(constants.captionFont)
                             .foregroundColor(.secondary)
@@ -350,6 +357,7 @@ struct FilterChip: View {
 /// Form for logging a maintenance record, optionally creating a recurring
 /// reminder based on the type's recommended interval.
 struct AddMaintenanceRecordView: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     
@@ -370,7 +378,7 @@ struct AddMaintenanceRecordView: View {
     
     var body: some View {
         GeometryReader { geometry in
-            let constants = ResponsiveConstants(geometry)
+            let constants = ResponsiveConstants(geometry, dynamicTypeSize: dynamicTypeSize)
             
             NavigationStack {
                 Form {
@@ -391,6 +399,7 @@ struct AddMaintenanceRecordView: View {
                             TextField("Amount", text: $cost)
                                 .keyboardType(.decimalPad)
                                 .multilineTextAlignment(.trailing)
+                                .accessibilityLabel("Cost")
                         }
                         
                         TextField("Performed By (Optional)", text: $performedBy)
@@ -405,7 +414,8 @@ struct AddMaintenanceRecordView: View {
                     
                     Section("Notes (Optional)") {
                         TextEditor(text: $notes)
-                            .frame(height: 100)
+                            .frame(minHeight: 100)
+                            .accessibilityLabel("Notes")
                     }
                     
                     if let frequency = selectedType.recommendedFrequency {

@@ -25,15 +25,15 @@ struct StatCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: constants?.itemSpacing ?? 8) {
             Text(title)
-                .font(constants.map { c in c.bodyFont.weight(.medium) } ?? .system(size: 15, weight: .medium))
+                .font(constants.map { c in c.bodyFont.weight(.medium) } ?? .subheadline.weight(.medium))
                 .foregroundColor(.secondary)
 
             Text(value)
-                .font(constants.map { c in c.titleFont.weight(.bold) } ?? .system(size: 22, weight: .bold))
+                .font(constants.map { c in c.titleFont.weight(.bold) } ?? .title2.weight(.bold))
                 .foregroundColor(color)
 
             Text(subtitle)
-                .font(constants.map { c in c.bodyFont } ?? .system(size: 12))
+                .font(constants.map { c in c.bodyFont } ?? .caption)
                 .foregroundColor(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -42,6 +42,7 @@ struct StatCard: View {
             RoundedRectangle(cornerRadius: constants?.cornerRadius ?? 12)
                 .fill(Color(.secondarySystemBackground))
         )
+        .accessibilityElement(children: .combine)
     }
 }
 

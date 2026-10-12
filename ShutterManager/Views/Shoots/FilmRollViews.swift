@@ -100,11 +100,11 @@ struct FilmRollRow: View {
                 .frame(width: 24)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
-                Text(roll.displayName).foregroundStyle(.primary)
-                Text(detail).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                Text(roll.displayName).foregroundStyle(Color.primary)
+                Text(detail).font(.caption).foregroundStyle(Color.secondary).lineLimit(2)
             }
             Spacer(minLength: 0)
-            Text(roll.status.displayName).font(.caption).foregroundStyle(.secondary)
+            Text(roll.status.displayName).font(.caption).foregroundStyle(Color.secondary)
         }
         .accessibilityElement(children: .combine)
     }

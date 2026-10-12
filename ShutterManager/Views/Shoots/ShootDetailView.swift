@@ -97,8 +97,13 @@ struct ShootDetailView: View {
 
     private var summarySection: some View {
         Section {
+            // An HStack, not a Label: a Label as a row's value leaves a tall gap under it on iOS 26.
             LabeledContent("Type") {
-                Label(shoot.type.displayName, systemImage: shoot.type.systemImage)
+                HStack(spacing: 6) {
+                    Image(systemName: shoot.type.systemImage)
+                        .accessibilityHidden(true)
+                    Text(shoot.type.displayName)
+                }
             }
             LabeledContent("When", value: ShootFormat.when(shoot))
             if let place = shoot.place {
@@ -106,7 +111,7 @@ struct ShootDetailView: View {
                     VStack(alignment: .trailing, spacing: 2) {
                         Text(place.name.isEmpty ? place.coordinateText : place.name)
                         if !place.name.isEmpty {
-                            Text(place.coordinateText).font(.caption).foregroundStyle(.secondary)
+                            Text(place.coordinateText).font(.caption).foregroundStyle(Color.secondary)
                         }
                     }
                 }
@@ -159,8 +164,8 @@ struct ShootDetailView: View {
                     LabeledContent("Blue hour", value: "\(window.start.formatted(time)) – \(window.end.formatted(time))")
                 }
                 switch light.sunVisibility {
-                case .alwaysUp: Text("The sun doesn't set that day.").foregroundStyle(.secondary)
-                case .alwaysDown: Text("The sun doesn't rise that day.").foregroundStyle(.secondary)
+                case .alwaysUp: Text("The sun doesn't set that day.").foregroundStyle(Color.secondary)
+                case .alwaysDown: Text("The sun doesn't rise that day.").foregroundStyle(Color.secondary)
                 case .risesOrSets: EmptyView()
                 }
             } else {
@@ -181,7 +186,7 @@ struct ShootDetailView: View {
         Section {
             let gear = shoot.orderedGear
             if gear.isEmpty {
-                Text("No gear yet. Choose items or add a kit.").foregroundStyle(.secondary)
+                Text("No gear yet. Choose items or add a kit.").foregroundStyle(Color.secondary)
             }
             ForEach(gear) { item in
                 packRow(item)
@@ -233,9 +238,9 @@ struct ShootDetailView: View {
                     .font(.title3)
                     .foregroundStyle(packed ? Color.green : Color.secondary)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(item.displayName).foregroundStyle(.primary)
+                    Text(item.displayName).foregroundStyle(Color.primary)
                     if let subtitle = item.listSubtitle {
-                        Text(subtitle).font(.caption).foregroundStyle(.secondary)
+                        Text(subtitle).font(.caption).foregroundStyle(Color.secondary)
                     }
                     ForEach(issues, id: \.self) { issue in
                         Label(issue, systemImage: "exclamationmark.triangle.fill")
@@ -265,10 +270,10 @@ struct ShootDetailView: View {
                             .foregroundStyle(item.isDone ? Color.green : Color.secondary)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(item.title)
-                                .foregroundStyle(item.isDone ? .secondary : .primary)
+                                .foregroundStyle(item.isDone ? Color.secondary : Color.primary)
                                 .strikethrough(item.isDone)
                             if !item.notes.isEmpty {
-                                Text(item.notes).font(.caption).foregroundStyle(.secondary)
+                                Text(item.notes).font(.caption).foregroundStyle(Color.secondary)
                             }
                         }
                     }

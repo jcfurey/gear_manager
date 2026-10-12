@@ -85,6 +85,7 @@ struct EnhancedDataExportView: View {
                                 Text("Exporting…")
                             } else {
                                 Image(systemName: "square.and.arrow.up")
+                                    .accessibilityHidden(true)
                                 Text("Export \(selectedFormat.displayName)")
                             }
                         }
@@ -164,12 +165,14 @@ struct StatRow: View {
             Image(systemName: icon)
                 .foregroundColor(color)
                 .frame(width: 24)
+                .accessibilityHidden(true)
             Text(label)
                 .foregroundColor(.secondary)
             Spacer()
             Text(value)
                 .fontWeight(.medium)
         }
+        .accessibilityElement(children: .combine)
     }
 }
 

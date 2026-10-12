@@ -13,6 +13,7 @@ private let logger = Logger(subsystem: Constants.App.loggerSubsystem, category: 
 /// Backup configuration (enable, frequency, retention), manual backup, and a history list
 /// with restore/delete actions. Backed by BackupManager; restores replace current data.
 struct BackupManagementView: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
 
@@ -25,7 +26,7 @@ struct BackupManagementView: View {
     
     var body: some View {
         GeometryReader { geometry in
-            let constants = ResponsiveConstants(geometry)
+            let constants = ResponsiveConstants(geometry, dynamicTypeSize: dynamicTypeSize)
             
             List {
                     // Backup Configuration
@@ -112,6 +113,7 @@ struct BackupManagementView: View {
                                     Text("Creating Backup...")
                                 } else {
                                     Image(systemName: "square.and.arrow.down")
+                                        .accessibilityHidden(true)
                                     Text("Create Backup Now")
                                 }
                             }
@@ -138,7 +140,7 @@ struct BackupManagementView: View {
                             EmptyStateView.noBackups()
                                 .listRowInsets(EdgeInsets())
                                 .listRowBackground(Color.clear)
-                                .frame(height: 200)
+                                .frame(minHeight: 200)
                         } else {
                             ForEach(backupManager.availableBackups) { backup in
                                 // Tap = restore (behind the existing confirmation alert). The row
@@ -152,6 +154,7 @@ struct BackupManagementView: View {
                                     BackupRow(backup: backup, constants: constants)
                                 }
                                 .buttonStyle(.plain)
+                                .accessibilityHint("Restores this backup, after you confirm")
                                     .contextMenu {
                                         Button {
                                             HapticFeedbackManager.shared.buttonTap()
@@ -276,6 +279,7 @@ struct BackupRow: View {
                 Image(systemName: "doc.zipper")
                     .foregroundColor(.blue)
                     .font(.system(size: constants.iconSize))
+                    .accessibilityHidden(true)
                 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(backup.formattedDate)
@@ -299,6 +303,7 @@ struct BackupRow: View {
                     Image(systemName: "chevron.right")
                         .font(constants.footnoteFont)
                         .foregroundColor(.secondary)
+                        .accessibilityHidden(true)
                 }
             }
             

@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import UIKit
 import AVFoundation
 
 /// Camera barcode scanner with a viewfinder overlay. On a successful scan it
@@ -190,6 +191,7 @@ struct BarcodeScannerView: View {
                         Image(systemName: "checkmark.circle.fill")
                             .font(.system(size: 64))
                             .foregroundColor(.green)
+                            .accessibilityHidden(true)
                         
                         Text("Barcode Scanned!")
                             .font(.title2)
@@ -232,6 +234,8 @@ struct BarcodeScannerView: View {
                         .font(.subheadline)
                         .foregroundColor(.white.opacity(0.8))
                     }
+                    // VoiceOver stays in the result while it covers the scanner.
+                    .accessibilityAddTraits(.isModal)
                 }
             }
             .onAppear {
@@ -239,6 +243,8 @@ struct BarcodeScannerView: View {
             }
             .onChange(of: scannerService.scannedCode) { oldValue, newValue in
                 if let barcode = newValue {
+                    // The result covers the scanner; move VoiceOver to it.
+                    UIAccessibility.post(notification: .screenChanged, argument: nil)
                     // No haptic here: BarcodeScannerService already fires `barcodeScanSuccess()`
                     // at detection, and firing it again doubled the success buzz on every scan.
                     Task {

@@ -143,8 +143,13 @@ struct GearDetailView: View {
 
     private var detailsSection: some View {
         Section("Details") {
+            // An HStack, not a Label: a Label as a row's value leaves a tall gap under it on iOS 26.
             LabeledContent("Category") {
-                Label(category.displayName, systemImage: category.systemImage)
+                HStack(spacing: 6) {
+                    Image(systemName: category.systemImage)
+                        .accessibilityHidden(true)
+                    Text(category.displayName)
+                }
             }
             LabeledContent("Make", value: item.make.displayValue)
             LabeledContent("Model", value: item.model.displayValue)
@@ -274,7 +279,7 @@ struct GearDetailView: View {
             if let loan = item.openLoan {
                 LabeledContent(loan.summary) {
                     if let due = loan.dueDate {
-                        Text("Due \(due.formatted(date: .abbreviated, time: .omitted))")
+                        Text("Due \(due.formatted(date: .abbreviated, time: .omitted))\(loan.isOverdue ? " · overdue" : "")")
                             .foregroundStyle(loan.isOverdue ? .red : .secondary)
                     }
                 }
@@ -325,6 +330,7 @@ struct GearDetailView: View {
             if let delta = valueDelta {
                 LabeledContent("Change") {
                     Text(delta.text).foregroundStyle(delta.color)
+                        .accessibilityLabel(delta.spoken)
                 }
             }
             if let purchased = item.purchaseDate {
@@ -409,13 +415,14 @@ struct GearDetailView: View {
     }
 
     /// Change from purchase price to current value, with a direction color.
-    private var valueDelta: (text: String, color: Color)? {
+    private var valueDelta: (text: String, spoken: String, color: Color)? {
         guard let purchase = item.purchasePrice, purchase > 0, let current = item.currentValue else { return nil }
         let delta = current - purchase
-        if delta == 0 { return ("No change", .secondary) }
+        if delta == 0 { return ("No change", "No change", .secondary) }
         let percent = NSDecimalNumber(decimal: delta).doubleValue / NSDecimalNumber(decimal: purchase).doubleValue
-        let text = "\(delta > 0 ? "▲" : "▼") \(CurrencyFormatter.format(abs(delta))) (\(abs(percent).formatted(.percent.precision(.fractionLength(0)))))"
-        return (text, delta > 0 ? .green : .red)
+        let amount = "\(CurrencyFormatter.format(abs(delta))) (\(abs(percent).formatted(.percent.precision(.fractionLength(0)))))"
+        // VoiceOver reads the triangles as shapes, so it gets the direction in words.
+        return ("\(delta > 0 ? "▲" : "▼") \(amount)", "\(delta > 0 ? "Up" : "Down") \(amount)", delta > 0 ? .green : .red)
     }
 
     // MARK: - Hero photo

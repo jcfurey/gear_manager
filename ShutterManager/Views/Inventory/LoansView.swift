@@ -31,7 +31,7 @@ struct LoansView: View {
                     LabeledContent("Since", value: loan.outDate.formatted(date: .abbreviated, time: .omitted))
                     if let due = loan.dueDate {
                         LabeledContent("Due Back") {
-                            Text(due.formatted(date: .abbreviated, time: .omitted))
+                            Text("\(due.formatted(date: .abbreviated, time: .omitted))\(loan.isOverdue ? " · overdue" : "")")
                                 .foregroundStyle(loan.isOverdue ? .red : .primary)
                         }
                     }
@@ -66,6 +66,7 @@ struct LoansView: View {
                             Text(dateRange(loan))
                                 .font(.caption).foregroundStyle(.secondary)
                         }
+                        .accessibilityElement(children: .combine)
                     }
                     .onDelete { offsets in
                         let loans = history

@@ -38,9 +38,9 @@ struct GearSelectionView: View {
                         } label: {
                             HStack {
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(item.displayName).foregroundStyle(.primary)
+                                    Text(item.displayName).foregroundStyle(Color.primary)
                                     if let subtitle = item.listSubtitle {
-                                        Text(subtitle).font(.caption).foregroundStyle(.secondary)
+                                        Text(subtitle).font(.caption).foregroundStyle(Color.secondary)
                                     }
                                 }
                                 Spacer()

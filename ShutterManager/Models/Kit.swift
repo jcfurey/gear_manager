@@ -34,6 +34,13 @@ final class Kit {
     static let symbols = ["bag", "backpack", "suitcase", "suitcase.rolling", "camera", "heart", "moon.stars", "mountain.2",
                           "person.crop.square", "video", "airplane", "star"]
 
+    /// A name for a symbol in `symbols`, for the picker and VoiceOver: "Suitcase rolling" for
+    /// "suitcase.rolling".
+    static func symbolName(_ symbol: String) -> String {
+        let words = symbol.replacingOccurrences(of: ".", with: " ")
+        return words.prefix(1).uppercased() + words.dropFirst()
+    }
+
     var displayName: String {
         name.trimmingCharacters(in: .whitespacesAndNewlines).nonEmptyOrNil ?? "Untitled Kit"
     }

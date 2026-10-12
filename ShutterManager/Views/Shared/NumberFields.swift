@@ -32,8 +32,12 @@ struct MeasurementField: View {
                 .foregroundStyle(parsed(text) == nil ? Color.red : Color.primary)
                 .focused($isFocused)
                 .accessibilityLabel(title)
+                .accessibilityValue(parsed(text) == nil ? "\(text), not a valid number, not saved" : text)
             if let unit {
                 Text(unit).foregroundStyle(.secondary)
+            }
+            if parsed(text) == nil {
+                InvalidNumberMark()
             }
         }
         .onAppear { text = Self.text(for: value, allowsDecimals: allowsDecimals) }
@@ -104,6 +108,10 @@ struct MoneyField: View {
                 .foregroundStyle(isValid(text) ? Color.primary : Color.red)
                 .focused($isFocused)
                 .accessibilityLabel(title)
+                .accessibilityValue(isValid(text) ? text : "\(text), not a valid amount, not saved")
+            if !isValid(text) {
+                InvalidNumberMark()
+            }
         }
         .onAppear { text = Self.text(for: value) }
         .onChange(of: text) { _, newText in
@@ -130,5 +138,15 @@ struct MoneyField: View {
     static func text(for value: Decimal?) -> String {
         guard let value, value != 0 else { return "" }
         return value.formatted(.number.grouping(.never))
+    }
+}
+
+/// Marks typed text that isn't saved, with a shape as well as the red text, so it doesn't rely on
+/// colour alone. The field's accessibility value says the same to VoiceOver.
+private struct InvalidNumberMark: View {
+    var body: some View {
+        Image(systemName: "exclamationmark.circle.fill")
+            .foregroundStyle(.red)
+            .accessibilityHidden(true)
     }
 }

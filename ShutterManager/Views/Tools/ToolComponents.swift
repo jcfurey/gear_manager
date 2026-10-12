@@ -43,9 +43,9 @@ struct ToolResultRow: View {
                 Text(value)
                     .font(emphasized ? .title3.weight(.semibold) : .body)
                     .monospacedDigit()
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(Color.primary)
                 if let detail {
-                    Text(detail).font(.caption).foregroundStyle(.secondary)
+                    Text(detail).font(.caption).foregroundStyle(Color.secondary)
                 }
             }
         } label: {
@@ -205,9 +205,9 @@ struct FilmStockPicker: View {
         } label: {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(title).foregroundStyle(.primary)
+                    Text(title).foregroundStyle(Color.primary)
                     if let detail {
-                        Text(detail).font(.caption).foregroundStyle(.secondary)
+                        Text(detail).font(.caption).foregroundStyle(Color.secondary)
                     }
                 }
                 Spacer()
@@ -216,6 +216,7 @@ struct FilmStockPicker: View {
                 }
             }
         }
+        .accessibilityAddTraits(id == stockID ? .isSelected : [])
     }
 }
 
@@ -242,5 +243,11 @@ enum CountdownText {
         return hours > 0
             ? String(format: "%d:%02d:%02d", hours, minutes, secs)
             : String(format: "%d:%02d", minutes, secs)
+    }
+
+    /// "4 minutes, 5 seconds": how VoiceOver should read a countdown, rather than as a clock time.
+    static func spoken(_ seconds: Double) -> String {
+        let total = max(Int(seconds.rounded(.up)), 0)
+        return Duration.seconds(total).formatted(.units(allowed: [.hours, .minutes, .seconds], width: .wide))
     }
 }

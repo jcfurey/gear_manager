@@ -87,6 +87,7 @@ struct ShutterCountView: View {
                                     .accessibilityLabel(reading.source.displayName)
                             }
                         }
+                        .accessibilityElement(children: .combine)
                     }
                     .onDelete { offsets in delete(offsets.map { readings[$0] }) }
                 }
@@ -119,6 +120,7 @@ struct ShutterCountView: View {
             ForEach(readings) { reading in
                 LineMark(x: .value("Date", reading.date), y: .value("Shutter count", reading.count))
                 PointMark(x: .value("Date", reading.date), y: .value("Shutter count", reading.count))
+                    .accessibilityHidden(true)   // the line already reads each reading
             }
             if item.ratedShutterLife > 0 {
                 RuleMark(y: .value("Rated life", item.ratedShutterLife))

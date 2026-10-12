@@ -31,6 +31,36 @@ private extension Date {
     }
 }
 
+/// The user's calendar, in a place's time zone.
+private func zonedCalendar(_ zone: TimeZone) -> Calendar {
+    var calendar = Calendar.current
+    calendar.timeZone = zone
+    return calendar
+}
+
+private extension View {
+    /// An x axis marking every six hours on the place's clock. Swift Charts' own labels use the
+    /// device's time zone.
+    func placeHourAxis(_ interval: DateInterval, zone: TimeZone) -> some View {
+        let calendar = zonedCalendar(zone)
+        let firstDay = calendar.startOfDay(for: interval.start)
+        let marks = (0...2).flatMap { offset -> [Date] in
+            guard let day = calendar.date(byAdding: .day, value: offset, to: firstDay) else { return [] }
+            return stride(from: 0, to: 24, by: 6).compactMap { calendar.date(bySettingHour: $0, minute: 0, second: 0, of: day) }
+        }
+        .filter { interval.start <= $0 && $0 < interval.end }
+        return chartXAxis {
+            AxisMarks(values: marks) { value in
+                AxisGridLine()
+                AxisValueLabel {
+                    Text(value.as(Date.self)?.formatted(Date.FormatStyle(timeZone: zone).hour()) ?? "")
+                }
+            }
+        }
+        .environment(\.timeZone, zone)
+    }
+}
+
 private func durationText(_ seconds: TimeInterval) -> String {
     let minutes = Int((seconds / 60).rounded())
     return minutes >= 60 ? "\(minutes / 60) h \(minutes % 60) min" : "\(minutes) min"
@@ -62,7 +92,7 @@ struct SunMoonView: View {
         Form {
             Section {
                 PlaceRow(place: placeBinding($storedPlace))
-                DateStepperRow(date: $date)
+                DateStepperRow(date: $date, timeZone: place?.timeZone ?? .current)
             }
             if let place {
                 if let day, day.observer == place.coordinate {
@@ -79,7 +109,7 @@ struct SunMoonView: View {
         }
         .navigationTitle(Tool.sunAndMoon.title)
         .navigationBarTitleDisplayMode(.inline)
-        .task(id: Key(place: place, day: Calendar.current.startOfDay(for: date))) {
+        .task(id: Key(place: place, day: zonedCalendar(place?.timeZone ?? .current).startOfDay(for: date))) {
             await compute(place: place)
         }
     }
@@ -223,14 +253,17 @@ struct SunMoonView: View {
     }
 }
 
-/// Day-by-day navigation with a date picker in between.
+/// Day-by-day navigation with a date picker in between, in the place's time zone, so the day
+/// shown is the day worked out.
 struct DateStepperRow: View {
     @Binding var date: Date
+    let timeZone: TimeZone
 
     var body: some View {
+        let calendar = zonedCalendar(timeZone)
         HStack {
             Button {
-                date = Calendar.current.date(byAdding: .day, value: -1, to: date) ?? date
+                date = calendar.date(byAdding: .day, value: -1, to: date) ?? date
             } label: {
                 Image(systemName: "chevron.left")
             }
@@ -239,12 +272,13 @@ struct DateStepperRow: View {
             Spacer()
             DatePicker("Date", selection: $date, displayedComponents: .date)
                 .labelsHidden()
+                .environment(\.timeZone, timeZone)
             Button("Today") { date = Date() }
                 .buttonStyle(.borderless)
                 .font(.callout)
             Spacer()
             Button {
-                date = Calendar.current.date(byAdding: .day, value: 1, to: date) ?? date
+                date = calendar.date(byAdding: .day, value: 1, to: date) ?? date
             } label: {
                 Image(systemName: "chevron.right")
             }
@@ -267,11 +301,15 @@ private struct SkyChart: View {
                 RectangleMark(xStart: .value("Start", window.start), xEnd: .value("End", window.end),
                               yStart: .value("Bottom", -90), yEnd: .value("Top", 90))
                     .foregroundStyle(Color.orange.opacity(0.18))
+                    .accessibilityLabel("Golden hour")
+                    .accessibilityValue("\(window.start.time(in: timeZone)) to \(window.end.time(in: timeZone))")
             }
             ForEach(day.blueHours, id: \.start) { window in
                 RectangleMark(xStart: .value("Start", window.start), xEnd: .value("End", window.end),
                               yStart: .value("Bottom", -90), yEnd: .value("Top", 90))
                     .foregroundStyle(Color.blue.opacity(0.18))
+                    .accessibilityLabel("Blue hour")
+                    .accessibilityValue("\(window.start.time(in: timeZone)) to \(window.end.time(in: timeZone))")
             }
             RuleMark(y: .value("Horizon", 0))
                 .foregroundStyle(Color.secondary.opacity(0.6))
@@ -295,9 +333,21 @@ private struct SkyChart: View {
             }
         }
         .chartXScale(domain: day.interval.start...day.interval.end)
+        .placeHourAxis(day.interval, zone: timeZone)
         .chartXSelection(value: $selection)
         .environment(\.timeZone, timeZone)
         .accessibilityLabel("Sun and moon altitude through the day")
+        // Dragging picks a moment; VoiceOver users swipe up or down to move it by half an hour.
+        .accessibilityAdjustableAction { direction in
+            let current = selection ?? (day.interval.contains(Date()) ? Date() : day.solarNoon)
+            let step: TimeInterval
+            switch direction {
+            case .increment: step = 1800
+            case .decrement: step = -1800
+            @unknown default: return
+            }
+            selection = min(max(current.addingTimeInterval(step), day.interval.start), day.interval.end)
+        }
     }
 }
 
@@ -322,6 +372,7 @@ private struct SkyDirectionsMap: View {
             if moon.altitude > 0 { line(moon.azimuth, .gray) }
         }
         .id(place)
+        .accessibilityLabel("Map of \(place.name) with lines toward sunrise, sunset, the sun and the moon")
     }
 
     private func line(_ azimuth: Double, _ color: Color) -> some MapContent {
@@ -409,6 +460,7 @@ private struct NightRow: View {
             Spacer()
             Label("\(Int((night.moonIllumination * 100).rounded()))%", systemImage: "moon")
                 .font(.caption).foregroundStyle(.secondary)
+                .accessibilityLabel("Moon \(Int((night.moonIllumination * 100).rounded()))% lit")
             if night.coreHours > 0 {
                 Image(systemName: "sparkles").foregroundStyle(Color.accentColor)
                     .accessibilityLabel("Core visible")
@@ -432,6 +484,8 @@ private struct NightDetailView: View {
                         RectangleMark(xStart: .value("Start", window.start), xEnd: .value("End", window.end),
                                       yStart: .value("Bottom", -90), yEnd: .value("Top", 90))
                             .foregroundStyle(Color.indigo.opacity(0.2))
+                            .accessibilityLabel("Dark, moon down")
+                            .accessibilityValue("\(window.start.time(in: zone)) to \(window.end.time(in: zone))")
                     }
                     RuleMark(y: .value("Horizon", 0)).foregroundStyle(Color.secondary.opacity(0.6))
                     ForEach(samples) { sample in
@@ -449,7 +503,7 @@ private struct NightDetailView: View {
                 .chartForegroundStyleScale(["Core": Color.purple, "Moon": Color.gray, "Sun": Color.orange])
                 .chartYScale(domain: -90...90)
                 .chartXScale(domain: night.interval.start...night.interval.end)
-                .environment(\.timeZone, zone)
+                .placeHourAxis(night.interval, zone: zone)
                 .frame(height: 220)
                 .accessibilityLabel("Galactic core, moon and sun altitude through the night")
             } footer: {

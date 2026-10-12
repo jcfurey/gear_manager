@@ -14,6 +14,7 @@ import os
 private let logger = Logger(subsystem: Constants.App.loggerSubsystem, category: "SettingsView")
 
 struct SettingsView: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.modelContext) private var modelContext
     @Environment(iCloudSyncManager.self) private var syncManager
 
@@ -35,7 +36,7 @@ struct SettingsView: View {
 
     var body: some View {
         GeometryReader { geometry in
-            let constants = ResponsiveConstants(geometry)
+            let constants = ResponsiveConstants(geometry, dynamicTypeSize: dynamicTypeSize)
 
             NavigationStack {
                 List {
@@ -111,6 +112,8 @@ struct SettingsView: View {
                                     .monospacedDigit()
                             }
                             .fixedSize()
+                            .accessibilityLabel("Light meter calibration")
+                            .accessibilityValue("\(LightMeter.signedEVLabel(lightMeterCalibration)) EV")
                             .accessibilityIdentifier("settings.meterCalibration")
                         }
                     } header: {
@@ -151,6 +154,7 @@ struct SettingsView: View {
                                 Image(systemName: "chevron.right")
                                     .font(constants.captionFont)
                                     .foregroundColor(.secondary)
+                                    .accessibilityHidden(true)
                             }
                         }
                         .accessibilityIdentifier("settings.export")
@@ -163,6 +167,7 @@ struct SettingsView: View {
                                 Image(systemName: "chevron.right")
                                     .font(constants.captionFont)
                                     .foregroundColor(.secondary)
+                                    .accessibilityHidden(true)
                             }
                         }
                         .accessibilityIdentifier("settings.import")
@@ -207,6 +212,7 @@ struct SettingsView: View {
                                     Image(systemName: "arrow.up.right")
                                         .font(constants.captionFont)
                                         .foregroundColor(.secondary)
+                                        .accessibilityHidden(true)
                                 }
                             }
                         }

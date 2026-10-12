@@ -80,8 +80,10 @@ struct ResponsiveConstants {
     let horizontalSizeClass: UserInterfaceSizeClass?
     let verticalSizeClass: UserInterfaceSizeClass?
 
+    /// `dynamicTypeSize` has no default: pass the view's `@Environment(\.dynamicTypeSize)`, or
+    /// every font the constants make stays at the default size whatever the user's text setting.
     init(_ geometry: GeometryProxy,
-         dynamicTypeSize: DynamicTypeSize = .large,
+         dynamicTypeSize: DynamicTypeSize,
          horizontalSizeClass: UserInterfaceSizeClass? = nil,
          verticalSizeClass: UserInterfaceSizeClass? = nil) {
         self.deviceSize = DeviceSize.current(geometry)
@@ -424,6 +426,7 @@ extension View {
 // MARK: - Responsive Layout Container
 
 struct ResponsiveVStack<Content: View>: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let geometry: GeometryProxy
     let alignment: HorizontalAlignment
     let content: () -> Content
@@ -439,7 +442,8 @@ struct ResponsiveVStack<Content: View>: View {
     }
 
     var body: some View {
-        VStack(alignment: alignment, spacing: ResponsiveConstants(geometry).sectionSpacing) {
+        VStack(alignment: alignment,
+               spacing: ResponsiveConstants(geometry, dynamicTypeSize: dynamicTypeSize).sectionSpacing) {
             content()
         }
     }

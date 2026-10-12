@@ -39,6 +39,7 @@ struct ProductInfoView: View {
                         Image(systemName: "checkmark.circle.fill")
                             .font(.system(size: 50))
                             .foregroundColor(.green)
+                            .accessibilityHidden(true)
                         
                         Text("Product Found!")
                             .font(.title2)
@@ -66,6 +67,7 @@ struct ProductInfoView: View {
                                         .aspectRatio(contentMode: .fit)
                                         .frame(maxHeight: 200)
                                         .cornerRadius(12)
+                                        .accessibilityLabel("Photo of \(productInfo.name)")
                                 } else if phase.error == nil {
                                     RoundedRectangle(cornerRadius: 12)
                                         .fill(.gray.opacity(0.2))
@@ -150,6 +152,7 @@ struct ProductInfoView: View {
                     }) {
                         HStack {
                             Image(systemName: "plus.circle.fill")
+                                .accessibilityHidden(true)
                             Text("Add to Inventory")
                         }
                         .font(.headline)

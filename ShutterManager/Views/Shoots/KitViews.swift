@@ -38,9 +38,9 @@ struct KitsView: View {
                             .frame(width: 28)
                             .accessibilityHidden(true)
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(kit.displayName).foregroundStyle(.primary)
+                            Text(kit.displayName).foregroundStyle(Color.primary)
                             let count = kit.gear?.count ?? 0
-                            Text(count == 1 ? "1 item" : "\(count) items").font(.caption).foregroundStyle(.secondary)
+                            Text(count == 1 ? "1 item" : "\(count) items").font(.caption).foregroundStyle(Color.secondary)
                         }
                     }
                 }
@@ -101,7 +101,7 @@ struct KitEditorView: View {
                         .accessibilityIdentifier("kitNameField")
                     Picker("Symbol", selection: $draft.symbol) {
                         ForEach(Kit.symbols, id: \.self) { symbol in
-                            Image(systemName: symbol).tag(symbol)
+                            Label(Kit.symbolName(symbol), systemImage: symbol).tag(symbol)
                         }
                     }
                     TextField("Notes", text: $draft.notes, axis: .vertical)
@@ -114,9 +114,10 @@ struct KitEditorView: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(item.displayName)
                             if let subtitle = item.listSubtitle {
-                                Text(subtitle).font(.caption).foregroundStyle(.secondary)
+                                Text(subtitle).font(.caption).foregroundStyle(Color.secondary)
                             }
                         }
+                        .accessibilityElement(children: .combine)
                         .swipeActions {
                             Button("Remove", role: .destructive) { draft.gearIDs.remove(item.id) }
                         }

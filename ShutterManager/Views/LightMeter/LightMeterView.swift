@@ -214,7 +214,18 @@ struct LightMeterView: View {
         }
         .accessibilityElement()
         .accessibilityLabel("Camera preview")
-        .accessibilityHint(metering == .spot ? "Tap to meter a spot" : "")
+        .accessibilityValue(previewAccessibilityValue)
+        .accessibilityHint(metering == .spot ? "Touch the spot to meter" : "")
+        // Spot metering needs the touch's position, which VoiceOver's double-tap doesn't give.
+        .accessibilityAddTraits(metering == .spot ? .allowsDirectInteraction : [])
+    }
+
+    private var previewAccessibilityValue: String {
+        var parts: [String] = []
+        if meter.status == .starting { parts.append("Starting") }
+        if heldEV != nil { parts.append("Reading held") }
+        if meter.isInterrupted { parts.append("Camera paused") }
+        return parts.joined(separator: ", ")
     }
 
     private func badge(_ text: String) -> some View {
@@ -251,27 +262,16 @@ struct LightMeterView: View {
 
     private var readingSection: some View {
         Section {
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(ev.map { "EV \(LightMeter.evLabel($0))" } ?? "EV —")
-                        .font(.largeTitle.weight(.semibold))
-                        .monospacedDigit()
-                        .accessibilityIdentifier("meter.ev")
-                    Text(readingDetail)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+            // Side by side, or stacked when large text doesn't fit across.
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .firstTextBaseline) {
+                    readingText
+                    Spacer()
+                    holdButton
                 }
-                Spacer()
-                if source == .camera {
-                    Button {
-                        HapticFeedbackManager.shared.selection()
-                        heldEV = heldEV == nil ? liveEV : nil
-                    } label: {
-                        Label(heldEV == nil ? "Hold" : "Release", systemImage: heldEV == nil ? "pause.circle" : "play.circle")
-                    }
-                    .buttonStyle(.bordered)
-                    .disabled(heldEV == nil && liveEV == nil)
-                    .accessibilityIdentifier("meter.hold")
+                VStack(alignment: .leading, spacing: 8) {
+                    readingText
+                    holdButton
                 }
             }
             if source == .manual {
@@ -279,6 +279,7 @@ struct LightMeterView: View {
                         onDecrement: { manualEV = Self.stepThird(manualEV, by: -1) }) {
                     Text("Scene brightness")
                 }
+                .accessibilityValue("EV \(LightMeter.evLabel(manualEV))")
                 .accessibilityIdentifier("meter.manualEV")
             }
             Picker("Reading", selection: $source) {
@@ -292,6 +293,33 @@ struct LightMeterView: View {
             if source == .manual {
                 Text("EV at ISO 100, in third stops. The Sunny 16 rule gives about 15 in bright sun, 13 under overcast and 11 in open shade.")
             }
+        }
+    }
+
+    private var readingText: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(ev.map { "EV \(LightMeter.evLabel($0))" } ?? "EV —")
+                .font(.largeTitle.weight(.semibold))
+                .monospacedDigit()
+                .accessibilityIdentifier("meter.ev")
+            Text(readingDetail)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    @ViewBuilder
+    private var holdButton: some View {
+        if source == .camera {
+            Button {
+                HapticFeedbackManager.shared.selection()
+                heldEV = heldEV == nil ? liveEV : nil
+            } label: {
+                Label(heldEV == nil ? "Hold" : "Release", systemImage: heldEV == nil ? "pause.circle" : "play.circle")
+            }
+            .buttonStyle(.bordered)
+            .disabled(heldEV == nil && liveEV == nil)
+            .accessibilityIdentifier("meter.hold")
         }
     }
 

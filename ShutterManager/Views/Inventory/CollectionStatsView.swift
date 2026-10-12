@@ -12,6 +12,8 @@ import Charts
 
 struct CollectionStatsView: View {
     @Query(sort: \GearItem.dateAdded, order: .reverse) private var items: [GearItem]
+    /// Each category's bar, taller with larger text so the labels don't overlap.
+    @ScaledMetric private var categoryRowHeight: CGFloat = 34
 
     var body: some View {
         let valuation = GearValuationService.collectionValue(of: items)
@@ -34,7 +36,7 @@ struct CollectionStatsView: View {
 
                 Section("By Category") {
                     categoryChart
-                        .frame(height: CGFloat(categoryRows.count) * 34 + 20)
+                        .frame(height: CGFloat(categoryRows.count) * categoryRowHeight + 20)
                         .padding(.vertical, 6)
                 }
 

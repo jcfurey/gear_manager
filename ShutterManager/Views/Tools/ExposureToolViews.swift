@@ -143,6 +143,7 @@ struct NDFilterView: View {
                         customStops = 0
                     }
                     .disabled(customStops <= 0)
+                    .accessibilityLabel("Add filter")
                 }
             } header: {
                 Text("Filters")
@@ -177,6 +178,9 @@ struct NDFilterView: View {
                 LabeledContent {
                     Text(exposure.isDone(at: context.date) ? "Done" : CountdownText.format(exposure.remaining(at: context.date)))
                         .font(.title2.monospacedDigit().weight(.semibold))
+                        .accessibilityLabel(exposure.isDone(at: context.date) ? "Done"
+                                            : CountdownText.spoken(exposure.remaining(at: context.date)))
+                        .accessibilityAddTraits(.updatesFrequently)
                 } label: {
                     Label("Timer", systemImage: "timer")
                 }
@@ -241,10 +245,10 @@ struct ReciprocityResultRows: View {
                   ? "No reciprocity exponent was entered for this film."
                   : "The maker publishes no correction for this time. Bracket.",
                   systemImage: "info.circle")
-                .font(.footnote).foregroundStyle(.secondary)
+                .font(.footnote).foregroundStyle(Color.secondary)
         }
         if let note = stock?.reciprocityNote, result.basis != .noCorrection {
-            Text(note).font(.footnote).foregroundStyle(.secondary)
+            Text(note).font(.footnote).foregroundStyle(Color.secondary)
         }
     }
 }
@@ -270,9 +274,10 @@ struct SunnySixteenView: View {
                     } label: {
                         HStack {
                             Image(systemName: option.systemImage).frame(width: 28).foregroundStyle(Color.accentColor)
+                                .accessibilityHidden(true)
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(option.displayName).foregroundStyle(.primary)
-                                Text(option.shadowHint).font(.caption).foregroundStyle(.secondary)
+                                Text(option.displayName).foregroundStyle(Color.primary)
+                                Text(option.shadowHint).font(.caption).foregroundStyle(Color.secondary)
                             }
                             Spacer()
                             if option == condition {
@@ -280,6 +285,7 @@ struct SunnySixteenView: View {
                             }
                         }
                     }
+                    .accessibilityAddTraits(option == condition ? .isSelected : [])
                     .accessibilityIdentifier("sunny.\(option.rawValue)")
                 }
             }

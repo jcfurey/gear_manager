@@ -333,14 +333,17 @@ struct GearItemCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: constants.itemSpacing / 2) {
-            HStack(spacing: constants.itemSpacing / 2) {
-                categoryChip
-                GearStatusBadges(item: item, constants: constants)
-                Spacer(minLength: 0)
-                if let value = CurrencyFormatter.formatOptional(item.effectiveValue) {
-                    Text(value)
-                        .font(constants.bodyFont.weight(.bold))
-                        .foregroundColor(.primary)
+            // The chip and value on one line when they fit unbroken; otherwise the value goes below,
+            // so a narrow card or large text never breaks the chip mid-word.
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: constants.itemSpacing / 2) {
+                    chipAndBadges.fixedSize()
+                    Spacer(minLength: 0)
+                    valueText?.fixedSize()
+                }
+                VStack(alignment: .leading, spacing: 4) {
+                    chipAndBadges
+                    valueText
                 }
             }
 
@@ -370,6 +373,21 @@ struct GearItemCard: View {
         .accessibilityLabel(item.accessibilitySummary)
     }
 
+    private var chipAndBadges: some View {
+        HStack(spacing: constants.itemSpacing / 2) {
+            categoryChip
+            GearStatusBadges(item: item, constants: constants)
+        }
+    }
+
+    private var valueText: Text? {
+        CurrencyFormatter.formatOptional(item.effectiveValue).map {
+            Text($0)
+                .font(constants.bodyFont.weight(.bold))
+                .foregroundColor(.primary)
+        }
+    }
+
     private var categoryChip: some View {
         Label(item.gearCategory.displayName, systemImage: item.gearCategory.systemImage)
             .font(constants.captionFont.weight(.medium))
@@ -393,7 +411,8 @@ struct GearItemListRow: View {
                     Text(item.displayName)
                         .font(constants.bodyFont.weight(.semibold))
                         .foregroundColor(.primary)
-                        .lineLimit(1)
+                        // Wraps at accessibility text sizes rather than shrinking out of sight.
+                        .lineLimit(constants.dynamicTypeSize.isAccessibilitySize ? 3 : 1)
                         .minimumScaleFactor(0.8)
                     GearStatusBadges(item: item, constants: constants)
                 }

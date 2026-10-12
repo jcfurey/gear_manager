@@ -96,7 +96,7 @@ struct AddGearView: View {
                 ProgressView("Reading photo…")
             }
             if let photoMessage {
-                Text(photoMessage).font(.caption).foregroundStyle(.secondary)
+                Text(photoMessage).font(.caption).foregroundStyle(Color.secondary)
             }
             if let upc = draft.upcCode {
                 LabeledContent("UPC", value: upc)
@@ -115,9 +115,10 @@ struct AddGearView: View {
                 .font(.title2)
                 .foregroundStyle(Color.accentColor)
                 .frame(width: 32)
+                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
-                Text(title).foregroundStyle(.primary).fontWeight(.medium)
-                Text(detail).font(.caption).foregroundStyle(.secondary)
+                Text(title).foregroundStyle(Color.primary).fontWeight(.medium)
+                Text(detail).font(.caption).foregroundStyle(Color.secondary)
             }
         }
     }

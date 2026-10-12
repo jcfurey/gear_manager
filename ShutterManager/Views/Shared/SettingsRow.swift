@@ -40,6 +40,7 @@ struct SettingsRow<Trailing: View>: View {
                 .foregroundColor(iconColor)
                 .font(.system(size: constants.iconSize))
                 .frame(width: constants.iconSize)
+                .accessibilityHidden(true)   // decorative: the title says what the row is
             Text(title)
                 .font(constants.bodyFont)
                 .foregroundColor(titleColor)

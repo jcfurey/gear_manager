@@ -40,7 +40,7 @@ struct PlaceRow: View {
                 if let place {
                     VStack(alignment: .trailing, spacing: 2) {
                         Text(place.name)
-                        Text(place.timeZone.identifier).font(.caption).foregroundStyle(.secondary)
+                        Text(place.timeZone.identifier).font(.caption).foregroundStyle(Color.secondary)
                     }
                 } else {
                     Text("Choose").foregroundStyle(Color.accentColor)
@@ -84,7 +84,7 @@ struct PlaceSelectionView: View {
                 }
                 .accessibilityIdentifier("useMyLocationButton")
                 if let message = location.errorMessage {
-                    Text(message).font(.footnote).foregroundStyle(.secondary)
+                    Text(message).font(.footnote).foregroundStyle(Color.secondary)
                 }
             }
 
@@ -111,8 +111,8 @@ struct PlaceSelectionView: View {
                         } label: {
                             HStack {
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(place.name).foregroundStyle(.primary)
-                                    Text(place.value.coordinateText).font(.caption).foregroundStyle(.secondary)
+                                    Text(place.name).foregroundStyle(Color.primary)
+                                    Text(place.value.coordinateText).font(.caption).foregroundStyle(Color.secondary)
                                 }
                                 Spacer()
                                 if selection?.savedPlaceID == place.id {
@@ -120,6 +120,7 @@ struct PlaceSelectionView: View {
                                 }
                             }
                         }
+                        .accessibilityAddTraits(selection?.savedPlaceID == place.id ? .isSelected : [])
                     }
                     .onDelete(perform: delete)
                 }
@@ -195,9 +196,9 @@ struct PlacePickerView: View {
                         choose(item)
                     } label: {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(item.name ?? "Place").foregroundStyle(.primary)
+                            Text(item.name ?? "Place").foregroundStyle(Color.primary)
                             if let address = item.placemark.title {
-                                Text(address).font(.caption).foregroundStyle(.secondary)
+                                Text(address).font(.caption).foregroundStyle(Color.secondary)
                             }
                         }
                     }
@@ -216,6 +217,8 @@ struct PlacePickerView: View {
                             pick(GeoCoordinate(coordinate), lookUpName: true)
                         }
                     }
+                    .accessibilityLabel("Map")
+                    .accessibilityHint("Search for a place above, or type its coordinates below")
                 }
                 .frame(height: 280)
                 .listRowInsets(EdgeInsets())
@@ -350,13 +353,14 @@ struct TimeZonePicker: View {
                 dismiss()
             } label: {
                 HStack {
-                    Text(zone.replacingOccurrences(of: "_", with: " ")).foregroundStyle(.primary)
+                    Text(zone.replacingOccurrences(of: "_", with: " ")).foregroundStyle(Color.primary)
                     Spacer()
                     if zone == identifier {
                         Image(systemName: "checkmark").foregroundStyle(Color.accentColor)
                     }
                 }
             }
+            .accessibilityAddTraits(zone == identifier ? .isSelected : [])
         }
         .searchable(text: $searchText)
         .navigationTitle("Time Zone")

@@ -120,6 +120,7 @@ struct ToastView: View {
             Image(systemName: toast.type.icon)
                 .font(.system(size: 24))
                 .foregroundStyle(toast.type.color)
+                .accessibilityHidden(true)
             
             VStack(alignment: .leading, spacing: 4) {
                 Text(toast.title)

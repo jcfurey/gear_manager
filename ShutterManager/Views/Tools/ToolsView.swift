@@ -170,6 +170,8 @@ private struct RunningTimersSection: View {
                     LabeledContent {
                         Text(exposure.isDone(at: context.date) ? "Done" : CountdownText.format(exposure.remaining(at: context.date)))
                             .monospacedDigit()
+                            .accessibilityLabel(exposure.isDone(at: context.date) ? "Done"
+                                                : CountdownText.spoken(exposure.remaining(at: context.date)))
                     } label: {
                         Label(exposure.title, systemImage: "timer")
                     }

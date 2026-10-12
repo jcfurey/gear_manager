@@ -310,9 +310,9 @@ struct SensorFormatSelectionView: View {
         } label: {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(title).foregroundStyle(.primary)
+                    Text(title).foregroundStyle(Color.primary)
                     if let detail {
-                        Text(detail).font(.caption).foregroundStyle(.secondary)
+                        Text(detail).font(.caption).foregroundStyle(Color.secondary)
                     }
                 }
                 Spacer()
@@ -321,5 +321,6 @@ struct SensorFormatSelectionView: View {
                 }
             }
         }
+        .accessibilityAddTraits(formatID == id ? .isSelected : [])
     }
 }

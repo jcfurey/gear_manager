@@ -498,6 +498,8 @@ private struct DevelopmentRunView: View {
     let run: ToolTimers.DevelopmentRun
     let now: Date
     let timers: ToolTimers
+    /// The countdown grows with the user's text size, from 64 points at the default.
+    @ScaledMetric(relativeTo: .largeTitle) private var countdownSize: CGFloat = 64
 
     var body: some View {
         let session = run.session
@@ -508,7 +510,11 @@ private struct DevelopmentRunView: View {
                     Text(session.currentStep?.name ?? "Done")
                         .font(.title2.weight(.semibold))
                     Text(countdown(phase, session))
-                        .font(.system(size: 64, weight: .light, design: .rounded).monospacedDigit())
+                        .font(.system(size: countdownSize, weight: .light, design: .rounded).monospacedDigit())
+                        .minimumScaleFactor(0.5)
+                        .lineLimit(1)
+                        .accessibilityLabel(CountdownText.spoken(remaining(phase, session)))
+                        .accessibilityAddTraits(.updatesFrequently)
                         .accessibilityIdentifier("developmentCountdown")
                     if case .running(_, true) = phase {
                         Label("Agitate", systemImage: "arrow.triangle.2.circlepath")
@@ -530,10 +536,15 @@ private struct DevelopmentRunView: View {
                         Image(systemName: index < session.currentIndex ? "checkmark.circle.fill"
                               : (index == session.currentIndex ? "circle.inset.filled" : "circle"))
                             .foregroundStyle(index <= session.currentIndex ? Color.accentColor : .secondary)
+                            .accessibilityHidden(true)
                         Text(step.name)
                         Spacer()
                         Text(CountdownText.format(step.duration)).monospacedDigit().foregroundStyle(.secondary)
+                            .accessibilityLabel(CountdownText.spoken(step.duration))
                     }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityValue(index < session.currentIndex ? "Done"
+                                        : (index == session.currentIndex ? "Current step" : "Not started"))
                 }
             }
         }
@@ -545,10 +556,15 @@ private struct DevelopmentRunView: View {
     }
 
     private func countdown(_ phase: DevelopmentSession.Phase, _ session: DevelopmentSession) -> String {
+        CountdownText.format(remaining(phase, session))
+    }
+
+    /// Seconds left in the step, or its whole length before it starts.
+    private func remaining(_ phase: DevelopmentSession.Phase, _ session: DevelopmentSession) -> Double {
         switch phase {
-        case .ready: return CountdownText.format(session.currentStep?.duration ?? 0)
-        case let .running(remaining, _), let .paused(remaining): return CountdownText.format(remaining)
-        case .stepComplete, .finished: return "0:00"
+        case .ready: return session.currentStep?.duration ?? 0
+        case let .running(remaining, _), let .paused(remaining): return remaining
+        case .stepComplete, .finished: return 0
         }
     }
 

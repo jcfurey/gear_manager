@@ -11,6 +11,7 @@ import PhotosUI
 /// Grid of a gear item's photos with add, set-primary, delete, and per-photo
 /// detail/caption editing.
 struct PhotoGalleryView: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.modelContext) private var modelContext
     
     let gearItem: GearItem
@@ -26,7 +27,7 @@ struct PhotoGalleryView: View {
     
     var body: some View {
         GeometryReader { geometry in
-            let constants = ResponsiveConstants(geometry)
+            let constants = ResponsiveConstants(geometry, dynamicTypeSize: dynamicTypeSize)
             
                 ScrollView {
                     if sortedPhotos.isEmpty {
@@ -104,6 +105,7 @@ struct PhotoGalleryView: View {
             Image(systemName: "photo.on.rectangle.angled")
                 .font(.system(size: constants.iconSize * 3))
                 .foregroundColor(.secondary)
+                .accessibilityHidden(true)
             
             Text("No Photos Yet")
                 .font(constants.titleFont.weight(.semibold))
@@ -261,6 +263,7 @@ struct PhotoGridItem: View {
 
 /// Full-size view of a single photo with editable caption and primary toggle.
 struct PhotoDetailView: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var saveFailed = false
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
@@ -281,7 +284,7 @@ struct PhotoDetailView: View {
 
     var body: some View {
         GeometryReader { geometry in
-            let constants = ResponsiveConstants(geometry)
+            let constants = ResponsiveConstants(geometry, dynamicTypeSize: dynamicTypeSize)
 
             NavigationStack {
                 ScrollView {
@@ -293,6 +296,7 @@ struct PhotoDetailView: View {
                                 .aspectRatio(contentMode: .fit)
                                 .frame(maxWidth: .infinity)
                                 .cornerRadius(constants.cornerRadius)
+                                .accessibilityLabel(photo.caption?.nonEmptyOrNil ?? "Photo of \(gearItem.displayName)")
                         }
                         
                         // Details section

@@ -166,6 +166,7 @@ struct ShootsView: View {
 /// A shoot in the list: title, when (in the place's time zone), where, and how ready it is.
 struct ShootRow: View {
     let shoot: Shoot
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         HStack(spacing: 12) {
@@ -176,7 +177,7 @@ struct ShootRow: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(shoot.displayTitle)
                     .font(.body.weight(.semibold))
-                    .lineLimit(1)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
                 Text(ShootFormat.when(shoot))
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -184,7 +185,7 @@ struct ShootRow: View {
                     Text(detail)
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                        .lineLimit(1)
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
                 }
             }
         }

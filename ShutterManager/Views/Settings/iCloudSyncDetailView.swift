@@ -8,11 +8,12 @@
 import SwiftUI
 
 struct iCloudSyncDetailView: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(iCloudSyncManager.self) private var syncManager
 
     var body: some View {
         GeometryReader { geometry in
-            let constants = ResponsiveConstants(geometry)
+            let constants = ResponsiveConstants(geometry, dynamicTypeSize: dynamicTypeSize)
             List {
                 Section {
                     SettingsRow(icon: syncManager.status.icon,

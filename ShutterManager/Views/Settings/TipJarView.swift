@@ -64,6 +64,7 @@ struct TipJarView: View {
             Image(systemName: "heart.fill")
                 .font(.system(size: 44))
                 .foregroundColor(.pink)
+                .accessibilityHidden(true)
             Text("Enjoying \(Constants.App.name)?")
                 .font(.title2.weight(.bold))
                 .multilineTextAlignment(.center)
@@ -154,6 +155,7 @@ struct TipJarView: View {
         HStack(spacing: 8) {
             Image(systemName: "checkmark.seal.fill")
                 .foregroundColor(.green)
+                .accessibilityHidden(true)
             Text("Thank you so much — it means a lot! 🎉")
                 .font(.subheadline.weight(.medium))
         }

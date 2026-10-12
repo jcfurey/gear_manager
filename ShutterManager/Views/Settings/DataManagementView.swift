@@ -36,6 +36,7 @@ struct DataImportView: View {
                         HStack {
                             Image(systemName: "doc.badge.plus")
                                 .foregroundColor(.blue)
+                                .accessibilityHidden(true)
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("Select File to Import")
                                     .foregroundColor(.primary)
