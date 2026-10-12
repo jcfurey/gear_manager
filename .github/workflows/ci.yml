@@ -283,15 +283,22 @@ jobs:
         run: python3 Tools/ci/select_simulator.py "${{ matrix.family }}"
       # The capture needs a booted device for the status bar override, so this boots it first,
       # in the foreground; nothing is building yet.
+      # A full battery that isn't charging, full Wi-Fi, and on iPhone full cellular bars rather
+      # than "no service".
       - name: Boot and set the status bar
         env:
           UDID: ${{ steps.sim.outputs.udid }}
+          FAMILY: ${{ matrix.family }}
         run: |
           xcrun simctl boot "$UDID" || true
           xcrun simctl bootstatus "$UDID" -b
+          cellular=()
+          if [ "$FAMILY" = iPhone ]; then
+            cellular=(--cellularMode active --cellularBars 4 --operatorName '')
+          fi
           xcrun simctl status_bar "$UDID" override --time '9:41' \
             --dataNetwork wifi --wifiMode active --wifiBars 3 \
-            --batteryState charged --batteryLevel 100
+            --batteryState discharging --batteryLevel 100 "${cellular[@]}"
       - name: Capture
         id: capture
         env:

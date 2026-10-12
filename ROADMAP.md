@@ -289,22 +289,68 @@ from this plan, and what is still to check on a device.
 ### M5 — 1.0 release prep
 - Tip Jar products, About, privacy policy, app icon, screenshots and App Store text.
 - Accessibility pass, UI tests for the main flows, release notes.
-- CloudKit Production schema deployment and acceptance on your devices.
+- CloudKit Production schema deployment and acceptance on your devices: yours to do, in the
+  release checklist below.
 
 ---
 
-## What you'll need to do
+## Release checklist
 
-These steps can't be done from a cloud session:
-- Create the App ID `jcameronfurey.shuttermanager` and the CloudKit container, and turn on iCloud
-  (CloudKit) and Background Modes → Remote notifications in Signing & Capabilities.
-- Check that "Shutter Manager" is free in App Store Connect.
-- Create the three tip products in App Store Connect.
-- Device checks: the light meter against your camera or a handheld meter, EXIF from your own
-  bodies, sync across your devices.
+These steps can't be done from a cloud session, so they're yours. Code is written here and built
+and tested by CI on GitHub's macOS runners; anything that needs your Apple account, a real camera,
+GPS or iCloud happens on your Mac and devices. Work down the list in order.
 
-The cloud session has no Xcode. Code is written here and built and tested by CI on GitHub's macOS
-runners. Anything that needs a real camera, GPS or an iCloud account is checked on your devices.
+**1. Apple Developer account**
+- [ ] Register the App ID `jcameronfurey.shuttermanager` and the iCloud container
+  `iCloud.jcameronfurey.shuttermanager`.
+- [ ] In Xcode → Signing & Capabilities, turn on iCloud (CloudKit, with that container) and
+  Background Modes → Remote notifications.
+
+**2. CloudKit schema**
+- [ ] Run a Debug build from Xcode once, on a device signed in to iCloud, with the launch argument
+  `-initializeCloudKitSchema`. It creates the Development schema from an empty temporary store,
+  without touching your library.
+- [ ] In CloudKit Console, check the Development schema has a record type for each of the 15
+  models in `Utilities/AppSchema.swift` (named `CD_GearItem`, `CD_Shoot` and so on).
+- [ ] Deploy the schema to Production. TestFlight and App Store builds use Production, so they
+  can't sync until this is done.
+
+**3. App Store Connect**
+- [ ] Create the app: name "Shutter Manager", bundle ID `jcameronfurey.shuttermanager`, primary
+  language English (U.S.). If the name is taken, change `marketing/1.0/name.txt` to match the one
+  you get.
+- [ ] Sign the Paid Applications agreement (banking and tax); tips can't be sold without it.
+- [ ] Create the three tips and fill in the app's information, age rating, App Privacy ("Data Not
+  Collected"), pricing and text, all as `marketing/1.0/APP_STORE.md` sets out.
+
+**4. Web pages**
+- [ ] Host `docs/PRIVACY.md` (GitHub Pages or your own site) and enter its URL as the privacy
+  policy URL.
+- [ ] Host a support page with `jcfurey@furey-labs.com` and enter it as the support URL.
+
+**5. Screenshots**
+- [ ] Run CI by hand with `screenshots` ticked, download the two screenshot artifacts, and upload
+  them (`marketing/README.md`).
+
+**6. TestFlight build**
+- [ ] Archive in Xcode (Product → Archive) and upload it.
+- [ ] Install it from TestFlight on your iPhone and iPad.
+
+**7. Acceptance on your devices**
+- [ ] Add gear with a photo; fill a body and a lens from photos they took; scan a barcode.
+- [ ] Sync: add, edit and delete gear and a shoot on one device and see it on the other.
+- [ ] Light meter: compare with your camera's meter or a handheld meter, then set the
+  calibration.
+- [ ] Sky: "Use My Location", and sunrise and sunset against a source you trust.
+- [ ] Notifications: a gear reminder, a bulb timer with the app in the background, a development
+  run, and a golden-hour heads-up.
+- [ ] Tip Jar: buy a tip (TestFlight purchases are free).
+- [ ] Backups: back up, export JSON, and import it by merge and by replace.
+- [ ] Turn on VoiceOver and the largest text size, and go through each tab.
+- [ ] The dark and tinted icons on the Home Screen.
+
+**8. Submit**
+- [ ] Choose the build, attach the three tips, paste the review notes, and submit for review.
 
 ---
 

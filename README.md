@@ -1,8 +1,8 @@
 # Shutter Manager
 
 A camera-gear manager with field tools for photographers, for iPhone and iPad. It's free, with an
-optional Tip Jar and no paid tier. Work is in progress: the [roadmap](ROADMAP.md) has the plan and
-milestones.
+optional Tip Jar and no paid tier. Version 1.0 is ready for the App Store, apart from the steps
+only the owner can do (see the release checklist in the [roadmap](ROADMAP.md)).
 
 - **Platform:** iOS 18.6 or later; Xcode 26; Swift 5 language mode
 - **Architecture:** SwiftUI, SwiftData with private CloudKit sync, and feature services
@@ -10,7 +10,7 @@ milestones.
 
 The five tabs are **Inventory · Tools · Light Meter · Shoots · Settings**.
 
-## What works today (Milestones 1 to 4)
+## What's in 1.0
 
 **Inventory**
 - Category-aware forms for:
@@ -86,8 +86,18 @@ The five tabs are **Inventory · Tools · Light Meter · Shoots · Settings**.
   and film rolls), CSV and PDF; import by merge or replace.
 - Automatic and manual backups, with retention.
 
-Milestone 5 prepares the 1.0 release. The formulas and sources behind the tools, the light meter
-and the sky planners are in [docs/PHOTO_MATH_REFERENCES.md](docs/PHOTO_MATH_REFERENCES.md).
+**Accessibility**
+- Dynamic Type, including the accessibility sizes; VoiceOver labels throughout; dark mode.
+
+The formulas and sources behind the tools, the light meter and the sky planners are in
+[docs/PHOTO_MATH_REFERENCES.md](docs/PHOTO_MATH_REFERENCES.md).
+
+## Release material
+- [docs/RELEASE_NOTES_1.0.md](docs/RELEASE_NOTES_1.0.md): what's in 1.0, and its known limits.
+- [docs/PRIVACY.md](docs/PRIVACY.md): the privacy policy to host, written from the one the app
+  shows.
+- [marketing/](marketing/README.md): the App Store text and answers for 1.0, and how CI makes the
+  screenshots.
 
 ## Build and test
 

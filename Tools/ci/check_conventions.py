@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Checks the project rules a compiler can't: CloudKit-safe models, the model registry, logging,
-project settings that must agree across targets, and leftovers from the Axe Manager port.
+project settings that must agree across targets, leftovers from the Axe Manager port, and the App
+Store text's length limits.
 
 Usage: python3 Tools/ci/check_conventions.py
 
@@ -258,6 +259,43 @@ def check_project_settings():
             report("project", path, 1, f"Invalid JSON: {error}")
 
 
+# MARK: - App Store text
+
+# App Store Connect's limits, in characters, for each file in a marketing/<version>/ folder.
+STORE_TEXT_LIMITS = {
+    "name.txt": 30,
+    "subtitle.txt": 30,
+    "promotional_text.txt": 170,
+    "keywords.txt": 100,
+    "description.txt": 4000,
+    "whats_new.txt": 4000,
+    "review_notes.txt": 4000,
+}
+
+
+def check_store_text():
+    for folder in sorted((ROOT / "marketing").glob("*/")):
+        if not any((folder / name).exists() for name in STORE_TEXT_LIMITS):
+            continue
+        for name, limit in STORE_TEXT_LIMITS.items():
+            path = folder / name
+            if not path.exists():
+                report("store-text", path, 1, "Missing; each version folder has every App Store field.")
+                continue
+            text = path.read_text(encoding="utf-8").strip()
+            if not text:
+                report("store-text", path, 1, "Empty.")
+            elif len(text) > limit:
+                report("store-text", path, 1, f"{len(text)} characters; App Store Connect allows {limit}.")
+        keywords = folder / "keywords.txt"
+        if keywords.exists():
+            words = keywords.read_text(encoding="utf-8").strip().split(",")
+            if any(word != word.strip() or not word for word in words):
+                report("store-text", keywords, 1, "Separate keywords with bare commas; spaces count against the limit.")
+            if len(set(word.lower() for word in words)) != len(words):
+                report("store-text", keywords, 1, "A keyword is listed twice.")
+
+
 # MARK: - Main
 
 
@@ -268,6 +306,7 @@ def main():
     check_in_memory_containers()
     check_capabilities()
     check_project_settings()
+    check_store_text()
 
     for check, path, line, message in problems:
         print(f"::error file={path},line={line},title=conventions/{check}::{message}")

@@ -6,7 +6,11 @@ Design: a six-blade aperture iris on a deep blue-to-teal gradient, with warm lig
 the opening. Full-bleed (no baked-in rounded-rect bezel; iOS masks the corners), flat with a soft
 shadow under the lens ring. Deterministic: re-run to regenerate.
 
-Writes one 1024×1024 PNG, the single-size icon Xcode 14+ scales for every device.
+Writes three 1024×1024 PNGs, single-size icons Xcode scales for every device:
+- AppIcon.png, the default;
+- AppIcon-Dark.png, for the dark Home Screen: the same iris on a near-black background;
+- AppIcon-Tinted.png, for tinted Home Screens: the dark icon in grayscale, which iOS colors with
+  the user's tint.
 
 Usage: python3 Tools/generate_app_icon.py   (needs Pillow)
 """
@@ -17,12 +21,14 @@ import os
 from PIL import Image, ImageDraw, ImageFilter
 
 S = 2048  # supersample master, LANCZOS-downscaled to 1024
-OUT = os.path.join(os.path.dirname(__file__), "..",
-                   "ShutterManager", "Assets.xcassets", "AppIcon.appiconset", "AppIcon.png")
+ICON_SET = os.path.join(os.path.dirname(__file__), "..",
+                        "ShutterManager", "Assets.xcassets", "AppIcon.appiconset")
 
 # Palette
 BG_TOP = (14, 26, 43)        # deep navy, top-left
 BG_BOTTOM = (22, 74, 86)     # teal, bottom-right
+DARK_BG_TOP = (10, 12, 16)   # the dark icon's near-black background
+DARK_BG_BOTTOM = (20, 26, 32)
 RING = (196, 204, 212)       # lens ring
 RING_SHADE = (120, 130, 142)
 BLADE_LIGHT = (58, 66, 78)
@@ -76,8 +82,9 @@ def arc_points(p_from, p_to, radius, steps=48):
              radius * math.sin(a0 + (a1 - a0) * i / steps)) for i in range(steps + 1)]
 
 
-def main():
-    img = diagonal_gradient(BG_TOP, BG_BOTTOM, S).convert("RGBA")
+def icon(background_top, background_bottom):
+    """The icon on a diagonal background gradient, at 1024×1024."""
+    img = diagonal_gradient(background_top, background_bottom, S).convert("RGBA")
     cx = cy = S / 2
     ring_outer = S * 0.40
     ring_inner = S * 0.345
@@ -129,8 +136,21 @@ def main():
     draw.ellipse([cx - ring_inner, cy - ring_inner, cx + ring_inner, cy + ring_inner],
                  outline=(235, 240, 245, 255), width=int(S * 0.008))
 
-    img.convert("RGB").resize((1024, 1024), Image.LANCZOS).save(OUT, "PNG", optimize=True)
-    print(f"Wrote {os.path.normpath(OUT)}")
+    return img.convert("RGB").resize((1024, 1024), Image.LANCZOS)
+
+
+def save(image, name):
+    path = os.path.join(ICON_SET, name)
+    image.save(path, "PNG", optimize=True)
+    print(f"Wrote {os.path.normpath(path)}")
+
+
+def main():
+    save(icon(BG_TOP, BG_BOTTOM), "AppIcon.png")
+    dark = icon(DARK_BG_TOP, DARK_BG_BOTTOM)
+    save(dark, "AppIcon-Dark.png")
+    # Grayscale kept as RGB, the color space the other two use.
+    save(dark.convert("L").convert("RGB"), "AppIcon-Tinted.png")
 
 
 if __name__ == "__main__":

@@ -14,7 +14,8 @@ protection (Settings → Branches → `main` → Require status checks → `CI r
 | Foundation tests (Linux) | Linux, in the official Swift image | The Foundation-only unit tests (photography math, film and format catalogs) built with Swift for Linux | App changes |
 | Build and unit tests | macOS | Builds the app and both test targets with **warnings as errors**, then runs the unit tests with coverage | App changes |
 | Release build (device) | macOS | The Release configuration for a device, unsigned: what an archive compiles | App changes |
-| UI tests (iPhone, iPad) | macOS | The XCUITest suite on an iPhone and an iPad simulator | App changes on pull requests, `main`, and manual runs |
+| UI tests (iPhone, iPad) | macOS | The XCUITest suite on an iPhone and an iPad simulator, including the accessibility audit of each tab | App changes on pull requests, `main`, and manual runs |
+| Screenshots (iphone-6.9, ipad-13) | macOS | Captures the App Store screenshots from a fictional library on an iPhone 17 Pro Max and an iPad Pro 13-inch, checks their sizes, and uploads them as artifacts (`marketing/README.md`) | Manual runs with `screenshots` ticked |
 | CI result | Linux | Sums up the jobs above | Always |
 
 Each macOS job writes a summary on the run page (errors and warnings with file and line, test
@@ -108,5 +109,7 @@ xcodebuild test -project ShutterManager.xcodeproj -scheme ShutterManager \
   target and configuration; bundle IDs are the expected three; Swift files aren't referenced
   individually (the targets use folder-synced groups); asset catalog JSON parses.
 - **leftovers**: no names from the Axe Manager port (guitar, tuner, axemanager, and so on).
+- **store-text**: each `marketing/<version>/` folder has every App Store text field, each within
+  App Store Connect's limit, and the keywords have no spaces after commas or repeats.
 
 To accept a flagged line on purpose, end it with `// conventions:allow <check-name>`.

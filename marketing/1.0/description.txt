@@ -1,0 +1,38 @@
+Shutter Manager keeps your camera gear in order and puts the field tools photographers reach for in one place, on iPhone and iPad.
+
+YOUR GEAR
+• Bodies, lenses, lighting, filters, support, memory cards, drones and more, with photos, serial numbers, specs and values
+• Fill in a camera's or lens's details from a photo it took, or scan a barcode
+• Shutter counts charted against the rated life, sensor-cleaning reminders and a maintenance log
+• Gear lent out or borrowed, with due dates and reminders
+• Purchase price and current value, with searches on used-gear sites when it's time to sell
+
+FIELD TOOLS
+• Equivalent exposure, ND filters with a bulb timer, and Sunny 16
+• Depth of field and hyperfocal distance, field of view and crop equivalents
+• Astro exposure with the NPF and 500 rules, star trails, time-lapse, flash and print size
+• Film reciprocity from the makers' own datasheets, and a development timer for your recipes
+• Pick a lens or body from your gear and the tools fill in its numbers
+
+LIGHT METER
+• A reflected-light reading from the camera, averaged or from a spot you touch
+• Solves for aperture, shutter or ISO in third stops, with filter compensation
+• Meters for the film in a loaded roll
+
+SUN, MOON AND MILKY WAY
+• Golden and blue hours, twilight, and where the sun and moon rise and set, on a map
+• Moon phases, and dark, moonless nights with the Milky Way's core up
+• Any place: where you are, a saved place or a point on the map, in that place's own time zone
+
+SHOOTS
+• Plan a shoot with its place, client and that day's light, and get a heads-up before golden hour
+• Pack with kits: gear that's lent out, due for service or due back is flagged
+• Shot lists from built-in or saved templates, ticked off as you go
+• A film roll log, and how often each piece of gear gets used
+
+PRIVATE BY DESIGN
+• No account, no ads, no analytics, no tracking
+• Syncs between your devices through your own private iCloud; the developer runs no servers
+• Export to JSON, CSV or PDF, keep backups on your device, and restore when you need to
+
+Every feature is free. If Shutter Manager helps you, there's a tip jar in Settings.

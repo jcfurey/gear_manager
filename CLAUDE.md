@@ -33,9 +33,9 @@ python3 Tools/ci/check_conventions.py
 **Cloud sessions have no Xcode.** Write the code there and let CI build it. Before pushing:
 - run the convention checks;
 - if a Swift toolchain is available, run `swiftc -parse -swift-version 5` on every changed file;
-- run the Foundation-only tests (`PhotoMath`, the film and format catalogs) with
-  `Tools/linux/run_foundation_tests.sh [path/to/swift]`. They build and run on Linux, and CI runs
-  them there too.
+- run the Foundation-only tests (`PhotoMath`, the film and format catalogs, the privacy policy)
+  with `Tools/linux/run_foundation_tests.sh [path/to/swift]`. They build and run on Linux, and CI
+  runs them there too.
 
 CI treats warnings as errors, so an unused variable fails the build.
 
@@ -48,7 +48,8 @@ its design. In short:
   the Foundation-only tests in the official Swift image.
 - macOS: build for the generic simulator with warnings as errors, then unit tests with coverage;
   an unsigned Release device build; UI tests on iPhone and iPad (pull requests, `main`, and manual
-  runs with `ui_tests: true`).
+  runs with `ui_tests: true`); App Store screenshots on the 6.9" iPhone and 13" iPad (manual runs
+  with `screenshots: true`, see `marketing/README.md`).
 - **CI result** is the single status to require.
 
 Keep these when changing CI:
@@ -96,6 +97,7 @@ the target without a project edit.
   iPad. On iPad the top tab bar leaves room for about two trailing toolbar buttons (search takes
   one), and extra ones fold into a "More" menu, so keep a screen's main action in
   `.primaryAction` and move secondary buttons to the leading side.
+- `AccessibilityAuditTests` runs Xcode's accessibility audit on each tab's main screens.
 
 ### Data layer
 
@@ -243,6 +245,32 @@ Development schema. Deploying to Production is done by hand in CloudKit Console.
   light-meter calibration settings are.
 - **No Pro mode, ever.** Money is a Tip Jar only (`TipJarStore`,
   `jcameronfurey.shuttermanager.tip.*`). Every feature is free.
+  - `ShutterManager.storekit` (the repository root) is the scheme's StoreKit configuration for
+    trying tips in Xcode; a unit test checks it offers exactly `TipProduct.allCases`.
+  - Don't import StoreKitTest: its headers use a type iOS 18 deprecates, which fails the build with
+    warnings as errors.
+- **The privacy policy** has one source, `Utilities/PrivacyPolicy.swift`, which the app shows.
+  `docs/PRIVACY.md`, the public page, is written from it by `Tools/linux/write_privacy_policy.sh`,
+  and a test fails when they differ. Update it, and its date, whenever data leaves the device in a
+  new way.
+- **Accessibility.**
+  - Build `ResponsiveConstants` with the view's `@Environment(\.dynamicTypeSize)`; the argument
+    is required so layouts follow the user's text size.
+  - Hide decorative icons, combine a row that reads as one thing, add `.isSelected` to the chosen
+    option in a list, and say state in words (overdue, up or down, invalid), never by color or a
+    symbol alone.
+  - Don't use a `Label` as a `LabeledContent` value: on iOS 26 it leaves a tall gap under the row.
+    Use an `HStack` of a hidden `Image` and a `Text`.
+  - In a button's label, `.foregroundStyle(.primary)` resolves to the button's tint. Use
+    `Color.primary` and `Color.secondary` for text that shouldn't be tinted.
+  - Charts of a place's day mark hours on that place's clock (`placeHourAxis` in the sky views);
+    Swift Charts' own labels use the device's time zone.
+- **Release material.**
+  - App Store screenshots come from the `screenshots` CI job: `ReleaseScreenshotData` and
+    `ReleaseScreenshotTests` compile only with `RELEASE_SCREENSHOTS`, which only that job sets.
+  - The App Store text is in `marketing/<version>/`, one `.txt` file per field; the convention
+    checks enforce App Store Connect's limits.
+  - `Tools/generate_app_icon.py` writes the default, dark and tinted icons.
 - **Logging and formatting.** Log with `os.Logger` (subsystem `Constants.App.loggerSubsystem`),
   never `print`. Format currency and dates through `CurrencyFormatter` and `DateFormatters`.
   Parse typed numbers with `Double(localizedInput:)` and `Decimal(localizedInput:)`.
