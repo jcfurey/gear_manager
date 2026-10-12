@@ -56,6 +56,21 @@ struct AppColors {
     /// Info color (information, tips)
     static let info = Color.blue
 
+    // MARK: - Status Text
+
+    // Status colors for text, each a system color darkened for light mode, or lightened for dark
+    // mode, until it reads at 4.8:1 or better on a card or grouped background. Plain system red,
+    // orange and green are 2.2 to 3.6:1 on white: fine for icons and fills, not for words.
+
+    /// Done, saved, gained.
+    static let goodText = adaptive(light: 0x207936, dark: 0x30D158)
+    /// Due soon, needs attention.
+    static let warningText = adaptive(light: 0x9C5B00, dark: 0xFF9F0A)
+    /// Overdue, failed, lost value.
+    static let badText = adaptive(light: 0xC92F26, dark: 0xFF655B)
+    /// Neutral status, such as a loan that isn't due yet.
+    static let infoText = adaptive(light: 0x0066D6, dark: 0x399BFF)
+
     // MARK: - Gear Categories
 
     /// A distinct accent color per gear category, so categories read at a glance in the

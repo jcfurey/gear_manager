@@ -128,7 +128,7 @@ struct ShutterCountView: View {
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
                     .annotation(position: .top, alignment: .leading) {
                         Text("Rated \(item.ratedShutterLife.formatted())")
-                            .font(.caption2).foregroundStyle(.orange)
+                            .font(.caption2).foregroundStyle(AppColors.warningText)
                     }
             }
         }

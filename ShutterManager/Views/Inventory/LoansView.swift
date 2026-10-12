@@ -32,7 +32,7 @@ struct LoansView: View {
                     if let due = loan.dueDate {
                         LabeledContent("Due Back") {
                             Text("\(due.formatted(date: .abbreviated, time: .omitted))\(loan.isOverdue ? " · overdue" : "")")
-                                .foregroundStyle(loan.isOverdue ? .red : .primary)
+                                .foregroundStyle(loan.isOverdue ? AppColors.badText : Color.primary)
                         }
                     }
                     if !loan.notes.isEmpty {

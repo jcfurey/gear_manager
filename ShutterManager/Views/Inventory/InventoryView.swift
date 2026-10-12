@@ -170,7 +170,7 @@ struct InventoryView: View {
                 title: "Value",
                 value: CurrencyFormatter.format(displayed.totalEffectiveValue),
                 subtitle: isFiltering ? "filtered total" : "collection total",
-                color: .green,
+                color: AppColors.goodText,
                 constants: constants
             )
         }
@@ -333,19 +333,7 @@ struct GearItemCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: constants.itemSpacing / 2) {
-            // The chip and value on one line when they fit unbroken; otherwise the value goes below,
-            // so a narrow card or large text never breaks the chip mid-word.
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: constants.itemSpacing / 2) {
-                    chipAndBadges.fixedSize()
-                    Spacer(minLength: 0)
-                    valueText?.fixedSize()
-                }
-                VStack(alignment: .leading, spacing: 4) {
-                    chipAndBadges
-                    valueText
-                }
-            }
+            chipAndBadges
 
             Text(item.displayName)
                 .font(constants.subtitleFont.weight(.semibold))
@@ -353,13 +341,19 @@ struct GearItemCard: View {
                 .lineLimit(2)
                 .padding(.top, 4)
 
-            if let subtitle = item.listSubtitle {
-                Text(subtitle)
-                    .font(constants.captionFont)
-                    .foregroundColor(.secondary)
-                    .lineLimit(2)
-                    .padding(.top, 4)
+            // The value sits at the bottom right of every card, so cards line up across the grid
+            // and the chip never has to share its line.
+            HStack(alignment: .firstTextBaseline, spacing: constants.itemSpacing / 2) {
+                if let subtitle = item.listSubtitle {
+                    Text(subtitle)
+                        .font(constants.captionFont)
+                        .foregroundColor(.secondary)
+                        .lineLimit(2)
+                }
+                Spacer(minLength: 0)
+                valueText
             }
+            .padding(.top, 4)
         }
         .padding(constants.padding)
         .frame(maxWidth: .infinity, alignment: .leading)

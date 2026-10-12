@@ -96,7 +96,7 @@ struct EnhancedDataExportView: View {
                     .accessibilityIdentifier("exportButton")
                 } footer: {
                     if let exportError {
-                        Text(exportError).foregroundColor(.red)
+                        Text(exportError).foregroundColor(AppColors.badText)
                     }
                 }
             }

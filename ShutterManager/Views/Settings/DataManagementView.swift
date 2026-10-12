@@ -53,9 +53,9 @@ struct DataImportView: View {
                     .disabled(isImporting)
                 } footer: {
                     if let importError {
-                        Text(importError).foregroundColor(.red)
+                        Text(importError).foregroundColor(AppColors.badText)
                     } else if importSuccess {
-                        Text("Data imported.").foregroundColor(.green)
+                        Text("Data imported.").foregroundColor(AppColors.goodText)
                     }
                 }
 

@@ -232,11 +232,11 @@ struct ReciprocityResultRows: View {
             if result.basis == .extrapolated {
                 Label("Beyond the maker's figures: an estimate that continues their trend. Bracket.",
                       systemImage: "exclamationmark.triangle")
-                    .font(.footnote).foregroundStyle(.orange)
+                    .font(.footnote).foregroundStyle(AppColors.warningText)
             } else if result.basis == .notRecommended {
                 Label("The maker doesn't recommend exposures this long. This continues their trend; bracket.",
                       systemImage: "exclamationmark.triangle")
-                    .font(.footnote).foregroundStyle(.orange)
+                    .font(.footnote).foregroundStyle(AppColors.warningText)
             }
         case .noData:
             ToolResultRow(title: "Exposure", value: ExposureScale.shutterLabel(result.corrected),

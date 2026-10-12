@@ -591,7 +591,7 @@ private struct DevelopmentRunView: View {
                 .buttonStyle(.borderedProminent).controlSize(.large)
                 .accessibilityIdentifier("nextStepButton")
         case .finished:
-            Label("All steps done", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
+            Label("All steps done", systemImage: "checkmark.circle.fill").foregroundStyle(AppColors.goodText)
         }
     }
 }

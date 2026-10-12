@@ -245,7 +245,7 @@ struct ShootDetailView: View {
                     ForEach(issues, id: \.self) { issue in
                         Label(issue, systemImage: "exclamationmark.triangle.fill")
                             .font(.caption)
-                            .foregroundStyle(.orange)
+                            .foregroundStyle(AppColors.warningText)
                     }
                 }
             }

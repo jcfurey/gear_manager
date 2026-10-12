@@ -261,11 +261,14 @@ struct DateStepperRow: View {
 
     var body: some View {
         let calendar = zonedCalendar(timeZone)
+        // Each button's label fills a 44-point target, not just its glyph or word.
         HStack {
             Button {
                 date = calendar.date(byAdding: .day, value: -1, to: date) ?? date
             } label: {
                 Image(systemName: "chevron.left")
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.borderless)
             .accessibilityLabel("Previous day")
@@ -273,14 +276,22 @@ struct DateStepperRow: View {
             DatePicker("Date", selection: $date, displayedComponents: .date)
                 .labelsHidden()
                 .environment(\.timeZone, timeZone)
-            Button("Today") { date = Date() }
-                .buttonStyle(.borderless)
-                .font(.callout)
+            Button {
+                date = Date()
+            } label: {
+                Text("Today")
+                    .font(.callout)
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.borderless)
             Spacer()
             Button {
                 date = calendar.date(byAdding: .day, value: 1, to: date) ?? date
             } label: {
                 Image(systemName: "chevron.right")
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.borderless)
             .accessibilityLabel("Next day")

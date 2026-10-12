@@ -61,7 +61,7 @@ struct BackupManagementView: View {
                         if !backupManager.configuration.includePhotos {
                             Text("These backups cannot restore gear or maintenance photos.")
                                 .font(constants.captionFont)
-                                .foregroundStyle(.orange)
+                                .foregroundStyle(AppColors.warningText)
                         }
                         if let lastBackup = backupManager.lastBackupDate {
                             HStack {
@@ -124,7 +124,7 @@ struct BackupManagementView: View {
                     } footer: {
                         if let error = backupManager.lastBackupError {
                             Text("Error: \(error)")
-                                .foregroundColor(.red)
+                                .foregroundColor(AppColors.badText)
                         } else if backupManager.lastBackupReplacedValueCount > 0 {
                             // Values a backup can't hold (left by an older version or a mistyped
                             // unit) are written as blanks or zeros so the rest is backed up.

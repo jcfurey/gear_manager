@@ -189,7 +189,7 @@ struct MaintenanceSummary: View {
                 // 0.50 record read "0" and totals ending in .50 disagreed with the line items.
                 label: "Cost",
                 value: CurrencyFormatter.formatWithDecimals(records.totalCost),
-                color: .green,
+                color: AppColors.goodText,
                 constants: constants
             )
             
@@ -248,7 +248,7 @@ struct ReminderRow: View {
 
                 Text(dueDateText)
                     .font(constants.captionFont)
-                    .foregroundColor(reminder.isOverdue ? .red : .secondary)
+                    .foregroundColor(reminder.isOverdue ? AppColors.badText : .secondary)
             }
             
             Spacer()

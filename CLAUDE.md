@@ -97,7 +97,8 @@ the target without a project edit.
   iPad. On iPad the top tab bar leaves room for about two trailing toolbar buttons (search takes
   one), and extra ones fold into a "More" menu, so keep a screen's main action in
   `.primaryAction` and move secondary buttons to the leading side.
-- `AccessibilityAuditTests` runs Xcode's accessibility audit on each tab's main screens.
+- `AccessibilityAuditTests` runs Xcode's accessibility audit (labels, touch targets, reachable
+  text) on each tab's main screens. Its header says why the other audit types are left out.
 
 ### Data layer
 
@@ -259,6 +260,10 @@ Development schema. Deploying to Production is done by hand in CloudKit Console.
   - Hide decorative icons, combine a row that reads as one thing, add `.isSelected` to the chosen
     option in a list, and say state in words (overdue, up or down, invalid), never by color or a
     symbol alone.
+  - Colored text uses `AppColors`: `goodText`, `warningText`, `badText` and `infoText` for status,
+    `category(_:)` for gear categories, and the accent. Each reads at 4.8:1 or better in both
+    modes; plain system red, orange, green and yellow are for icons and fills only.
+  - Buttons and other controls get a 44-point target, even when they show only a glyph.
   - Don't use a `Label` as a `LabeledContent` value: on iOS 26 it leaves a tall gap under the row.
     Use an `HStack` of a hidden `Image` and a `Text`.
   - In a button's label, `.foregroundStyle(.primary)` resolves to the button's tint. Use

@@ -119,17 +119,17 @@ struct GearDetailView: View {
                 if let loan {
                     statusRow(loan.isOverdue ? "\(loan.summary) · overdue" : loan.summary,
                               icon: loan.direction == .lentOut ? "person.crop.circle.badge.clock" : "building.2",
-                              color: loan.isOverdue ? .red : .blue)
+                              color: loan.isOverdue ? AppColors.badText : AppColors.infoText)
                 }
                 if item.serviceNeeded {
-                    statusRow("Needs service", icon: "wrench.and.screwdriver.fill", color: .orange)
+                    statusRow("Needs service", icon: "wrench.and.screwdriver.fill", color: AppColors.warningText)
                 }
                 if item.isSensorCleaningDue {
-                    statusRow("Sensor cleaning due", icon: "sparkles", color: .orange)
+                    statusRow("Sensor cleaning due", icon: "sparkles", color: AppColors.warningText)
                 }
                 if item.isNearShutterLife, let used = item.shutterLifeUsed {
                     statusRow("Shutter at \(used.formatted(.percent.precision(.fractionLength(0)))) of its rated life",
-                              icon: "exclamationmark.triangle.fill", color: used >= 1 ? .red : .orange)
+                              icon: "exclamationmark.triangle.fill", color: used >= 1 ? AppColors.badText : AppColors.warningText)
                 }
             }
         }
@@ -280,7 +280,7 @@ struct GearDetailView: View {
                 LabeledContent(loan.summary) {
                     if let due = loan.dueDate {
                         Text("Due \(due.formatted(date: .abbreviated, time: .omitted))\(loan.isOverdue ? " · overdue" : "")")
-                            .foregroundStyle(loan.isOverdue ? .red : .secondary)
+                            .foregroundStyle(loan.isOverdue ? AppColors.badText : Color.secondary)
                     }
                 }
             }
@@ -304,7 +304,7 @@ struct GearDetailView: View {
             if let next = item.nextSensorCleaningDate {
                 LabeledContent("Next Cleaning") {
                     Text(next.formatted(date: .abbreviated, time: .omitted))
-                        .foregroundStyle(item.isSensorCleaningDue ? .orange : .primary)
+                        .foregroundStyle(item.isSensorCleaningDue ? AppColors.warningText : Color.primary)
                 }
             }
             // Records the cleaning (history, last-cleaned date and the reminder cycle) in one save.
@@ -422,7 +422,7 @@ struct GearDetailView: View {
         let percent = NSDecimalNumber(decimal: delta).doubleValue / NSDecimalNumber(decimal: purchase).doubleValue
         let amount = "\(CurrencyFormatter.format(abs(delta))) (\(abs(percent).formatted(.percent.precision(.fractionLength(0)))))"
         // VoiceOver reads the triangles as shapes, so it gets the direction in words.
-        return ("\(delta > 0 ? "▲" : "▼") \(amount)", "\(delta > 0 ? "Up" : "Down") \(amount)", delta > 0 ? .green : .red)
+        return ("\(delta > 0 ? "▲" : "▼") \(amount)", "\(delta > 0 ? "Up" : "Down") \(amount)", delta > 0 ? AppColors.goodText : AppColors.badText)
     }
 
     // MARK: - Hero photo
