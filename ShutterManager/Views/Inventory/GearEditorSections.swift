@@ -240,6 +240,9 @@ struct MountField: View {
                 }
             } label: {
                 Image(systemName: "list.bullet")
+                    // A full-size touch target, not just the glyph.
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
             }
             .accessibilityLabel("Choose a mount")
         }

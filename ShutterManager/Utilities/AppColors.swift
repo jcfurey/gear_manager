@@ -60,21 +60,36 @@ struct AppColors {
 
     /// A distinct accent color per gear category, so categories read at a glance in the
     /// inventory list and grid. The single source of truth for category color.
+    ///
+    /// Each is a system color darkened for light mode, or lightened for dark mode, until text in
+    /// it reaches 4.8:1 against a card and against the category chip's tint (WCAG AA asks for
+    /// 4.5:1). Plain system yellow, for one, is barely readable on white.
     static func category(_ category: GearCategory) -> Color {
-        switch category {
-        case .cameraBody: return .blue
-        case .lens: return .indigo
-        case .lighting: return .yellow
-        case .support: return .brown
-        case .filter: return .purple
-        case .drone: return .cyan
-        case .audio: return .pink
-        case .power: return .green
-        case .memoryCard: return .orange
-        case .bag: return .mint
-        case .accessory: return .teal
-        case .other: return .gray
+        let (light, dark): (UInt32, UInt32) = switch category {
+        case .cameraBody: (0x005FC7, 0x3B9DFF)   // blue
+        case .lens: (0x5453CD, 0x9392EE)         // indigo
+        case .lighting: (0x786000, 0xFFD60A)     // yellow
+        case .support: (0x766045, 0xB29673)      // brown
+        case .filter: (0x8A41AF, 0xCB78F4)       // purple
+        case .drone: (0x1E6A8C, 0x64D2FF)        // cyan
+        case .audio: (0xBA213E, 0xFF6382)        // pink
+        case .power: (0x1E7133, 0x30D158)        // green
+        case .memoryCard: (0x915500, 0xFF9F0A)   // orange
+        case .bag: (0x006F6A, 0x63E6E2)          // mint
+        case .accessory: (0x1D6B79, 0x40C8E0)    // teal
+        case .other: (0x636367, 0x9C9CA0)        // gray
         }
+        return adaptive(light: light, dark: dark)
+    }
+
+    /// `light` in light mode and `dark` in dark mode, each written 0xRRGGBB.
+    private static func adaptive(light: UInt32, dark: UInt32) -> Color {
+        Color(UIColor { traits in rgbColor(traits.userInterfaceStyle == .dark ? dark : light) })
+    }
+
+    private static func rgbColor(_ rgb: UInt32) -> UIColor {
+        UIColor(red: CGFloat((rgb >> 16) & 0xFF) / 255, green: CGFloat((rgb >> 8) & 0xFF) / 255,
+                blue: CGFloat(rgb & 0xFF) / 255, alpha: 1)
     }
 
     // MARK: - UI Element Colors
