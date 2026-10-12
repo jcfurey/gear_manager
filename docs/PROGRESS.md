@@ -9,7 +9,86 @@ is still to check on a device. Add a section when a milestone finishes.
 | M2 — Tools: calculators and film | Done (2026-10-11) |
 | M3 — Light Meter and sky planning | Done (2026-10-11) |
 | M4 — Shoots | Done (2026-10-11) |
-| M5 — 1.0 release prep | Not started |
+| M5 — 1.0 release prep | Done in code (2026-10-12); the release checklist in the roadmap is the owner's |
+
+---
+
+## M5 — 1.0 release prep
+
+**Done 2026-10-12** on `claude/camera-gear-manager-e1zzxt` (commits `af1e66d`…`4dd3a1e`, and
+the commit that adds this section). What's left needs your Apple account and devices: the
+[release checklist](../ROADMAP.md#release-checklist).
+
+### What shipped
+- **Tip Jar:** `ShutterManager.storekit` offers the three tips when you run from Xcode, and a
+  test checks it against the app's list.
+- **About and privacy:**
+  - About describes all seven areas of the app.
+  - The privacy policy has one source, shown in the app and written to `docs/PRIVACY.md` for
+    hosting; a test fails if the two differ. It covers the barcode lookup, Apple Maps, iCloud
+    and notifications.
+- **App Store material:**
+  - `marketing/1.0/`: name, subtitle, promotional text, keywords, description, What's New and
+    review notes as one file per field, checked against App Store Connect's limits, plus
+    `APP_STORE.md` with the category, age rating, App Privacy answer, tip products and
+    screenshot order.
+  - `docs/RELEASE_NOTES_1.0.md`: what's in 1.0 and its known limits.
+  - Dark and tinted app icons from the same generator.
+- **Screenshots:** a CI job captures eight screens on the 6.9" iPhone and 13" iPad from a
+  fictional library, in dark mode at 9:41, and checks their sizes.
+- **Accessibility:**
+  - Dynamic Type everywhere `ResponsiveConstants` is used, now a required argument; line limits
+    relax at accessibility sizes, and wide rows stack.
+  - VoiceOver: decorative icons hidden, rows combined, chosen options marked as selected, chart
+    bands and the map labelled, countdowns spoken as durations, and the sun and moon chart's
+    moment moved by swiping up or down.
+  - State in words, not only color: overdue, invalid input, up or down in value.
+  - Readable color: the light-mode accent, category colors and status text all reach 4.8:1 or
+    better in both modes (`AppColors`).
+  - 44-point targets on the day stepper and the mount menu.
+- **Tests:**
+  - 70 Foundation-only tests (2 new for the privacy policy), which run on Linux too;
+  - 179 unit tests in all;
+  - 17 UI tests on each of iPhone and iPad, 5 of them new: Xcode's accessibility audit on each
+    tab's main screens.
+
+### Verified
+[CI run 38190897231](https://github.com/jcfurey/gear_manager/actions/runs/38190897231) passed
+every job:
+- the Foundation tests in the Swift 6.2 Linux image;
+- the Debug and Release builds with warnings as errors;
+- 179 unit tests;
+- 17 UI tests on each of iPhone 17 and iPad (iOS 26.5), the accessibility audit included;
+- the screenshots on iPhone 17 Pro Max and iPad Pro 13-inch (M5).
+
+### Changes from the plan
+- **The audit runs three checks** (labels, touch targets, reachable text). A full audit of every
+  type was run once, and its real findings were fixed. Its Dynamic Type check flagged system text
+  styles that do scale, and made two iPad audits run past the 10-minute test limit. Its contrast
+  check flagged text under the iOS 26 bars' edge fade. `AccessibilityAuditTests` says why.
+- **CloudKit Production deployment and device acceptance** are steps in the release checklist,
+  since they need your account and devices.
+- **Not in the plan:**
+  - App Store text checked by the convention checks;
+  - a script that writes the public privacy page.
+
+### Found by the screenshots and the audit, and fixed
+- On iOS 26, a `Label` used as a row's value left a tall empty gap under the gear Category and
+  shoot Type rows.
+- The sun and moon chart labelled its hours, and the date picker showed the day, in the device's
+  time zone rather than the place's.
+- Button rows set `.primary` text, which a button tints with the accent.
+- The inventory card's category chip broke mid-word beside a badge.
+- The light-mode accent was 2.5:1 on white; system yellow, mint, cyan and orange category text,
+  and red, orange and green status text, were 1.6 to 3.6:1.
+- Importing StoreKitTest fails the build with warnings as errors (a header uses a type iOS 18
+  deprecates), so the tip test checks the configuration file instead.
+
+### Still to check on a device
+Everything in the release checklist's acceptance step, and in particular:
+- VoiceOver and the largest text sizes on each tab, which simulators can only approximate;
+- the light-mode colors, which the screenshots (dark mode) don't show;
+- the dark and tinted icons on the Home Screen.
 
 ---
 

@@ -197,7 +197,8 @@ struct InventoryView: View {
     private func gridLayout(_ constants: ResponsiveConstants, items: [GearItem]) -> some View {
         ScrollView {
             LazyVGrid(
-                columns: [GridItem(.adaptive(minimum: 300, maximum: 400), spacing: constants.itemSpacing)],
+                // Top-aligned, so cards of different heights in a row share their top edge.
+                columns: [GridItem(.adaptive(minimum: 300, maximum: 400), spacing: constants.itemSpacing, alignment: .top)],
                 spacing: constants.sectionSpacing
             ) {
                 ForEach(items) { item in

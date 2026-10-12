@@ -287,6 +287,9 @@ from this plan, and what is still to check on a device.
   golden-hour heads-up, usage per item. The light meter can take ISO from a loaded roll.
 
 ### M5 — 1.0 release prep
+**Status:** done in code 2026-10-12. See [docs/PROGRESS.md](docs/PROGRESS.md); the release
+checklist below is what's left.
+
 - Tip Jar products, About, privacy policy, app icon, screenshots and App Store text.
 - Accessibility pass, UI tests for the main flows, release notes.
 - CloudKit Production schema deployment and acceptance on your devices: yours to do, in the
