@@ -50,6 +50,10 @@ screenshots, logs and the full test report.
   job installs the built app, launches it with `-uiTestInMemory`, waits ten seconds and quits it,
   where nothing is timing the launch. That first install and launch has taken 2.5 to 4 minutes,
   which is why the step is allowed 15.
+- **The unit-test job does the same.** Its tests run in under a minute, but one run sat for 16
+  minutes between the test command starting and the first test, with nothing in the log to say
+  why. With the boot and first launch in their own step, a slow simulator shows there, and the
+  job's 30 minutes aren't spent inside a command that prints nothing.
 - **The unit-test host app uses a temporary in-memory library.** The unit tests build their own
   containers, so the app hosting them doesn't open the simulator's library or start CloudKit
   setup. That alone took the unit-test step from about 7 minutes to under 4.

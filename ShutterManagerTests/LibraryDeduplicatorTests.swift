@@ -120,6 +120,14 @@ struct LibraryDeduplicatorTests {
 
     // MARK: - Finding
 
+    /// A model added to the schema has to be added to the deduplicator too.
+    @Test func everyModelInTheSchemaIsCovered() {
+        let covered = Set(LibraryDeduplicator.models.map { String(describing: $0) })
+        let schema = Set(AppSchema.models.map { String(describing: $0) })
+        #expect(covered == schema)
+        #expect(LibraryDeduplicator.models.count == AppSchema.models.count)
+    }
+
     @Test func aLibraryHeldOnceHasNothingToFold() throws {
         let container = try TestSupport.makeContainer()
         let context = container.mainContext

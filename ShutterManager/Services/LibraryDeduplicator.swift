@@ -54,6 +54,15 @@ enum LibraryDeduplicator {
         }
     }
 
+    /// Every model this knows how to find and fold. A test compares it with `AppSchema.models`,
+    /// so a model added there can't be forgotten here: add it to `find` and `merge` as well.
+    static let models: [any PersistentModel.Type] = [
+        GearItem.self, GearPhoto.self, MaintenanceRecord.self, MaintenanceReminder.self,
+        ShutterCountReading.self, GearLoan.self, DevelopmentRecipe.self, DevelopmentStep.self,
+        SavedPlace.self, Shoot.self, ShotListItem.self, Kit.self, ShotListTemplate.self,
+        ShotListTemplateItem.self, FilmRoll.self
+    ]
+
     // MARK: - Finding
 
     /// Counts the extra copies without changing anything.

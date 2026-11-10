@@ -118,6 +118,14 @@ These are built and tested, and aren't in the 1.0 App Store text or release note
     it then counts for that pair.
   - A lens made for a smaller format than the body's says so.
   - A shoot's packing check flags a lens that goes on none of the bodies packed with it.
+- **Usage from photos also says how each lens was used:** a zoom's range and the focal lengths
+  used most, with a small chart, and the apertures used most.
+- **Find Duplicates** (Settings): importing a file before iCloud has finished syncing the same
+  library puts every record in twice. This counts the records that share an ID and folds each
+  set into one, keeping the copy changed last with anything only another copy had. A backup is
+  made first, and the import screen now warns when iCloud hasn't finished.
+- **Timers alert in the app when notifications are off:** a banner, a haptic and a short tone at
+  each agitation, pour and end, on whichever screen is up, while the app is open.
 - **Fixes from a review of the 1.0 code:** maintenance reminders now notify; timer alerts keep
   the ones that matter when there are more than iOS allows; a shoot keeps its clock time when its
   place changes time zone; exports and backups that are too large say so instead of failing

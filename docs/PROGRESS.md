@@ -11,6 +11,79 @@ is still to check on a device. Add a section when a milestone finishes.
 | M4 — Shoots | Done (2026-10-11) |
 | M5 — 1.0 release prep | Done in code (2026-10-12); the release checklist in the roadmap is the owner's |
 | After 1.0 — later candidates, round 1 | Done (2026-11-10); not merged to `main` yet |
+| After 1.0 — round 2: what the review left | Done (2026-11-10); not merged to `main` yet |
+
+---
+
+## After 1.0 — round 2: what the review left
+
+**Done 2026-11-10** on `claude/camera-gear-manager-e1zzxt` (commits `d522bd9`, `e9ecf5c`,
+`adacdc3`, `0a982ca`, and the commit that adds this section). The roadmap's remaining candidates
+each wait on a decision (a second app target, a change to the privacy story, demand), so this
+round took what round 1's review had left, and the one extension round 1 had noted.
+
+### What shipped
+- **Find Duplicates** (`d522bd9`), in Settings. Importing a file before iCloud has finished
+  downloading the same library leaves every record in twice.
+  - It counts the records that share an ID, by kind, and folds each set into one when asked.
+  - The copy changed last is kept; where a record keeps no change date, the copy with more
+    hanging off it. Photos, history, list entries, and places on shoots, in kits and on rolls
+    that only another copy had move to the kept one.
+  - A backup is made first, the other tabs are rebuilt afterwards, and a failed merge is rolled
+    back.
+  - The import screen warns when iCloud is syncing, or hasn't finished a download since the app
+    opened.
+- **Timers alert in the app when notifications are off** (`e9ecf5c`). A bulb timer used to end
+  silently, and a development step's agitations showed only on its own screen.
+  - While the app is open, each alert comes as a banner, a haptic and a two-note tone, on
+    whichever screen is up.
+  - Of several due together, the one that ends an exposure or a step wins over an agitation. An
+    alert more than two seconds old is skipped, so coming back from the background replays
+    nothing.
+  - The tone is made in code and played as a system alert sound: it mixes with other audio and
+    is a vibration when the phone is on silent.
+- **Usage from photos says how each lens was used** (`0a982ca`): a zoom's range and its most
+  used focal lengths, with a chart of shots at each focal length marked on a zoom ring, and the
+  apertures used most.
+- **Tests:** 127 Foundation-only tests (8 new), 319 unit tests in all (25 new), and 26 UI
+  tests on each device (1 new).
+
+### Verified
+- `0a982ca`: [run 42757396845](https://github.com/jcfurey/gear_manager/actions/runs/42757396845)
+  passed the convention checks, 127 Foundation-only tests on Linux, the Debug and Release builds
+  with warnings as errors, and 318 unit tests.
+- The commit that adds this section, with one more unit test and the CI change below: the run,
+  with UI tests on iPhone and iPad, is recorded here once it finishes.
+
+### Changes from the plan
+- **Find Duplicates is a tool, not an automatic pass.** Round 1 left this as "a pass that finds
+  records doubled by importing". Two copies of a record are the same in every field, the ID
+  included, so no two devices can be sure of keeping the same one. Run automatically, one
+  device could keep the copy another deletes, and iCloud would remove both. So the user starts
+  it, and the screen says to do it on one device.
+- **The in-app alert only speaks when a notification can't.** With notifications on, the
+  notification is already shown in the app, with its sound; a second alert would double it.
+
+### Found by CI and fixed
+- The test build failed on `e9ecf5c`: a helper's default argument read a main-actor static,
+  which Swift 5 mode reports as an error under warnings-as-errors. The pitfall was already in
+  `CLAUDE.md`; the static is now nonisolated (`adacdc3`).
+- The unit-test step on `0a982ca` took 17 minutes for 38 seconds of tests: the runner's
+  simulator sat for 16 minutes before the first test. The job now boots the simulator and
+  launches the app once in a step of its own, as the UI-test job has since round 1.
+
+### Left for later
+- A package format so a large library exports and backs up with its photos. It changes the
+  backup and restore path, so it's best chosen deliberately rather than slipped in.
+- A record deleted on another device while its detail screen is open here. It needs two devices
+  on one iCloud account to see what happens, and to check any fix.
+
+### Still to check on a device
+- **The timer tone:** that it's audible over music, vibrates on silent, and comes at each
+  agitation and at the end with notifications off. A simulator plays no alert sounds.
+- **Find Duplicates on a doubled library:** import an export on a second device before iCloud
+  has synced, run it on one device, and watch the other follow.
+- **Focal lengths and apertures** from real files, a zoom's especially.
 
 ---
 
@@ -137,7 +210,7 @@ Each commit ran CI, the later ones with UI tests on iPhone 17 and iPad (iOS 26.5
   both.
 
 ### Left for later
-These came out of the review and weren't fixed here. The first two are in the roadmap's open list.
+These came out of the review and weren't fixed here. Round 2, above, took the first and third.
 - A pass that finds records doubled by importing a file before iCloud finished syncing. Today the
   import screen warns about it.
 - A package format so a large library exports and backs up with its photos.

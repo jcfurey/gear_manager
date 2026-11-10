@@ -85,8 +85,9 @@ the target without a project edit.
 - `Services/`: persistence, export/import, backups, reminders, EXIF, Tip Jar, iCloud status,
   `ToolTimers` (the running bulb and development timers), the camera (`CaptureSessionCoordinator`,
   `BarcodeScannerService`, `LightMeterService`), `LocationService`, `ShootAlertScheduler`, the
-  printed pages (`PrintDocument`, `InsurerReportRenderer`, `LabelSheetRenderer`) and Usage from
-  Photos (`PhotoUsageReader`, `PhotoUsageRecorder`).
+  printed pages (`PrintDocument`, `InsurerReportRenderer`, `LabelSheetRenderer`), Usage from
+  Photos (`PhotoUsageReader`, `PhotoUsageRecorder`), `LibraryDeduplicator` and `TimerCue` (a
+  timer's alert when notifications can't show it).
 - `Views/`: `Inventory/`, `Tools/`, `LightMeter/`, `Shoots/` (the shoot log, kits, film rolls,
   shot-list templates), `Places/` (choosing a place), `Settings/`, `Shared/`.
 - `Utilities/`: constants, schema, formatters, import validation, photo ingest, marketplace links.
@@ -173,6 +174,15 @@ Development schema. Deploying to Production is done by hand in CloudKit Console.
 - **After the library is replaced** (a replace-import, Delete All Data), call
   `AppNavigation.libraryWasReplaced()`: the tabs are rebuilt, so no screen is left holding a
   deleted record.
+- **Doubled records.** A file imported before iCloud has finished downloading the same library
+  leaves every record in twice, as two rows with one `id`: CloudKit allows no unique constraint.
+  - `LibraryDeduplicator` finds them and folds each set into one (Settings → Find Duplicates). It
+    keeps the copy changed last, then the one with more hanging off it, and moves over the parts
+    and links only another copy had.
+  - It runs only when the user asks. Never make it automatic: nothing in a row says which copy
+    it is, so two devices choosing for themselves could each keep the copy the other deletes.
+  - A new model is added to its `models`, `find` and `merge`; a test compares `models` with
+    `AppSchema.models`.
 - **One place for "everything".**
   - Export and backups read the library through `LibraryContents.fetch(from:)`. A new top-level
     model is added there, and to `LibraryExport` as an optional array so older files still decode.
@@ -207,6 +217,8 @@ Development schema. Deploying to Production is done by hand in CloudKit Console.
     remembered per device (`PhotoUsageMatchStore`), not synced.
   - No tally is stored. `PhotoUsageRecorder` writes shutter-count readings, gear the user asks to
     add, and a shoot or its gear, in one save: an item's use still comes from the shoot log.
+  - A lens's group also counts the focal lengths and apertures its shots were taken at, shown as
+    a line of words and, for a zoom, a chart. Those are shown, not saved.
   - The pickers can't be driven from a UI test: `-uiTestPhotoUsageSample` (Debug) adds a button
     that reads a fixed batch.
 - **Money** is `Decimal?` (`purchasePrice`, `currentValue`). There is no price history and there
@@ -221,6 +233,9 @@ Development schema. Deploying to Production is done by hand in CloudKit Console.
   - They don't depend on the Gear Reminders setting.
   - `ToolTimers.shared` holds the running timers for the session. Timing comes from wall-clock
     dates, so it stays right in the background.
+  - When notifications can't be shown, `ToolTimers.giveDueCues` gives each alert through
+    `TimerCue` while the app is open: a banner, a haptic and a tone made in code
+    (`TimerToneData`). With notifications on it does nothing, so no alert comes twice.
 - **Photography math.**
   - `Models/PhotoMath/` stays Foundation-only, with lengths in millimetres, times in seconds and
     temperatures in °C.

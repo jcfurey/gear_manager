@@ -113,7 +113,7 @@ jobs:
         id: sim
         run: python3 Tools/ci/select_simulator.py iPhone
       # Builds for the generic simulator (ARCHS keeps it to the runner's architecture). The
-      # simulator boots afterwards, in the test step: booting it during the build made the build
+      # simulator boots afterwards, in its own step: booting it during the build made the build
       # take 4-5 minutes instead of under one, because the build's asset tools wait on the same
       # simulator runtime.
       - name: Build for testing
@@ -132,6 +132,22 @@ jobs:
       - name: Summarize build
         if: always() && steps.sim.outcome == 'success'
         run: python3 Tools/ci/summarize_xcresult.py build "$RUNNER_TEMP/Build.xcresult" "Debug build (simulator)"
+      # As in the UI-test job: boot the simulator and launch the app once before anything times
+      # it. Left to the test command, one run sat for 16 minutes between starting and the first
+      # test, with nothing in the log to say whether it was the boot or the launch.
+      - name: Boot the simulator and launch the app once
+        timeout-minutes: 20
+        env:
+          UDID: ${{ steps.sim.outputs.udid }}
+          APP: ${{ runner.temp }}/DerivedData/Build/Products/Debug-iphonesimulator/ShutterManager.app
+          BUNDLE_ID: jcameronfurey.shuttermanager
+        run: |
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl install "$UDID" "$APP"
+          xcrun simctl launch "$UDID" "$BUNDLE_ID" -uiTestInMemory
+          sleep 10
+          xcrun simctl terminate "$UDID" "$BUNDLE_ID" || true
       - name: Unit tests
         env:
           UDID: ${{ steps.sim.outputs.udid }}

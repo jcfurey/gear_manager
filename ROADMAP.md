@@ -371,6 +371,9 @@ as they come up.
   carry, and the gear used added to the shoot log.
 - Lens and body compatibility, including adapters: which of your lenses go on which of your
   bodies, from flange distances and the makers' own adapters, with your adapters counted.
+- From usage from photos: the focal lengths and apertures each lens was used at.
+- Find Duplicates, for a library doubled by importing a file before iCloud finished syncing.
+- Timer alerts in the app when notifications are off.
 
 **Still open**
 - More categories and category-specific fields as they're needed.
@@ -380,7 +383,5 @@ as they come up.
   has a usage quota, so it changes the privacy story.
 - Rental-house or studio mode (checking gear out to clients). A big build for a different user;
   scope it only if there's demand.
-- From usage from photos: which focal lengths and apertures you actually shoot at, per lens.
 - A package format for exports and backups, so a large library keeps its photos in one file (today
   an export past the size limit is refused, and a backup past it leaves the photos out).
-- A pass that finds records doubled by importing a file before iCloud finished syncing.
