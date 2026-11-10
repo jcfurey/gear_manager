@@ -1,6 +1,6 @@
 # Shutter Manager Privacy Policy
 
-Last updated: October 11, 2026
+Last updated: November 10, 2026
 
 ## What the App Stores
 
@@ -19,12 +19,14 @@ Shutter Manager has no account system, no ads, no analytics and no tracking. You
 - Your library is stored with Apple's SwiftData and, when iCloud is on, synced to your private iCloud database (CloudKit). The developer runs no servers and can't see it.
 - Exports and backups go only where you send them. Local backups include photos by default and can keep records you later delete.
 - Recovery tools can export the stored database and photos; nothing is sent automatically.
+- The report for your insurer and QR labels are PDFs made on your device, and go only where you send or print them. A label's code holds only an ID that your own library can look up.
 
 ## Camera and Photos
 
 - The camera is used to scan barcodes and as a light meter. Frames are processed on your device and never stored or sent; the light meter reads only the camera's exposure settings.
 - Photos are chosen with the system photo picker; the app can't see the rest of your library and never saves to it.
-- "Fill from a Photo" reads the camera and lens details in a photo's metadata on your device. The photo itself isn't kept.
+- "Fill from a Photo" and "Usage from Photos" read the camera and lens details in a photo's metadata on your device. The photos themselves aren't copied or kept.
+- "Usage from Photos" can also read image files or a folder you choose in the system file picker. It reads only what you choose, and only those details.
 - Gear photos are resized before they're stored, and their location data is removed.
 
 ## Location and Maps

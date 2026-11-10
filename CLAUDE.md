@@ -79,10 +79,14 @@ the target without a project edit.
     positions, rise and set, twilights, moon phases, Milky Way windows, and `ShootLight`, a
     shoot's golden hours). Sources are in
     `docs/PHOTO_MATH_REFERENCES.md`; comments cite it rather than re-deriving.
-  - `Export/`: `LibraryExport` and its DTOs.
+  - `Export/`: `LibraryExport` and its DTOs, and the values the printed pages are laid out from
+    (`InsurerReport`, `GearLabel` and `LabelSheet`).
+  - `PhotoUsage.swift`: Foundation-only counting and matching for Usage from Photos.
 - `Services/`: persistence, export/import, backups, reminders, EXIF, Tip Jar, iCloud status,
   `ToolTimers` (the running bulb and development timers), the camera (`CaptureSessionCoordinator`,
-  `BarcodeScannerService`, `LightMeterService`), `LocationService` and `ShootAlertScheduler`.
+  `BarcodeScannerService`, `LightMeterService`), `LocationService`, `ShootAlertScheduler`, the
+  printed pages (`PrintDocument`, `InsurerReportRenderer`, `LabelSheetRenderer`) and Usage from
+  Photos (`PhotoUsageReader`, `PhotoUsageRecorder`).
 - `Views/`: `Inventory/`, `Tools/`, `LightMeter/`, `Shoots/` (the shoot log, kits, film rolls,
   shot-list templates), `Places/` (choosing a place), `Settings/`, `Shared/`.
 - `Utilities/`: constants, schema, formatters, import validation, photo ingest, marketplace links.
@@ -161,8 +165,14 @@ Development schema. Deploying to Production is done by hand in CloudKit Console.
   actor. It rejects only what can hurt the app: non-finite values, magnitudes past
   `Constants.DataLimits`, and record counts over the limit. `LibraryExport.formatVersion` rises
   only for a change older versions can't read; a newer file is refused with a clear message.
+- **Too large to write.** An export past `DataExportService`'s size limit is refused with
+  `ExportError.tooLarge`, which says to leave the photos out. A backup that large is written
+  without its photos, and the Backups screen says so.
 - **Import strategies.** Import writes through an isolated context with one final save. Merge skips
   records whose ID already exists; replace removes what the file doesn't have.
+- **After the library is replaced** (a replace-import, Delete All Data), call
+  `AppNavigation.libraryWasReplaced()`: the tabs are rebuilt, so no screen is left holding a
+  deleted record.
 - **One place for "everything".**
   - Export and backups read the library through `LibraryContents.fetch(from:)`. A new top-level
     model is added there, and to `LibraryExport` as an optional array so older files still decode.
@@ -180,12 +190,31 @@ Development schema. Deploying to Production is done by hand in CloudKit Console.
 - **Photos.** Read EXIF (`PhotoMetadataReader`) from the original bytes *before* `PhotoIngest`
   downsamples them. Stored photos have their location removed. Only Nikon maker notes expose a
   shutter count through ImageIO.
+- **Printed pages** (the report for your insurer, QR labels).
+  - Lay a page out first as `PrintElement`s with frames, then draw it with `PrintDocument`. The
+    tests check the layout's frames and read the PDF back with PDFKit.
+  - Paper comes from `PrintPaper.size()`: Letter where it's the custom, A4 elsewhere.
+  - Say "a report for your insurer". The word "insurance" is banned from the app's strings and the
+    App Store text (the `wording` convention check).
+- **QR labels.** A label's code is a `LabelLink`: `shuttermanager://kit/<id>` or
+  `shuttermanager://gear/<id>`, an ID and nothing else. The scheme is in `Info.plist`;
+  `AppNavigation.open(_:)` handles it and `ContentView` shows what it names. Never change the
+  link's form: printed labels can't be updated.
+- **Usage from Photos** (`PhotoUsageView`, from Collection and from a shoot).
+  - `PhotoUsageReader` reads only metadata, from the file where the system put it
+    (`PhotoMetadataReader.read(contentsOf:)`); a raw file and a JPEG of the same name are one shot.
+  - `PhotoUsageMatcher` matches by serial number, then by name. A match the user chooses is
+    remembered per device (`PhotoUsageMatchStore`), not synced.
+  - No tally is stored. `PhotoUsageRecorder` writes shutter-count readings, gear the user asks to
+    add, and a shoot or its gear, in one save: an item's use still comes from the shoot log.
+  - The pickers can't be driven from a UI test: `-uiTestPhotoUsageSample` (Debug) adds a button
+    that reads a fixed batch.
 - **Money** is `Decimal?` (`purchasePrice`, `currentValue`). There is no price history and there
   are no price alerts: the user enters a purchase price and an optional current value.
   `MarketplaceSearch` opens searches on used-gear sites.
-- **Gear reminders** (sensor cleaning, loan due dates) go through `NotificationManager`. Its
-  notification-center calls are injectable for tests. Reminders are reconciled on foreground,
-  import, restore and CloudKit remote changes.
+- **Gear reminders** (sensor cleaning, loan due dates, maintenance reminders) go through
+  `NotificationManager`. Its notification-center calls are injectable for tests. Reminders are
+  reconciled on foreground, import, restore and CloudKit remote changes.
 - **Timer alerts** (bulb exposures; development agitations, pour warnings and step ends) go through
   `NotificationManager.scheduleTimerAlerts(_:group:)`.
   - Their identifiers start with `timer_`, so a gear-reminder refresh never removes them.
@@ -281,6 +310,12 @@ Development schema. Deploying to Production is done by hand in CloudKit Console.
   Parse typed numbers with `Double(localizedInput:)` and `Decimal(localizedInput:)`.
 - **Constants.** `Utilities/Constants.swift` holds magic numbers and UserDefaults keys in nested
   enums.
+- **Swift pitfalls CI has caught here.**
+  - Don't name an enum case `none`: next to an optional it reads as `Optional.none`, with a
+    warning. Use a word for what it means (`unmatched`, `leftOut`).
+  - Don't name a local after the method that makes it (`let pages = pages(for:)`).
+  - A default argument can't read a main-actor static: take an optional and fill it in inside.
+  - Turn a `Double` into an `Int` with `Int(saturating:)`: a calculator's result can be infinite.
 - **Shared views.** Reuse `Views/Shared/`: `StatCard`, `EmptyStateView`, `LoadingStateView`,
   `SettingsRow`, `MeasurementField`, `CountField`, `MoneyField`, and `ToastNotificationManager`.
 - **Charts** use Swift Charts.

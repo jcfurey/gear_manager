@@ -21,6 +21,7 @@ struct ShootDetailView: View {
 
     @State private var editing = false
     @State private var choosingGear = false
+    @State private var addingGearFromPhotos = false
     @State private var gearSelection: Set<UUID> = []
     @State private var newShot = ""
     @State private var savingTemplate = false
@@ -69,6 +70,9 @@ struct ShootDetailView: View {
                         }
                     }
             }
+        }
+        .sheet(isPresented: $addingGearFromPhotos) {
+            PhotoUsageView(shoot: shoot)
         }
         .sheet(isPresented: $addingRoll) {
             FilmRollEditorView(roll: nil, camera: nil, shoot: shoot)
@@ -217,11 +221,17 @@ struct ShootDetailView: View {
                 }
                 .accessibilityIdentifier("addKitMenu")
             }
+            Button {
+                addingGearFromPhotos = true
+            } label: {
+                Label("Add Gear from Photos", systemImage: "photo.stack")
+            }
+            .accessibilityIdentifier("shootPhotoUsageButton")
         } header: {
             let progress = shoot.packingProgress
             Text(progress.total > 0 ? "Packing · \(progress.packed) of \(progress.total)" : "Packing")
         } footer: {
-            Text("Tick items off as you pack. Items lent out, needing service or due back are flagged.")
+            Text("Tick items off as you pack. Items lent out, needing service or due back are flagged. After the shoot, its photos can say which gear you used.")
         }
     }
 

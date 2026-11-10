@@ -162,9 +162,32 @@ extension XCTestCase {
             field.tap()
             _ = keyboard.waitForExistence(timeout: 2)
         }
-        let existing = field.value as? String ?? ""
-        // Empty TextFields report their placeholder as their value.
-        let count = existing == field.placeholderValue ? 0 : existing.count
-        field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: count) + text)
+        /// What the field holds. An empty TextField reports its placeholder as its value.
+        func contents() -> String {
+            let value = field.value as? String ?? ""
+            return value == field.placeholderValue ? "" : value
+        }
+        func enter() {
+            field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: contents().count) + text)
+        }
+        enter()
+        // A busy simulator can lose keystrokes: "Harbour" once arrived as "Ha" in CI, and the test
+        // then looked for a title that was never typed. Text that arrived with characters missing
+        // is typed again, once. A field that rewrites what's typed (grouping separators, capitals)
+        // doesn't hold a shortened copy of it, so it's left alone.
+        let arrived = contents()
+        if arrived != text, Self.isSubsequence(arrived, of: text) {
+            enter()
+        }
+    }
+
+    /// Whether `part` is `whole` with zero or more characters left out.
+    static func isSubsequence(_ part: String, of whole: String) -> Bool {
+        var remaining = Substring(whole)
+        for character in part {
+            guard let index = remaining.firstIndex(of: character) else { return false }
+            remaining = remaining[remaining.index(after: index)...]
+        }
+        return true
     }
 }

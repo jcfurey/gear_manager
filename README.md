@@ -92,6 +92,29 @@ The five tabs are **Inventory · Tools · Light Meter · Shoots · Settings**.
 The formulas and sources behind the tools, the light meter and the sky planners are in
 [docs/PHOTO_MATH_REFERENCES.md](docs/PHOTO_MATH_REFERENCES.md).
 
+## Added since 1.0
+
+These are built and tested, and aren't in the 1.0 App Store text or release notes yet.
+
+- **A report for your insurer:** a PDF of your gear, or a chosen part of it, with serial numbers,
+  purchase prices, current values and photos, grouped by category with totals. From Settings or
+  the Collection screen.
+- **QR labels:** print labels for kits and gear on Letter or A4, two sizes, with an optional
+  "if found" line. Pointing the Camera app at a label opens the kit's checklist or the item. The
+  code holds only an ID from your library.
+- **Usage from photos:** choose photos, files or a whole folder and see how many shots each body
+  and lens took.
+  - Bodies and lenses are matched to your inventory by serial number, then by name; a match you
+    choose is remembered on that device.
+  - A shutter count the files carry (Nikon) is recorded as a reading, dated by the photo.
+  - Gear the inventory lacks can be added, and the batch logged as a shoot or its gear added to
+    one, which is where an item's use is counted from.
+  - Everything is read on the device; the photos aren't copied or kept.
+- **Fixes from a review of the 1.0 code:** maintenance reminders now notify; timer alerts keep
+  the ones that matter when there are more than iOS allows; a shoot keeps its clock time when its
+  place changes time zone; exports and backups that are too large say so instead of failing
+  silently; and a dozen smaller ones (see [docs/PROGRESS.md](docs/PROGRESS.md)).
+
 ## Release material
 - [docs/RELEASE_NOTES_1.0.md](docs/RELEASE_NOTES_1.0.md): what's in 1.0, and its known limits.
 - [docs/PRIVACY.md](docs/PRIVACY.md): the privacy policy to host, written from the one the app

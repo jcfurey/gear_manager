@@ -14,11 +14,13 @@ SWIFT="${1:-swift}"
 
 SOURCES=(
   ShutterManager/Models/PhotoMath/*.swift
+  ShutterManager/Models/Catalog/GearCategory.swift
   ShutterManager/Models/Catalog/SensorFormat.swift
   ShutterManager/Models/Catalog/FilmStock.swift
   ShutterManager/Models/Catalog/FilmStockCatalog.swift
   ShutterManager/Utilities/PrivacyPolicy.swift
   ShutterManager/Utilities/LabelLink.swift
+  ShutterManager/Models/PhotoUsage.swift
 )
 TESTS=(
   ShutterManagerTests/PhotoMathTests.swift
@@ -27,6 +29,7 @@ TESTS=(
   ShutterManagerTests/LightMeterTests.swift
   ShutterManagerTests/PrivacyPolicyTests.swift
   ShutterManagerTests/LabelLinkTests.swift
+  ShutterManagerTests/PhotoUsageTests.swift
 )
 
 WORK="$(mktemp -d)"

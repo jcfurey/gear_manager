@@ -16,6 +16,7 @@ struct CollectionStatsView: View {
     @ScaledMetric private var categoryRowHeight: CGFloat = 34
     @State private var showingInsurerReport = false
     @State private var showingLabels = false
+    @State private var showingPhotoUsage = false
 
     var body: some View {
         let valuation = GearValuationService.collectionValue(of: items)
@@ -67,6 +68,18 @@ struct CollectionStatsView: View {
                     Text("A PDF of your gear with serial numbers, values and photos, and labels to print for bags, cases and gear.")
                 }
             }
+
+            // Outside the check for an empty inventory: a batch of photos can fill one.
+            Section {
+                Button {
+                    showingPhotoUsage = true
+                } label: {
+                    Label("Usage from Photos", systemImage: "photo.stack")
+                }
+                .accessibilityIdentifier("collectionPhotoUsageButton")
+            } footer: {
+                Text("Count the shots each body and lens took in a batch of photos, and record the shutter counts they carry.")
+            }
         }
         .navigationTitle("Collection")
         .navigationBarTitleDisplayMode(.inline)
@@ -75,6 +88,9 @@ struct CollectionStatsView: View {
         }
         .sheet(isPresented: $showingLabels) {
             LabelsView()
+        }
+        .sheet(isPresented: $showingPhotoUsage) {
+            PhotoUsageView()
         }
     }
 

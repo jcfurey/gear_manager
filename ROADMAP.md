@@ -362,15 +362,24 @@ GPS or iCloud happens on your Mac and devices. Work down the list in order.
 There is no Pro mode, so everything here ships free when it ships. The list stays open: add ideas
 as they come up.
 
-- An inventory report for your insurer: a PDF with photos, serials and values, worded as "a
-  report for your insurer", never "insurance".
-- QR labels for bags and cases.
-- Import usage from photos: count shots per body and lens from a batch of photos and update
-  shutter counts.
+**Built since 1.0** (see [docs/PROGRESS.md](docs/PROGRESS.md#after-10--later-candidates-round-1)):
+- A report for your insurer: a PDF with photos, serial numbers and values. Worded as "a report
+  for your insurer", never "insurance"; the convention checks hold the wording.
+- QR labels for kits and gear, to print for bags and cases. A label's code opens the kit's
+  checklist or the item.
+- Usage from photos: shots per body and lens from a batch of photos, the shutter counts the files
+  carry, and the gear used added to the shoot log.
+
+**Still open**
 - Lens and body compatibility, including adapters.
 - More categories and category-specific fields as they're needed.
-- Widgets or a Live Activity for the development and bulb timers.
+- Widgets or a Live Activity for the development and bulb timers. Needs a widget extension, the
+  app's first second target.
 - Cloud cover via WeatherKit. It is an Apple framework, but it sends your location to Apple and
   has a usage quota, so it changes the privacy story.
 - Rental-house or studio mode (checking gear out to clients). A big build for a different user;
   scope it only if there's demand.
+- From usage from photos: which focal lengths and apertures you actually shoot at, per lens.
+- A package format for exports and backups, so a large library keeps its photos in one file (today
+  an export past the size limit is refused, and a backup past it leaves the photos out).
+- A pass that finds records doubled by importing a file before iCloud finished syncing.

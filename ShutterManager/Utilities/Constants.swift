@@ -106,6 +106,17 @@ enum Constants {
         static let storageCompressionQuality: CGFloat = 0.8
     }
 
+    // MARK: - Usage from photos
+
+    enum PhotoUsage {
+        /// The most photos one batch reads. A folder with more is read up to here, and says so.
+        static let maximumPhotos = 10_000
+        /// Files read between progress updates and checks for Cancel.
+        static let readBatchSize = 25
+        /// The most remembered matches kept (see `PhotoUsageMatchStore`).
+        static let maximumRememberedMatches = 500
+    }
+
     // MARK: - Shoots
 
     enum Shoots {
@@ -153,6 +164,9 @@ enum Constants {
         static let reportOwnerName = "report.ownerName"
         /// The line printed at the foot of QR labels, such as "If found: 555-0100". Per device.
         static let labelContactLine = "labels.contactLine"
+        /// Which item the user said a body or lens named in photos is, as `[group key: item ID]`.
+        /// Per device, not exported: a match that names a missing item is ignored.
+        static let photoUsageMatches = "photoUsage.matches"
     }
 
     // MARK: - UI Constants
