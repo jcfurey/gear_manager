@@ -230,12 +230,24 @@ jobs:
       # Booted in the foreground once the build is done, and waited for. Left to xcodebuild, the
       # first app launch can land while the simulator is still finishing its boot and time out
       # acquiring a background assertion (seen on iPad).
-      - name: Boot the simulator
+      #
+      # Then the app is installed and launched once. A newly booted simulator's first launch of
+      # a newly installed app is its slowest, and on a busy runner it has outlasted XCUITest's
+      # launch limit: the first two iPad tests failed with "Timed out while launching
+      # application" and the other 21 passed. Here nothing is timing it.
+      - name: Boot the simulator and launch the app once
+        timeout-minutes: 10
         env:
           UDID: ${{ steps.sim.outputs.udid }}
+          APP: ${{ runner.temp }}/DerivedData/Build/Products/Debug-iphonesimulator/ShutterManager.app
+          BUNDLE_ID: jcameronfurey.shuttermanager
         run: |
           xcrun simctl boot "$UDID" || true
           xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl install "$UDID" "$APP"
+          xcrun simctl launch "$UDID" "$BUNDLE_ID" -uiTestInMemory
+          sleep 10
+          xcrun simctl terminate "$UDID" "$BUNDLE_ID" || true
       - name: UI tests
         id: test
         env:

@@ -43,6 +43,12 @@ screenshots, logs and the full test report.
   in the foreground and wait for `simctl bootstatus` before testing: left to `xcodebuild`, the
   first UI test's app launch once landed mid-boot on iPad and timed out acquiring a background
   assertion.
+- **The UI-test job launches the app once before the tests.** A newly booted simulator's first
+  launch of a newly installed app is its slowest. On a busy runner it outlasted XCUITest's
+  launch limit: the first two iPad tests failed with "Timed out while launching application",
+  one of them holding the job for its whole 10-minute allowance, and the other 21 passed. So the
+  job installs the built app, launches it with `-uiTestInMemory`, waits ten seconds and quits it,
+  where nothing is timing the launch.
 - **The unit-test host app uses a temporary in-memory library.** The unit tests build their own
   containers, so the app hosting them doesn't open the simulator's library or start CloudKit
   setup. That alone took the unit-test step from about 7 minutes to under 4.
