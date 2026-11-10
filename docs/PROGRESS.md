@@ -17,8 +17,8 @@ is still to check on a device. Add a section when a milestone finishes.
 
 ## After 1.0 — round 2: what the review left
 
-**Done 2026-11-10** on `claude/camera-gear-manager-e1zzxt` (commits `d522bd9`, `e9ecf5c`,
-`adacdc3`, `0a982ca`, and the commit that adds this section). The roadmap's remaining candidates
+**Done 2026-11-10** on `claude/camera-gear-manager-e1zzxt` (commits `d522bd9` to `b646832`,
+and the commit that finishes this section). The roadmap's remaining candidates
 each wait on a decision (a second app target, a change to the privacy story, demand), so this
 round took what round 1's review had left, and the one extension round 1 had noted.
 
@@ -51,11 +51,16 @@ round took what round 1's review had left, and the one extension round 1 had not
   tests on each device (1 new).
 
 ### Verified
-- `0a982ca`: [run 42757396845](https://github.com/jcfurey/gear_manager/actions/runs/42757396845)
-  passed the convention checks, 127 Foundation-only tests on Linux, the Debug and Release builds
-  with warnings as errors, and 318 unit tests.
-- The commit that adds this section, with one more unit test and the CI change below: the run,
-  with UI tests on iPhone and iPad, is recorded here once it finishes.
+[CI run 42767229616](https://github.com/jcfurey/gear_manager/actions/runs/42767229616) passed
+every job on `b646832`, the last commit to change code:
+- 127 Foundation-only tests in the Swift 6.2 Linux image;
+- the Debug and Release builds with warnings as errors;
+- 320 unit tests;
+- 26 UI tests on each of iPhone 17 and iPad Pro 11-inch (iOS 26.5), the accessibility audit
+  included.
+
+It took three full runs to get there. The two before it each failed one UI test, for the
+reasons under "Found by CI and fixed"; none was a fault in this round's features.
 
 ### Changes from the plan
 - **Find Duplicates is a tool, not an automatic pass.** Round 1 left this as "a pass that finds

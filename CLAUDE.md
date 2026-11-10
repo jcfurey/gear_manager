@@ -104,6 +104,10 @@ the target without a project edit.
   `.primaryAction` and move secondary buttons to the leading side.
 - `AccessibilityAuditTests` runs Xcode's accessibility audit (labels, touch targets, reachable
   text) on each tab's main screens. Its header says why the other audit types are left out.
+- The UI-test helpers expect a slow simulator, because CI's is: `replaceText` types again when
+  characters went missing, `selectTab` checks that the tab came up and taps again if it didn't,
+  and the audit waits for a passing banner to go. Use them rather than a bare `typeText` or
+  `tap` on a tab.
 
 ### Data layer
 
