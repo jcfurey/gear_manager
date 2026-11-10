@@ -152,6 +152,32 @@ extension XCTestCase {
         return false
     }
 
+    /// Chooses a place for a planner from typed coordinates, starting on a screen with the place
+    /// row and ending back on it. Typed, so it needs no location permission and no network.
+    func chooseTypedPlace(latitude: String, longitude: String, in app: XCUIApplication,
+                          file: StaticString = #file, line: UInt = #line) {
+        let place = app.buttons["placeRow"].firstMatch
+        XCTAssertTrue(place.waitForExistence(timeout: 5), file: file, line: line)
+        place.tap()
+        let findOnMap = app.buttons["findOnMapButton"].firstMatch
+        XCTAssertTrue(findOnMap.waitForExistence(timeout: 5), file: file, line: line)
+        findOnMap.tap()
+
+        replaceText(in: app.textFields["latitudeField"].firstMatch, with: latitude)
+        replaceText(in: app.textFields["longitudeField"].firstMatch, with: longitude)
+        let useCoordinates = app.buttons["useCoordinatesButton"].firstMatch
+        reveal(useCoordinates, in: app, file: file, line: line)
+        XCTAssertTrue(useCoordinates.isEnabled, "Typed coordinates should be accepted", file: file, line: line)
+        useCoordinates.tap()
+        let use = app.buttons["usePlaceButton"].firstMatch
+        XCTAssertTrue(use.waitForExistence(timeout: 5), file: file, line: line)
+        XCTAssertTrue(use.isEnabled, "A picked place can be used", file: file, line: line)
+        use.tap()
+
+        // The place sheet closes, back to the screen it was opened from.
+        XCTAssertTrue(use.waitForNonExistence(timeout: 5), "Using the place closes the place sheet", file: file, line: line)
+    }
+
     /// Adds an item from the Inventory tab with a make and model, leaving the tab showing the
     /// list. New items are camera bodies unless the category is changed.
     func addGear(make: String, model: String, in app: XCUIApplication,

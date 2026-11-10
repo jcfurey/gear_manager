@@ -61,27 +61,8 @@ final class ToolsUITests: XCTestCase {
         row.tap()
         XCTAssertTrue(app.navigationBars["Sun & Moon"].waitForExistence(timeout: 5))
 
-        let place = app.buttons["placeRow"].firstMatch
-        XCTAssertTrue(place.waitForExistence(timeout: 5))
-        place.tap()
-        let findOnMap = app.buttons["findOnMapButton"].firstMatch
-        XCTAssertTrue(findOnMap.waitForExistence(timeout: 5))
-        findOnMap.tap()
-
         // London, typed: no location permission or network needed.
-        replaceText(in: app.textFields["latitudeField"].firstMatch, with: "51.5")
-        replaceText(in: app.textFields["longitudeField"].firstMatch, with: "-0.12")
-        let useCoordinates = app.buttons["useCoordinatesButton"].firstMatch
-        reveal(useCoordinates, in: app)
-        XCTAssertTrue(useCoordinates.isEnabled, "Typed coordinates should be accepted")
-        useCoordinates.tap()
-        let use = app.buttons["usePlaceButton"].firstMatch
-        XCTAssertTrue(use.waitForExistence(timeout: 5))
-        XCTAssertTrue(use.isEnabled, "A picked place can be used")
-        use.tap()
-
-        // The place sheet closes, back to the planner.
-        XCTAssertTrue(use.waitForNonExistence(timeout: 5), "Using the place closes the place sheet")
+        chooseTypedPlace(latitude: "51.5", longitude: "-0.12", in: app)
         XCTAssertTrue(app.navigationBars["Sun & Moon"].waitForExistence(timeout: 5), "Using the place returns to the planner")
         for label in ["Sunrise", "Sunset", "Moonrise"] {
             let event = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", label)).firstMatch

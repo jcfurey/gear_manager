@@ -20,8 +20,8 @@ private func placeBinding(_ stored: Binding<String>) -> Binding<PlaceValue?> {
     Binding(get: { PlaceValue(stored: stored.wrappedValue) }, set: { stored.wrappedValue = $0?.stored ?? "" })
 }
 
-/// Times in a place's time zone.
-private extension Date {
+/// Times in a place's time zone. Shared with the cloud forecast's rows.
+extension Date {
     func time(in zone: TimeZone) -> String {
         formatted(Date.FormatStyle(date: .omitted, time: .shortened, timeZone: zone))
     }
@@ -32,13 +32,13 @@ private extension Date {
 }
 
 /// The user's calendar, in a place's time zone.
-private func zonedCalendar(_ zone: TimeZone) -> Calendar {
+func zonedCalendar(_ zone: TimeZone) -> Calendar {
     var calendar = Calendar.current
     calendar.timeZone = zone
     return calendar
 }
 
-private extension View {
+extension View {
     /// An x axis marking every six hours on the place's clock. Swift Charts' own labels use the
     /// device's time zone.
     func placeHourAxis(_ interval: DateInterval, zone: TimeZone) -> some View {
@@ -76,6 +76,8 @@ struct SunMoonView: View {
     @State private var phases: [PhaseEvent] = []
     @State private var selectedTime: Date?
 
+    private let clouds = CloudForecastStore.shared
+
     struct PhaseEvent: Identifiable, Sendable {
         let phase: MoonPhase
         let date: Date
@@ -111,6 +113,9 @@ struct SunMoonView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task(id: Key(place: place, day: zonedCalendar(place?.timeZone ?? .current).startOfDay(for: date))) {
             await compute(place: place)
+        }
+        .task(id: clouds.request(for: place?.coordinate)) {
+            if let place { await clouds.load(for: place.coordinate) }
         }
     }
 
@@ -193,6 +198,16 @@ struct SunMoonView: View {
             eventRow("Moonset", day.moonset, zone, azimuth: day.moonset.map { sky.moon(at: $0).azimuth })
         }
 
+        Section("Clouds") {
+            CloudForecastRows(coordinate: place.coordinate) { forecast in
+                CloudRows(forecast: forecast, timeZone: zone, chart: day.interval,
+                          bands: day.goldenHours.map { CloudBand(name: "Golden hour", interval: $0, color: .orange) }
+                              + day.blueHours.map { CloudBand(name: "Blue hour", interval: $0, color: .blue) },
+                          focus: focus,
+                          windows: Self.cloudWindows(day, zone))
+            }
+        }
+
         Section {
             SkyDirectionsMap(place: place, sunrise: day.sunrise.map { sky.sun(at: $0).azimuth },
                              sunset: day.sunset.map { sky.sun(at: $0).azimuth },
@@ -213,6 +228,15 @@ struct SunMoonView: View {
                     Label(event.phase.name, systemImage: event.phase.systemImage)
                 }
             }
+        }
+    }
+
+    /// The day's golden and blue hours, in order, as the windows to give the clouds for.
+    static func cloudWindows(_ day: SkyDay, _ zone: TimeZone) -> [CloudWindow] {
+        let golden = day.goldenHours.map { (name: "Golden hour", window: $0) }
+        let blue = day.blueHours.map { (name: "Blue hour", window: $0) }
+        return (golden + blue).sorted { $0.window.start < $1.window.start }.map {
+            CloudWindow(title: "\($0.name) · \($0.window.start.time(in: zone)) – \($0.window.end.time(in: zone))", interval: $0.window)
         }
     }
 
@@ -400,6 +424,8 @@ struct NightSkyView: View {
     @State private var nights: [NightSky] = []
     @State private var computedFor: PlaceValue?
 
+    private let clouds = CloudForecastStore.shared
+
     static let nightCount = 21
 
     var body: some View {
@@ -411,13 +437,22 @@ struct NightSkyView: View {
                 Text("Dark hours are astronomical night with the moon down. The core counts once it's 10° above the horizon.")
             }
             if let place {
+                Section("Clouds") {
+                    CloudForecastRows(coordinate: place.coordinate) { _ in
+                        Text("Each night's cloud is for its dark hours, as far ahead as the forecast reaches: ten days.")
+                            .font(.footnote)
+                            .foregroundStyle(Color.secondary)
+                    }
+                }
                 if computedFor == place {
+                    let forecast = clouds.forecast(for: place.coordinate)
                     Section("Coming Nights") {
                         ForEach(nights, id: \.interval.start) { night in
                             NavigationLink {
                                 NightDetailView(night: night, place: place)
                             } label: {
-                                NightRow(night: night, timeZone: place.timeZone)
+                                NightRow(night: night, timeZone: place.timeZone,
+                                         cloud: night.cloudWindow.flatMap { forecast?.summary(for: $0) })
                             }
                         }
                     }
@@ -446,12 +481,30 @@ struct NightSkyView: View {
             nights = result
             computedFor = place
         }
+        .task(id: clouds.request(for: place?.coordinate)) {
+            if let place { await clouds.load(for: place.coordinate) }
+        }
+    }
+}
+
+private extension NightSky {
+    /// The hours a night's cloud is read for: the core's if it shows, else the moonless dark,
+    /// else the dark. Nil for a night that never gets dark.
+    var cloudWindow: DateInterval? {
+        for windows in [coreVisible, darkAndMoonless, darkness] {
+            if let first = windows.first, let last = windows.last {
+                return DateInterval(start: first.start, end: max(last.end, first.start))
+            }
+        }
+        return nil
     }
 }
 
 private struct NightRow: View {
     let night: NightSky
     let timeZone: TimeZone
+    /// The forecast for the night's dark hours, when there is one.
+    var cloud: CloudSummary?
 
     var body: some View {
         HStack {
@@ -472,6 +525,11 @@ private struct NightRow: View {
             Label("\(Int((night.moonIllumination * 100).rounded()))%", systemImage: "moon")
                 .font(.caption).foregroundStyle(.secondary)
                 .accessibilityLabel("Moon \(Int((night.moonIllumination * 100).rounded()))% lit")
+            if let cloud {
+                Label(CloudText.percent(cloud.cover), systemImage: "cloud")
+                    .font(.caption).foregroundStyle(.secondary)
+                    .accessibilityLabel("Cloud \(CloudText.percent(cloud.cover))")
+            }
             if night.coreHours > 0 {
                 Image(systemName: "sparkles").foregroundStyle(Color.accentColor)
                     .accessibilityLabel("Core visible")
@@ -485,6 +543,18 @@ private struct NightDetailView: View {
     let night: NightSky
     let place: PlaceValue
     @State private var samples: [SkySample] = []
+
+    private let clouds = CloudForecastStore.shared
+
+    /// The night's windows to give the clouds for: the core's and the moonless dark, or the
+    /// dark alone on a night with neither.
+    private func cloudWindows(_ zone: TimeZone) -> [CloudWindow] {
+        func windows(_ name: String, _ spans: [DateInterval]) -> [CloudWindow] {
+            spans.map { CloudWindow(title: "\(name) · \($0.start.time(in: zone)) – \($0.end.time(in: zone))", interval: $0) }
+        }
+        let best = windows("Core up, dark, no moon", night.coreVisible) + windows("Dark, no moon", night.darkAndMoonless)
+        return best.isEmpty ? windows("Astronomical night", night.darkness) : best
+    }
 
     var body: some View {
         let zone = place.timeZone
@@ -521,6 +591,15 @@ private struct NightDetailView: View {
                 Text("Shaded: dark hours with the moon down.")
             }
 
+            Section("Clouds") {
+                CloudForecastRows(coordinate: place.coordinate) { forecast in
+                    CloudRows(forecast: forecast, timeZone: zone, chart: night.interval,
+                              chartName: "Cloud cover through the night",
+                              bands: night.darkAndMoonless.map { CloudBand(name: "Dark, moon down", interval: $0, color: .indigo) },
+                              windows: cloudWindows(zone))
+                }
+            }
+
             Section("Windows") {
                 if night.coreVisible.isEmpty {
                     Text("No moonless dark time with the core 10° up.").foregroundStyle(.secondary)
@@ -546,6 +625,9 @@ private struct NightDetailView: View {
         .task {
             let interval = night.interval, coordinate = place.coordinate
             samples = await Task.detached { Sky(observer: coordinate).samples(in: interval, step: 900) }.value
+        }
+        .task(id: clouds.request(for: place.coordinate)) {
+            await clouds.load(for: place.coordinate)
         }
     }
 }

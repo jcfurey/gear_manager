@@ -32,11 +32,17 @@ struct ShootDetailView: View {
     @State private var saveFailed = false
     @State private var light: SkyDay?
 
+    private let clouds = CloudForecastStore.shared
+
     var body: some View {
         Form {
             summarySection
             if let place = shoot.place {
                 lightSection(place)
+                // A forecast is for what's coming: a shoot that's over has none.
+                if shoot.isUpcoming() {
+                    cloudSection(place)
+                }
             }
             gearSection
             shotListSection
@@ -95,6 +101,9 @@ struct ShootDetailView: View {
         }
         .persistenceErrorAlert(isPresented: $saveFailed)
         .task(id: LightKey(place: shoot.place, start: shoot.startDate)) { await loadLight() }
+        .task(id: clouds.request(for: shoot.isUpcoming() ? shoot.place?.coordinate : nil)) {
+            if shoot.isUpcoming(), let place = shoot.place { await clouds.load(for: place.coordinate) }
+        }
     }
 
     // MARK: - Summary
@@ -181,6 +190,25 @@ struct ShootDetailView: View {
             Text("Light")
         } footer: {
             Text("On the day the shoot starts, in the place's time zone.")
+        }
+    }
+
+    // MARK: - Clouds
+
+    /// The forecast for the shoot's own hours, then for that day's golden hours.
+    private func cloudSection(_ place: PlaceValue) -> some View {
+        let zone = place.timeZone
+        let time = Date.FormatStyle(date: .omitted, time: .shortened, timeZone: zone)
+        var windows = [CloudWindow(title: "During the shoot", interval: shoot.interval)]
+        if let light, light.observer == place.coordinate {
+            windows += light.goldenHours.map {
+                CloudWindow(title: "Golden hour · \($0.start.formatted(time)) – \($0.end.formatted(time))", interval: $0)
+            }
+        }
+        return Section("Clouds") {
+            CloudForecastRows(coordinate: place.coordinate) { forecast in
+                CloudRows(forecast: forecast, timeZone: zone, windows: windows)
+            }
         }
     }
 

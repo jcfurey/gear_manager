@@ -26,6 +26,7 @@ EXTENSION_DIRS = [ROOT / "ShutterManagerShared", ROOT / "ShutterManagerWidgets"]
 TEST_DIRS = [ROOT / "ShutterManagerTests", ROOT / "ShutterManagerUITests"]
 PROJECT = ROOT / "ShutterManager.xcodeproj" / "project.pbxproj"
 ENTITLEMENTS = APP / "ShutterManager.entitlements"
+WEATHER_PROVIDER = "WeatherKitCloudProvider.swift"
 INFO_PLIST = ROOT / "Info.plist"
 WIDGETS_INFO_PLIST = ROOT / "ShutterManagerWidgets-Info.plist"
 APP_SCHEMA = APP / "Utilities" / "AppSchema.swift"
@@ -243,6 +244,16 @@ def check_capabilities():
         if point != "com.apple.widgetkit-extension":
             report("capabilities", WIDGETS_INFO_PLIST, 1,
                    f"NSExtensionPointIdentifier should be com.apple.widgetkit-extension, found {point}.")
+
+    # The cloud forecast: WeatherKit answers only an app with its entitlement, and one file asks
+    # for weather, so there is one place to see what leaves the device and what it costs.
+    weather_users = [path for path in swift_files(APP, *EXTENSION_DIRS)
+                     if re.search(r"^\s*import\s+WeatherKit\b", path.read_text(), re.MULTILINE)]
+    for path in weather_users:
+        if path.name != WEATHER_PROVIDER:
+            report("capabilities", path, 1, f"Only {WEATHER_PROVIDER} imports WeatherKit; go through CloudForecastStore.")
+    if weather_users and entitlements is not None and entitlements.get("com.apple.developer.weatherkit") is not True:
+        report("capabilities", ENTITLEMENTS, 1, "WeatherKit needs com.apple.developer.weatherkit = true.")
 
     # Swift code that names a container must name the one in the entitlements.
     for path in swift_files(APP):

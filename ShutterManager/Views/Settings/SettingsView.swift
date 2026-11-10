@@ -30,6 +30,8 @@ struct SettingsView: View {
     @AppStorage(Constants.UserDefaultsKeys.depthOfFieldStandard) private var depthOfFieldStandard = CircleOfConfusionStandard.standard
     @AppStorage(Constants.UserDefaultsKeys.lightMeterCalibration) private var lightMeterCalibration = 0.0
 
+    private let clouds = CloudForecastStore.shared
+
     @State private var showingDataExport = false
     @State private var showingDataImport = false
     @State private var showingInsurerReport = false
@@ -125,6 +127,19 @@ struct SettingsView: View {
                         Text("Tools")
                     } footer: {
                         Text("Automatic units follow your region. The depth-of-field standard sets how strict \"sharp\" is: \(depthOfFieldStandard.detail.lowercased()). The light meter's calibration is added to every reading: raise it if photos come out too bright, lower it if they come out too dark, or calibrate against a meter you trust in the Light Meter tab.")
+                    }
+
+                    Section {
+                        SettingsRow(icon: "cloud.sun", iconColor: .gray, title: "Cloud Forecast", constants: constants) {
+                            Toggle("", isOn: Binding(get: { clouds.isEnabled }, set: { clouds.setEnabled($0) }))
+                                .labelsHidden()
+                                .accessibilityLabel("Cloud Forecast")
+                                .accessibilityIdentifier("settings.cloudForecast")
+                        }
+                    } header: {
+                        Text("Weather")
+                    } footer: {
+                        Text("Shows Apple Weather's cloud forecast in the sun, moon and Milky Way planners and on shoots still to come. To get it, the place's position is sent to Apple, rounded to about a kilometre. Forecasts aren't stored.")
                     }
 
                     Section("iCloud Sync") {

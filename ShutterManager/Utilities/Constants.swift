@@ -133,6 +133,14 @@ enum Constants {
     // MARK: - User Defaults Keys
 
     /// Every persisted preference key, in one place.
+    enum CloudForecast {
+        /// How long a place's forecast is shown before it's asked for again. Apple Weather's
+        /// hourly forecast doesn't change faster, and each asking counts against the app's quota.
+        static let lifetime: TimeInterval = 3600
+        /// Forecasts kept at once, for the session only: nothing is written to disk.
+        static let maximumPlaces = 8
+    }
+
     enum UserDefaultsKeys {
         static let lastBackupDate = "lastBackupDate"
         /// The most recent automatic-backup failure, as `["message": String, "date": Date]`;
@@ -167,6 +175,10 @@ enum Constants {
         /// Which item the user said a body or lens named in photos is, as `[group key: item ID]`.
         /// Per device, not exported: a match that names a missing item is ignored.
         static let photoUsageMatches = "photoUsage.matches"
+        /// Whether the cloud forecast is on (`Bool`, off until the user turns it on). Per device,
+        /// not exported: turning it on is agreeing to send places to Apple Weather, which a
+        /// file from another device can't do for this one.
+        static let cloudForecastEnabled = "cloudForecast.enabled"
     }
 
     // MARK: - UI Constants
