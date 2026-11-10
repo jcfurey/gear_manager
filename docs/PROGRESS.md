@@ -82,6 +82,10 @@ round took what round 1's review had left, and the one extension round 1 had not
   - On iPhone the simulator was at its slowest in its first minute (18 seconds to go idle, 11 to
     find a button), and the Add Gear sheet took more than the 10 seconds the test allowed. That
     class's waits are now 30 seconds.
+- With those fixed, [run 42763760961](https://github.com/jcfurey/gear_manager/actions/runs/42763760961)
+  passed all 26 UI tests on iPhone and 25 on iPad. The last, the report test, tapped the Settings
+  tab a second after the Add Gear sheet closed, and the tab didn't change. `selectTab` tapped
+  once and took it on trust; it now checks that the tab came up and taps again if it didn't.
 
 ### Left for later
 - A package format so a large library exports and backs up with its photos. It changes the

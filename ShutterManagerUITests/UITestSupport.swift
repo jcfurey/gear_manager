@@ -66,6 +66,12 @@ extension XCTestCase {
         repeat {
             if let item = candidates.first(where: { $0.exists && $0.isHittable }) {
                 item.tap()
+                // A tap that lands while a sheet is still leaving doesn't switch tabs: on iPad the
+                // Settings tab was tapped a second after Add Gear closed, and Settings never came.
+                // Tap again until the tab is the one showing.
+                for _ in 0..<2 where !isShowingTab(title, item: item, in: app, within: 2) {
+                    if item.exists && item.isHittable { item.tap() }
+                }
                 return true
             }
             Thread.sleep(forTimeInterval: 0.2)
@@ -78,6 +84,18 @@ extension XCTestCase {
         }
         XCTFail("Could not find a tab labeled \"\(title)\" (checked tab-bar button, cell, and button).",
                 file: file, line: line)
+        return false
+    }
+
+    /// Whether `title`'s tab comes up within `timeout`: its item reports being selected, or the
+    /// bar of its first screen (titled as the tab is) is on screen.
+    private func isShowingTab(_ title: String, item: XCUIElement, in app: XCUIApplication,
+                              within timeout: TimeInterval) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        repeat {
+            if (item.exists && item.isSelected) || app.navigationBars[title].exists { return true }
+            Thread.sleep(forTimeInterval: 0.2)
+        } while Date() < deadline
         return false
     }
 }
