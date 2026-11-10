@@ -222,14 +222,16 @@ struct ReminderTimePicker: View {
 
 // MARK: - Mount
 
-/// A lens-mount text field with a menu of common mounts.
+/// A lens-mount text field with a menu of common mounts, and of the two mounts of an adapter.
 struct MountField: View {
     @Binding var mount: String
+    @State private var choosingAdapter = false
 
     var body: some View {
         HStack {
             TextField("Mount", text: $mount)
                 .autocorrectionDisabled()
+                .accessibilityIdentifier("gearMountField")
             Menu {
                 ForEach(LensMount.groups) { group in
                     Section(group.title) {
@@ -238,6 +240,9 @@ struct MountField: View {
                         }
                     }
                 }
+                Section("Adapter") {
+                    Button("Adapter Between Two Mounts…") { choosingAdapter = true }
+                }
             } label: {
                 Image(systemName: "list.bullet")
                     // A full-size touch target, not just the glyph.
@@ -245,6 +250,10 @@ struct MountField: View {
                     .contentShape(Rectangle())
             }
             .accessibilityLabel("Choose a mount")
+            .accessibilityIdentifier("gearMountMenu")
+        }
+        .sheet(isPresented: $choosingAdapter) {
+            AdapterMountView(mount: $mount)
         }
     }
 }

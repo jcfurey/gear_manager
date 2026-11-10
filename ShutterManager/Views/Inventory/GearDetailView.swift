@@ -91,6 +91,7 @@ struct GearDetailView: View {
             detailsSection
         }
         Group {
+            compatibilitySection
             if category.hasShutter { shutterSection }
             usageSection
             loansSection
@@ -244,6 +245,31 @@ struct GearDetailView: View {
                     }
                 }
             }
+        }
+    }
+
+    /// A body's lenses and a lens's bodies; for an adapter, what it joins.
+    @ViewBuilder
+    private var compatibilitySection: some View {
+        switch CompatibilityList.role(of: item.mountedGear) {
+        case .body?, .lens?:
+            Section {
+                NavigationLink {
+                    CompatibilityView(item: item)
+                } label: {
+                    Label(category == .lens ? "Bodies It Fits" : "Lenses That Fit",
+                          systemImage: category == .lens ? "camera" : "camera.aperture")
+                }
+                .accessibilityIdentifier("compatibilityLink")
+            }
+        case .adapter?:
+            if let description = item.adapterDescription {
+                Section("Adapter") {
+                    Text("Puts \(description).")
+                }
+            }
+        case nil:
+            EmptyView()
         }
     }
 

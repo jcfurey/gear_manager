@@ -1,10 +1,11 @@
 # Photography math: methods and sources
 
-The formulas behind `ShutterManager/Models/PhotoMath/` and the film data in
-`Models/Catalog/FilmStockCatalog.swift`. Code comments cite the sections here rather than
+The formulas behind `ShutterManager/Models/PhotoMath/`, the film data in
+`Models/Catalog/FilmStockCatalog.swift` and the lens-mount table in
+`Models/Catalog/MountCompatibility.swift`. Code comments cite the sections here rather than
 re-deriving them. The tests (`PhotoMathTests`, `FilmStockTests`, `LightMeterTests`,
-`AstronomyTests`) check worked examples from these sources and run on Linux as well as in Xcode
-(`Tools/linux/run_foundation_tests.sh`).
+`AstronomyTests`, `MountCompatibilityTests`) check worked examples from these sources and run on
+Linux as well as in Xcode (`Tools/linux/run_foundation_tests.sh`).
 
 Units inside the math: millimetres for lengths, seconds for times, f-numbers for apertures, ISO
 arithmetic speed for sensitivity. Views convert to the user's units (`MeasurementUnits`).
@@ -324,3 +325,93 @@ end, doesn't start a new period.
 
 Recipes store no built-in development times. Times depend on film, developer, dilution and
 temperature, so they come from the user's chart.
+
+## Lens mounts
+
+`Models/Catalog/MountCompatibility.swift` says how a lens goes on a body: the same mount, a
+maker's own adapter, or room for a plain one. `MountCompatibilityTests` checks the table against
+itself and runs on Linux too.
+
+**The rule.** A lens focuses to infinity only when its mount sits at its own flange focal
+distance (mount face to film or sensor). So a lens can be adapted with a spacer, an adapter with
+no glass, only to a body whose flange distance is shorter. Wikipedia's "Flange focal distance"
+puts it as: "A camera body with a shorter FFD can accept a larger number of lenses (those with a
+longer FFD) by using a simple adapter."
+- **Room** = lens mount's distance − body mount's distance, rounded to 0.01 mm.
+- **1 mm or more** is listed as room for a plain adapter, "if one is made for this pair". 1 mm is
+  the gap between M39 (28.8 mm) and Leica M (27.8 mm), which an adapter ring does fill.
+- **Less than that** is listed as not fitting: the lens would sit too far out, so an adapter
+  needs its own glass or the lens won't reach infinity.
+- The rule knows nothing of the mounts' diameters, or of lenses that need power for focus and
+  aperture. The app says so beside each result, and never says an adapter exists unless its
+  maker does.
+
+**Flange distances** are from the "Standard mounts" table in
+[Wikipedia, Flange focal distance](https://en.wikipedia.org/wiki/Flange_focal_distance), read
+November 2026. Where the table gives a range or two values, the app uses the first:
+- Leica M: 27.8 mm (27.95 mm at the outer rails).
+- Pentax 67: 84.95 mm (also given as 85.00).
+- Contax/Yashica: 45.5 mm, the Contax C/Y row.
+- Minolta MD: 43.5 mm, the Minolta SR row (MD lenses use the SR mount).
+
+| Mount | mm | Mount | mm | Mount | mm |
+|---|---|---|---|---|---|
+| Canon RF | 20.0 | Canon EF, EF-S | 44.0 | Leica M | 27.8 |
+| Canon EF-M | 18.0 | Nikon F | 46.5 | Leica R | 47.0 |
+| Nikon Z | 16.0 | Sony A | 44.5 | Canon FD | 42.0 |
+| Sony E | 18.0 | Pentax K | 45.46 | Minolta MD | 43.5 |
+| Fujifilm X | 17.7 | Four Thirds | 38.67 | Olympus OM | 46.0 |
+| Fujifilm G | 26.7 | Sigma SA | 44.0 | Contax/Yashica | 45.5 |
+| L-Mount | 20.0 | Pentax 645 | 70.87 | M42 | 45.46 |
+| Micro Four Thirds | 19.25 | Pentax 67 | 84.95 | M39 | 28.8 |
+| Hasselblad XCD | 18.14 | Hasselblad H | 61.63 | Hasselblad V | 74.9 |
+| Nikon 1 | 17.0 | Mamiya 645 | 63.3 | Mamiya RB67 | 112.0 |
+| Samsung NX | 25.5 | | | Mamiya RZ67 | 105.0 |
+
+**Canon EF and EF-S.** A body listed as Canon EF-S (crop sensor) takes EF lenses; an EF-S lens
+doesn't go on a body listed as Canon EF (full frame). Wikipedia, "Canon EF-S lens mount": "By
+design, it is physically impossible to mount EF-S lenses on EF-only cameras", and "Cameras with
+the EF-S mount are backward compatible with the EF lenses."
+
+**Makers' own adapters** (`MountCompatibility.makerAdapters`). Each is listed because its maker
+says which lenses it puts on which bodies. Pages read November 2026; several are no longer sold.
+
+| Adapter | Lenses → bodies | Source |
+|---|---|---|
+| Canon Mount Adapter EF-EOS R | EF, EF-S → RF | [Canon](https://asia.canon/en/consumer/mount-adapter-ef-eos-r/main/product): "Enables EF / EF-S lenses to be mounted onto EOS R cameras" |
+| Canon Mount Adapter EF-EOS M | EF, EF-S → EF-M | [Canon](https://asia.canon/en/consumer/mount-adapter-ef-eos-m/main/product) |
+| Nikon Mount Adapter FTZ II | F → Z | [Nikon](https://imaging.nikon.com/imaging/lineup/accessory/camera/ftz_2/) |
+| Nikon Mount Adapter FT1 | F → Nikon 1 | [Nikon, 2011](https://www.nikon.com/company/news/2011/0921_acc_03/): "enables the use of F-mount lenses with Nikon 1 system cameras" |
+| Sony LA-EA5 Mount Adaptor | A → E | [Sony Help Guide](https://helpguide.sony.net/ilc/2040/v1/en/contents/TP1000384668.html) |
+| Olympus Four Thirds Adapter MMF-3 | Four Thirds → Micro Four Thirds | [Olympus, 2012](https://www.olympus-global.com/en/news/2012a/nr120208em5e.html) |
+| Olympus OM Adapter MF-1, MF-2 | OM → Four Thirds; OM → Micro Four Thirds | [OM System support](https://support.jp.omsystem.com/en/support/imsg/digicamera/compati/di004042e_om.html) |
+| Leica M-Adapter L | M → L-Mount | [Leica](https://classic.leica-camera.com/en/Leica-M-Adapter-L-black/18771SH-24092026): "allows all Leica M lenses to be used on cameras with an L-mount" |
+| Leica R-Adapter L | R → L-Mount | [Leica](https://leica-camera.com/en-US/photography/accessories/adapters/r-adapter-l) (the page's text couldn't be read; the mounts are from a dealer's description) |
+| Leica R-Adapter M | R → M | [Leica](https://leica-camera.com/en-GB/photography/accessories/adapters/r-adapter-m-black-lacquered/shop-now) (as above; the mounts are from Leica's 2012 release as reprinted) |
+| Hasselblad XH Lens Adapter | H → XCD | [Hasselblad](https://www.hasselblad.com/x-system/accessories/xh-lens-adapter/) |
+| Hasselblad XV Lens Adapter | V → XCD | [Hasselblad](https://www.hasselblad.com/x-system/accessories/xv-lens-adapter/) |
+| Hasselblad CF Adapter | V → H | [Hasselblad](https://www.hasselblad.com/h-system/accessories/cf-adapter/) |
+| Fujifilm M Mount Adapter | Leica M → X | [Fujifilm](https://www.fujifilm-x.com/global/products/accessories/m-mount-adapter/) |
+| Fujifilm H Mount Adapter G | Hasselblad H → G | [Fujifilm](https://www.fujifilm-x.com/global/products/accessories/h-mount-adapter-g/) (manual focus only) |
+| Sigma Mount Converter MC-21 (SA-L) | Sigma SA → L-Mount | [Sigma](https://www.sigma-global.com/en/accessories/mc-21/) |
+| Sigma Mount Converter MC-11 (SA-E) | Sigma SA → Sony E | [Sigma](https://www.sigma-global.com/en/accessories/mc-11/) |
+| Pentax Mount Adapter K | M42 → K | [Ricoh Imaging](https://www.ricoh-imaging.co.jp/english/support/qa/k-1/index.html) |
+| Pentax Adapter K for 645-System Lenses | 645 → K | [Ricoh Imaging](https://www.ricoh-imaging.co.jp/english/products/filmcamera/accessory/index645n2_others.html) |
+| Pentax Adapter K for 67-System Lenses | 67 → K | Ricoh Imaging's K-1 questions and answers, above |
+| Pentax Adapter 645 for 67-System Lenses | 67 → 645 | Ricoh Imaging's accessory page, above |
+
+**Left out on purpose.**
+- Sigma also sells the MC-21 and MC-11 in Canon EF versions. Sigma describes them as for its own
+  EF-mount lenses, so the app doesn't name them for every Canon EF lens: EF lenses on L-Mount and
+  Sony E bodies are listed by their room for a plain adapter.
+- The ring that puts M39 lenses on Leica M bodies. One is on Leica's own second-hand store, but
+  the page doesn't name its maker, so that pair is listed by its 1 mm of room.
+- Adapters from other brands. There are many, and no one source for which exist: the app shows
+  the room and leaves the search to the user. An adapter the user owns is entered as a lens whose
+  mount names both sides ("Canon EF → Sony E") and then counts for that pair, whatever the
+  arithmetic says, since it may have glass in it.
+
+**Format.** A lens is flagged as made for a smaller format when its format's diagonal is under
+0.9 of the body's. The margin keeps one maker's APS-C lens from being flagged on another's
+slightly larger APS-C sensor.
+

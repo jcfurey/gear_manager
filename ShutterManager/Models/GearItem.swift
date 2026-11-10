@@ -262,6 +262,16 @@ extension GearItem {
     static func trimmed(_ value: Double) -> String {
         value.formatted(.number.precision(.fractionLength(0...2)))
     }
+
+    /// The item as the compatibility lists see it: its mount, and its format when it has one.
+    var mountedGear: MountedGear {
+        MountedGear(id: id, name: displayName, mount: mount, category: gearCategory, format: sensorFormat)
+    }
+
+    /// "Canon EF lenses on Canon RF bodies", when the mount names an adapter's two mounts.
+    var adapterDescription: String? {
+        LensMount.adapterMounts(in: mount).map { "\($0.lens) lenses on \($0.body) bodies" }
+    }
 }
 
 // MARK: - Shutter, sensor cleaning, batteries

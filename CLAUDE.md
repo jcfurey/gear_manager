@@ -71,8 +71,8 @@ the target without a project edit.
 - `App/`: entry point (library or `StoreRecoveryView`), root tabs, and `AppNavigation` (the
   selected tab and the Tools stack, for opening one tab from another).
 - `Models/`: the `@Model` types.
-  - `Catalog/`: Foundation-only catalogs (`GearCategory`, `SensorFormat`, `LensMount`,
-    `FilmStock` with `FilmStockCatalog`).
+  - `Catalog/`: Foundation-only catalogs (`GearCategory`, `SensorFormat`, `LensMount` with
+    `MountCompatibility`, `FilmStock` with `FilmStockCatalog`).
   - `PhotoMath/`: Foundation-only photography math (exposure scales, equivalent exposure, ND,
     Sunny 16, the light meter, optics, astro, time-lapse, flash, print size, reciprocity,
     development timing) and astronomy (`Astronomy`, `SunMoon`, `SkyEvents`: sun and moon
@@ -234,6 +234,19 @@ Development schema. Deploying to Production is done by hand in CloudKit Console.
   - A stock whose maker publishes no figures is `.unpublished` or `.noCorrectionUpTo`; never fill
     it from third-party tables.
   - Film stock IDs are stored and synced like the other catalog IDs: never rename or remove one.
+- **Lens mounts and compatibility.**
+  - `GearItem.mount` is text: a `LensMount` suggestion or any typed name. An adapter's mount
+    names both sides, lens first: "Canon EF → Canon RF" (`LensMount.adapterName`; a typed "->"
+    reads the same). It's a stored form: never change it.
+  - `MountCompatibility.fit` answers from, in order: the same mount, a maker's own adapter, then
+    the room between the two flange distances. An adapter in the inventory counts for its pair
+    whatever the arithmetic says.
+  - The data comes only from the sources in `docs/PHOTO_MATH_REFERENCES.md` ("Lens mounts"): a
+    flange distance from the table, a maker's adapter from the maker's own page. Never say an
+    adapter exists unless its maker does; other brands' adapters are shown as room, "if one is
+    made for this pair".
+  - `CompatibilityView` (from a body's or a lens's screen) lists the inventory by fit, and
+    `GearItem.packingIssues(for:)` flags a lens that goes on no body packed with it.
 - **One camera owner.** `CaptureSessionCoordinator.shared` owns the capture session and its one
   preview layer, like `AudioSessionManager` in Axe Manager.
   - The barcode scanner and the light meter each start it for themselves. `stop(for:)` does

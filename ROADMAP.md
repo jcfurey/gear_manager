@@ -369,9 +369,10 @@ as they come up.
   checklist or the item.
 - Usage from photos: shots per body and lens from a batch of photos, the shutter counts the files
   carry, and the gear used added to the shoot log.
+- Lens and body compatibility, including adapters: which of your lenses go on which of your
+  bodies, from flange distances and the makers' own adapters, with your adapters counted.
 
 **Still open**
-- Lens and body compatibility, including adapters.
 - More categories and category-specific fields as they're needed.
 - Widgets or a Live Activity for the development and bulb timers. Needs a widget extension, the
   app's first second target.

@@ -136,6 +136,38 @@ struct ShootTests {
         #expect(rental.packingIssues(for: shoot).isEmpty, "A rental kept past the shoot is fine")
     }
 
+    /// A lens that goes on none of the bodies packed with it is flagged, until its adapter is
+    /// packed too.
+    @Test func packingFlagsALensNoPackedBodyTakes() throws {
+        let container = try TestSupport.makeContainer()
+        let context = container.mainContext
+        let body = TestSupport.insertSampleBody(into: context)  // Nikon Z, full frame.
+        let native = TestSupport.insertSampleLens(into: context)  // Nikon Z.
+        let lens = GearItem(category: .lens, make: "Nikon", model: "AF-S 85mm f/1.8G")
+        lens.mount = "Nikon F"
+        context.insert(lens)
+        let shoot = Shoot(title: "Portraits")
+        context.insert(shoot)
+        shoot.gear = [body, native, lens]
+        #expect(native.packingIssues(for: shoot).isEmpty)
+        #expect(lens.packingIssues(for: shoot) == ["Needs the Nikon Mount Adapter FTZ II, which isn't on this shoot"])
+
+        let adapter = GearItem(category: .lens, make: "Nikon", model: "FTZ II")
+        adapter.mount = LensMount.adapterName(lens: "Nikon F", body: "Nikon Z")
+        context.insert(adapter)
+        #expect(adapter.adapterDescription == "Nikon F lenses on Nikon Z bodies")
+        #expect(native.adapterDescription == nil)
+        shoot.gear = [body, native, lens, adapter]
+        #expect(lens.packingIssues(for: shoot).isEmpty, "Its adapter is packed")
+        #expect(adapter.packingIssues(for: shoot).isEmpty, "An adapter is never judged as a lens")
+
+        // With no body on the shoot there's nothing to judge by.
+        shoot.gear = [lens]
+        #expect(lens.packingIssues(for: shoot).isEmpty)
+        #expect(body.mountedGear.format == .fullFrame)
+        #expect(body.mountedGear.name == body.displayName)
+    }
+
     @Test func kitsAddOnlyNewGear() throws {
         let container = try TestSupport.makeContainer()
         let context = container.mainContext

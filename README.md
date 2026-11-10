@@ -110,6 +110,14 @@ These are built and tested, and aren't in the 1.0 App Store text or release note
   - Gear the inventory lacks can be added, and the batch logged as a shoot or its gear added to
     one, which is where an item's use is counted from.
   - Everything is read on the device; the photos aren't copied or kept.
+- **Lens and body compatibility:** a body's screen lists your lenses by how they go on it: fits,
+  with an adapter you have, with an adapter, or doesn't fit. A lens's screen lists your bodies.
+  - Worked out from the flange distances of 33 mounts and 22 adapters that the camera and lens
+    makers sell for their own systems, each cited in the references.
+  - An adapter you own is added as a lens whose mount names both sides ("Canon EF → Sony E");
+    it then counts for that pair.
+  - A lens made for a smaller format than the body's says so.
+  - A shoot's packing check flags a lens that goes on none of the bodies packed with it.
 - **Fixes from a review of the 1.0 code:** maintenance reminders now notify; timer alerts keep
   the ones that matter when there are more than iOS allows; a shoot keeps its clock time when its
   place changes time zone; exports and backups that are too large say so instead of failing

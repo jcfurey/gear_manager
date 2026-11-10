@@ -161,7 +161,10 @@ struct CollectionStatsView: View {
     }
 
     private var mountRows: [MountRow] {
-        let mounted = items.filter { !$0.mount.trimmingCharacters(in: .whitespaces).isEmpty }
+        // An adapter's mount names two mounts: it belongs to neither's count.
+        let mounted = items.filter {
+            !$0.mount.trimmingCharacters(in: .whitespaces).isEmpty && !LensMount.isAdapter($0.mount)
+        }
         // Group case-insensitively, showing the most common spelling.
         let grouped = Dictionary(grouping: mounted) { LensMount.normalized($0.mount) }
         return grouped.values.map { members in

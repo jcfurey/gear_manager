@@ -10,6 +10,144 @@ is still to check on a device. Add a section when a milestone finishes.
 | M3 — Light Meter and sky planning | Done (2026-10-11) |
 | M4 — Shoots | Done (2026-10-11) |
 | M5 — 1.0 release prep | Done in code (2026-10-12); the release checklist in the roadmap is the owner's |
+| After 1.0 — later candidates, round 1 | Done (2026-11-10); not merged to `main` yet |
+
+---
+
+## After 1.0 — later candidates, round 1
+
+**Done 2026-11-10** on `claude/camera-gear-manager-e1zzxt`, restarted from `main` after pull
+request #1 merged (commits `7c418c5`, `a4d7101`, `b8e19a0`, `1f8c38d`, and the commit that adds
+this section). The first four of the roadmap's later candidates, and a review of the 1.0 code.
+
+### What shipped
+- **A report for your insurer** (`7c418c5`): a PDF of all gear or a chosen part, grouped by
+  category with totals, with serial numbers, prices, values and one or all photos per item. From
+  Settings and from the Collection screen. The word "insurance" is kept out of the app and the App
+  Store text by a convention check.
+- **QR labels** (`a4d7101`): labels for kits and gear, 8 or 18 to a page, on Letter or A4, with
+  an optional "if found" line.
+  - A label's code is `shuttermanager://kit/<id>` or `shuttermanager://gear/<id>`: an ID and
+    nothing else. The Camera app opens it in the app, which shows the kit's checklist or the item,
+    and says so when the label is from another library.
+  - The app registers the `shuttermanager` URL scheme. Nothing else uses it.
+- **Usage from photos** (`1f8c38d`): choose photos, files or a folder and see the shots each body
+  and lens took.
+  - Matching is by serial number, then by name. It knows Nikon's "Z 6_2" is the Z6 II, and that a
+    lens named "NIKKOR Z 50mm f/1.8 S" is the item "Z 50mm f/1.8 S". A match you choose is
+    remembered on that device.
+  - A shutter count in the files is recorded as a reading dated by the photo. Choosing the same
+    photos twice records it once.
+  - Gear the inventory lacks can be added. The batch can be logged as a shoot, or its gear added
+    to the shoot it was opened from.
+  - Only metadata is read, from the file where the system put it, so a 60 MB raw file costs
+    little. A raw file and a JPEG of the same name count as one shot. Up to 10,000 photos a batch.
+- **Lens and body compatibility** (the commit that adds this section): a body's screen lists the
+  inventory's lenses as fitting, fitting with an adapter you have, fitting with an adapter, or
+  not fitting; a lens's screen lists the bodies.
+  - The answer comes from the same mount, then a maker's own adapter, then the room between the
+    two mounts' flange distances. 33 mounts and 22 makers' adapters, each with its source in
+    `docs/PHOTO_MATH_REFERENCES.md`.
+  - An adapter you own is a lens whose mount names both sides ("Canon EF → Sony E"), chosen from
+    the mount field's menu. It counts for its pair.
+  - A lens made for a smaller format than the body's says to expect a crop or dark corners.
+  - A shoot's packing check flags a lens that goes on none of the bodies packed with it, and
+    names the maker's adapter when that's what's missing.
+- **Fixes from a review of the 1.0 code** (`b8e19a0`). Two reviewers read the services and the
+  views; each finding was checked against the code before it was fixed.
+  - Maintenance reminders were never scheduled as notifications. They are now, and they count
+    toward an item needing attention.
+  - With more timer alerts than iOS keeps, the ones that end a step are kept and agitation
+    reminders go first. Development alerts are topped up when the app comes back.
+  - A shoot keeps its clock time when its place moves it to another time zone.
+  - An export too large to write says so and names the fix; a backup that large is written
+    without photos and the Backups screen says so. Both used to fail without a reason.
+  - A calculator result that isn't a finite number no longer crashes a conversion to a whole
+    number (`Int(saturating:)`); an ND stack stops at 40 stops.
+  - After a replace-import or Delete All Data, the tabs are rebuilt, so no screen is left showing
+    a deleted record.
+  - Failed saves are reported in six places that used to ignore them: deleting gear (from the
+    list and from its screen), a roll or a loan, changes on a shoot's screen, and dismissing a
+    reminder.
+  - Smaller ones: a photo's location is removed on the fallback path too; coordinates typed with
+    a decimal comma are read; a record repeated inside one import file is added once; a distance
+    in feet shows three decimals, not sixteen; Add Gear dates a photo's shutter count by the
+    photo; a note appears beside timers and heads-ups when notifications are off.
+- **The privacy policy** now covers usage from photos, the report and the labels, dated
+  November 10, 2026. No data leaves the device in a new way.
+- **Tests' typing:** `replaceText` checks what arrived and types again when the simulator
+  dropped keystrokes.
+
+### Verified
+Each commit ran CI, the later ones with UI tests on iPhone 17 and iPad (iOS 26.5):
+- `7c418c5` and `a4d7101`:
+  [run 42732745496](https://github.com/jcfurey/gear_manager/actions/runs/42732745496) and
+  [run 42733904367](https://github.com/jcfurey/gear_manager/actions/runs/42733904367) passed the
+  convention checks, the Linux tests, the Debug build with unit tests and the Release build.
+- `b8e19a0`: [run 42735785866](https://github.com/jcfurey/gear_manager/actions/runs/42735785866)
+  passed everything but one iPhone UI test, the dropped keystrokes described below. The iPad run
+  passed all 21 UI tests, the new ones for labels and the report among them.
+- `1f8c38d`: [run 42738975436](https://github.com/jcfurey/gear_manager/actions/runs/42738975436)
+  passed 99 Foundation-only tests on Linux, 273 unit tests, the Release build and all 23 UI tests
+  on iPhone. On iPad 21 passed, both new usage tests among them, and the first two of the run
+  never launched the app: see below.
+- The lens compatibility commit and the CI change that follows it: the run is recorded here once
+  it finishes.
+
+### Changes from the plan
+- **Usage from photos stores no tally.** The roadmap said "count shots per body and lens … and
+  update shutter counts". The counts are shown, and what's kept goes where the app already keeps
+  it: shutter-count readings, and the shoot log, which is where an item's use is counted from. A
+  stored per-item tally would need a schema change and would double on a second pass over the
+  same photos.
+- **Shutter counts come only from files that carry them**, which through ImageIO means Nikon.
+  The number of photos isn't turned into an estimate: kept photos undercount the shutter, and an
+  electronic shutter doesn't move it.
+- **Labels carry an ID, not a name.** A label for a kit doesn't change when the kit's contents do,
+  and a found bag gives nothing away.
+- **An adapter's two mounts live in the mount text**, not in new fields. The roadmap asked for
+  "compatibility, including adapters"; a second mount field would have been a schema change. An
+  older version of the app shows the text as it is.
+- **Only makers' own adapters are named.** Other brands make many more, with no one source for
+  which exist, so those pairs show the room between the mounts and say "if one is made for this
+  pair". Sigma's Canon EF converters are left out because Sigma offers them for its own lenses.
+- **No schema change in the round.** All fifteen models are as they were, so there is nothing new
+  to deploy in CloudKit Console.
+- **Not in the plan:** the code review and its fixes, the URL scheme, remembered matches, and
+  the packing check for lenses.
+
+### Found by CI and fixed
+- The iPhone UI run on `b8e19a0` failed one test: `AccessibilityAuditTests.testShootScreens`
+  looked for a shoot titled "Harbour", and the result bundle showed the shoot open with the title
+  "Ha". The simulator had dropped keystrokes. The app was right; `replaceText` now retypes text
+  that arrived short.
+- The iPad UI run on `1f8c38d` failed its first two tests with "Timed out while launching
+  application", one of them holding the job for ten minutes; the other 21 passed. A newly booted
+  simulator's first launch of a newly installed app outlasted XCUITest's launch limit. The job
+  now installs the app and launches it once before the tests.
+
+### Left for later
+These came out of the review and weren't fixed here. The first two are in the roadmap's open list.
+- A pass that finds records doubled by importing a file before iCloud finished syncing. Today the
+  import screen warns about it.
+- A package format so a large library exports and backs up with its photos.
+- A sound or banner inside the app when a timer ends and notifications are off. Today there is
+  only the note.
+- A record deleted on another device while its detail screen is open here.
+
+### Still to check on a device
+- **Usage from photos** with real files: a card's folder of raw files from the Files app, photos
+  chosen from the Photos library (raw and HEIC), and photos still in iCloud, which should count
+  as unreadable until downloaded.
+- **A Nikon body's shutter count** through the batch reader, against the camera's own count.
+- **QR labels:** print a sheet on Letter and A4 and scan the labels with the Camera app.
+- **The report for your insurer** printed, and opened in Files and Mail.
+- **Compatibility** against gear you own: a few lens and body pairs you know the answer for,
+  and an adapter of yours entered as one.
+- **The camera preview in landscape**, in the barcode scanner, the label scanner and the light
+  meter. The review flagged its rotation as possibly wrong; a simulator has no camera to check.
+- **The camera beside another app on iPad** (Split View, Stage Manager): whether the light meter
+  and scanner are interrupted, and what they show if so.
 
 ---
 

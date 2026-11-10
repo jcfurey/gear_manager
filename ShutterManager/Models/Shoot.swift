@@ -232,7 +232,7 @@ extension GearItem {
     }
 
     /// Why this item might not be ready for `shoot`: lent out, a rental due back before the shoot
-    /// ends, or needing service or a sensor cleaning.
+    /// ends, needing service or a sensor cleaning, or a lens that fits none of the shoot's bodies.
     func packingIssues(for shoot: Shoot) -> [String] {
         var issues: [String] = []
         if let loan = openLoan {
@@ -249,6 +249,10 @@ extension GearItem {
         }
         if serviceNeeded { issues.append("Needs service") }
         if isSensorCleaningDue { issues.append("Sensor cleaning due") }
+        // A lens that goes on none of the bodies packed with it.
+        if let mismatch = CompatibilityList.packingIssue(for: mountedGear, among: (shoot.gear ?? []).map(\.mountedGear)) {
+            issues.append(mismatch)
+        }
         return issues
     }
 }
