@@ -20,15 +20,20 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 APP = ROOT / "ShutterManager"
+# The widget extension, and the folder it shares with the app. What ships to users is checked the
+# same wherever it lives: logging, leftovers, wording.
+EXTENSION_DIRS = [ROOT / "ShutterManagerShared", ROOT / "ShutterManagerWidgets"]
 TEST_DIRS = [ROOT / "ShutterManagerTests", ROOT / "ShutterManagerUITests"]
 PROJECT = ROOT / "ShutterManager.xcodeproj" / "project.pbxproj"
 ENTITLEMENTS = APP / "ShutterManager.entitlements"
 INFO_PLIST = ROOT / "Info.plist"
+WIDGETS_INFO_PLIST = ROOT / "ShutterManagerWidgets-Info.plist"
 APP_SCHEMA = APP / "Utilities" / "AppSchema.swift"
 
 BUNDLE_ID = "jcameronfurey.shuttermanager"
 CLOUDKIT_CONTAINER = "iCloud.jcameronfurey.shuttermanager"
-EXPECTED_BUNDLE_IDS = {BUNDLE_ID, f"{BUNDLE_ID}.tests", f"{BUNDLE_ID}.uitests"}
+# An extension's bundle ID has to start with its app's.
+EXPECTED_BUNDLE_IDS = {BUNDLE_ID, f"{BUNDLE_ID}.tests", f"{BUNDLE_ID}.uitests", f"{BUNDLE_ID}.widgets"}
 
 problems = []
 
@@ -60,7 +65,7 @@ def code_only(line):
 def check_logging():
     """App code logs through os.Logger; print/NSLog output is lost on device and unfiltered."""
     pattern = re.compile(r"(?<![\w.])(print|debugPrint|NSLog|dump)\(")
-    for path in swift_files(APP):
+    for path in swift_files(APP, *EXTENSION_DIRS):
         for number, line in enumerate(path.read_text().splitlines(), 1):
             if pattern.search(code_only(line)) and not allowed(line, "logging"):
                 report("logging", path, number, "Use os.Logger, not print/debugPrint/NSLog/dump.")
@@ -71,7 +76,7 @@ def check_logging():
 
 def check_port_leftovers():
     pattern = re.compile(r"guitar|axemanager|Axe Manager|theweegee|\btuner\b|fretboard", re.IGNORECASE)
-    for path in swift_files(APP, *TEST_DIRS):
+    for path in swift_files(APP, *EXTENSION_DIRS, *TEST_DIRS):
         for number, line in enumerate(path.read_text().splitlines(), 1):
             if pattern.search(line) and not allowed(line, "leftovers"):
                 report("leftovers", path, number, f"Axe Manager leftover: {line.strip()[:100]}")
@@ -228,6 +233,16 @@ def check_capabilities():
     info = load_plist(INFO_PLIST, "capabilities")
     if info is not None and "remote-notification" not in info.get("UIBackgroundModes", []):
         report("capabilities", INFO_PLIST, 1, "CloudKit sync needs UIBackgroundModes → remote-notification.")
+    # The timers' Live Activity: the app has to say it supports them, and the extension that
+    # draws them has to be a WidgetKit extension.
+    if info is not None and info.get("NSSupportsLiveActivities") is not True:
+        report("capabilities", INFO_PLIST, 1, "The timers' Live Activity needs NSSupportsLiveActivities = true.")
+    widgets = load_plist(WIDGETS_INFO_PLIST, "capabilities")
+    if widgets is not None:
+        point = widgets.get("NSExtension", {}).get("NSExtensionPointIdentifier")
+        if point != "com.apple.widgetkit-extension":
+            report("capabilities", WIDGETS_INFO_PLIST, 1,
+                   f"NSExtensionPointIdentifier should be com.apple.widgetkit-extension, found {point}.")
 
     # Swift code that names a container must name the one in the entitlements.
     for path in swift_files(APP):
@@ -267,7 +282,7 @@ BANNED_WORDING = re.compile(r"insuranc", re.IGNORECASE)
 
 
 def check_wording():
-    for path in swift_files(APP):
+    for path in swift_files(APP, *EXTENSION_DIRS):
         for number, line in enumerate(path.read_text().splitlines(), 1):
             literals = re.findall(r'"((?:\\.|[^"\\])*)"', line.split("//", 1)[0])
             if any(BANNED_WORDING.search(literal) for literal in literals) and not allowed(line, "wording"):

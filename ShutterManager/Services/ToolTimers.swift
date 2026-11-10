@@ -5,7 +5,8 @@
 //  The tools' running timers: a long-exposure countdown and a film development run. Held for the
 //  whole session, so leaving a tool's screen doesn't stop its timer, and backed by notifications,
 //  so the alerts still come with the app in the background or the screen off. With notifications
-//  off, the alerts come from the app itself while it's open.
+//  off, the alerts come from the app itself while it's open. Each running timer also shows as a
+//  Live Activity on the Lock Screen and in the Dynamic Island.
 //
 
 import Foundation
@@ -14,7 +15,9 @@ import Observation
 @MainActor
 @Observable
 final class ToolTimers {
-    static let shared = ToolTimers()
+    /// The app's timers, which show as Live Activities. Timers made elsewhere (tests) show none
+    /// unless they're given somewhere to show them.
+    static let shared = ToolTimers(activities: TimerActivityController.shared)
 
     /// A countdown for a long (bulb) exposure.
     struct Countdown: Equatable {
@@ -43,6 +46,10 @@ final class ToolTimers {
     @ObservationIgnored private var cuesSeenThrough = Date.distantPast
     @ObservationIgnored private var cueLoop: Task<Void, Never>?
     @ObservationIgnored private let giveCue: @MainActor (NotificationManager.TimerAlert) -> Void
+    @ObservationIgnored private let activities: TimerActivityPresenting?
+    /// A development run shows its activity from the first step's start, not from when the
+    /// recipe is loaded: until then there's no clock to show.
+    @ObservationIgnored private var showsDevelopmentActivity = false
 
     static let exposureGroup = "exposure"
     static let developmentGroup = "development"
@@ -55,9 +62,11 @@ final class ToolTimers {
 
     /// `notifications` defaults to the shared manager and `cue` to the app's own alert (default
     /// arguments can't read them, being evaluated off the main actor).
-    init(notifications: NotificationManager? = nil, cue: (@MainActor (NotificationManager.TimerAlert) -> Void)? = nil) {
+    init(notifications: NotificationManager? = nil, cue: (@MainActor (NotificationManager.TimerAlert) -> Void)? = nil,
+         activities: TimerActivityPresenting? = nil) {
         self.notifications = notifications ?? .shared
         giveCue = cue ?? { TimerCue.give($0) }
+        self.activities = activities
     }
 
     var hasActiveTimer: Bool { exposure != nil || development != nil }
@@ -70,11 +79,13 @@ final class ToolTimers {
         exposure = countdown
         schedule([.init(date: countdown.endsAt, title: "Exposure done", body: "Close the shutter: \(title).", isRequired: true)],
                  group: Self.exposureGroup, now: now)
+        activities?.show(Self.activityState(for: countdown, now: now), kind: .exposure, staleDate: countdown.endsAt)
     }
 
     func cancelExposure() {
         exposure = nil
         cancelAlerts(group: Self.exposureGroup)
+        activities?.end(.exposure)
     }
 
     // MARK: - Development
@@ -84,6 +95,9 @@ final class ToolTimers {
         development = DevelopmentRun(recipeID: recipeID, recipeName: recipeName,
                                      session: DevelopmentSession(steps: steps))
         cancelAlerts(group: Self.developmentGroup)
+        // The run this replaces, if any, takes its activity with it.
+        showsDevelopmentActivity = false
+        activities?.end(.development)
     }
 
     func startStep(now: Date = Date()) {
@@ -105,6 +119,8 @@ final class ToolTimers {
     func endDevelopment() {
         development = nil
         cancelAlerts(group: Self.developmentGroup)
+        showsDevelopmentActivity = false
+        activities?.end(.development)
     }
 
     /// Schedules the running step's alerts again from `now`. A long step has more agitations
@@ -119,6 +135,73 @@ final class ToolTimers {
         change(&run.session)
         development = run
         schedule(Self.alerts(for: run.session, now: now), group: Self.developmentGroup, now: now)
+        showDevelopmentActivity(now: now)
+    }
+
+    // MARK: - Live Activities
+
+    /// Brings the timers' Live Activities up to date with the clock: a step or an exposure whose
+    /// time ran out while the app was away says so, and a finished exposure's activity goes, now
+    /// that the app itself is showing it. Called when the app comes to the front.
+    func refreshActivities(now: Date = Date()) {
+        if let exposure, exposure.isDone(at: now) {
+            activities?.end(.exposure)
+        }
+        showDevelopmentActivity(now: now)
+    }
+
+    private func showDevelopmentActivity(now: Date) {
+        guard let run = development else { return }
+        let phase = run.session.phase(at: now)
+        if case .running = phase { showsDevelopmentActivity = true }
+        guard showsDevelopmentActivity else { return }
+        guard let state = Self.activityState(for: run, now: now) else {
+            // Every step is done.
+            showsDevelopmentActivity = false
+            activities?.end(.development)
+            return
+        }
+        activities?.show(state, kind: .development, staleDate: state.phase == .running ? state.endsAt : nil)
+    }
+
+    /// A bulb exposure as its Live Activity shows it.
+    static func activityState(for exposure: Countdown, now: Date) -> TimerActivityAttributes.ContentState {
+        TimerActivityAttributes.ContentState(
+            title: exposure.title, detail: "", next: "Close the shutter",
+            phase: exposure.isDone(at: now) ? .done : .running,
+            startedAt: exposure.endsAt.addingTimeInterval(-exposure.duration), endsAt: exposure.endsAt,
+            remaining: exposure.remaining(at: now))
+    }
+
+    /// A development run's current step as its Live Activity shows it; nil once every step is done.
+    static func activityState(for run: DevelopmentRun, now: Date) -> TimerActivityAttributes.ContentState? {
+        let session = run.session
+        guard let step = session.currentStep else { return nil }
+        let following = session.steps.indices.contains(session.currentIndex + 1) ? session.steps[session.currentIndex + 1] : nil
+        let place = "step \(session.currentIndex + 1) of \(session.steps.count)"
+        // The step's whole span: it began `elapsed` seconds ago, however often it was paused.
+        let startedAt = now.addingTimeInterval(-session.elapsed(at: now))
+        let clock: TimerActivityAttributes.Phase
+        let remaining: Double
+        switch session.phase(at: now) {
+        case .running(let left, _):
+            clock = .running
+            remaining = left
+        case .paused(let left):
+            clock = .paused
+            remaining = left
+        case .ready:
+            clock = .ready
+            remaining = step.duration
+        case .stepComplete, .finished:
+            clock = .done
+            remaining = 0
+        }
+        return TimerActivityAttributes.ContentState(
+            title: step.name.isEmpty ? "Step \(session.currentIndex + 1)" : step.name,
+            detail: run.recipeName.isEmpty ? "Step \(session.currentIndex + 1) of \(session.steps.count)" : "\(run.recipeName) · \(place)",
+            next: following.map { "Next: \($0.name)" } ?? "Last step",
+            phase: clock, startedAt: startedAt, endsAt: startedAt.addingTimeInterval(step.duration), remaining: remaining)
     }
 
     // MARK: - Alerts

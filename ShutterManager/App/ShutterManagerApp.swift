@@ -24,6 +24,8 @@ struct ShutterManagerApp: App {
         // Without a delegate, iOS discards notifications delivered while the app is active.
         // Installed before launch finishes.
         UNUserNotificationCenter.current().delegate = NotificationPresentationDelegate.shared
+        // A Live Activity from an earlier run shows a timer that went with that run.
+        TimerActivityController.shared.endLeftovers()
     }
 
     var body: some Scene {
@@ -49,6 +51,7 @@ struct ShutterManagerApp: App {
                 NotificationManager.shared.clearBadge()
                 refreshGearReminders()
                 ToolTimers.shared.refreshDevelopmentAlerts()
+                ToolTimers.shared.refreshActivities()
             } else if newPhase == .background {
                 performAutomaticBackupIfNeeded()
             }
