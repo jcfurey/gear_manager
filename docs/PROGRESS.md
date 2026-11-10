@@ -48,7 +48,17 @@ built as the Live Activity, in the app's first extension.
   Live Activities too.
 
 ### Verified
-VERIFIED_PLACEHOLDER
+[CI run 42874241972](https://github.com/jcfurey/gear_manager/actions/runs/42874241972) passed
+every job on `c76c25d`, the last commit to change code:
+- 127 Foundation-only tests in the Swift 6.2 Linux image;
+- the Debug and Release builds with warnings as errors, the extension built and embedded
+  (`jcameronfurey.shuttermanager.widgets` 1.0.0 (1), found inside the Release app);
+- 330 unit tests;
+- 26 UI tests on each of iPhone 17 and iPad Pro 11-inch (iOS 26.5), the accessibility audit
+  included. The tests that start timers ran with their Live Activities starting.
+
+CI can't look at the Lock Screen or the Dynamic Island: what the activity looks like there is in
+the device list below.
 
 ### Changes from the plan
 - **A Live Activity, not a Home Screen widget.** A timer is only worth showing while it runs,
