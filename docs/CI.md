@@ -48,7 +48,8 @@ screenshots, logs and the full test report.
   launch limit: the first two iPad tests failed with "Timed out while launching application",
   one of them holding the job for its whole 10-minute allowance, and the other 21 passed. So the
   job installs the built app, launches it with `-uiTestInMemory`, waits ten seconds and quits it,
-  where nothing is timing the launch.
+  where nothing is timing the launch. That first install and launch has taken 2.5 to 4 minutes,
+  which is why the step is allowed 15.
 - **The unit-test host app uses a temporary in-memory library.** The unit tests build their own
   containers, so the app hosting them doesn't open the simulator's library or start CloudKit
   setup. That alone took the unit-test step from about 7 minutes to under 4.

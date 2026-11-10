@@ -234,9 +234,10 @@ jobs:
       # Then the app is installed and launched once. A newly booted simulator's first launch of
       # a newly installed app is its slowest, and on a busy runner it has outlasted XCUITest's
       # launch limit: the first two iPad tests failed with "Timed out while launching
-      # application" and the other 21 passed. Here nothing is timing it.
+      # application" and the other 21 passed. Here nothing is timing it. The install and launch
+      # have taken 2.5 to 4 minutes on top of a 2-minute boot.
       - name: Boot the simulator and launch the app once
-        timeout-minutes: 10
+        timeout-minutes: 15
         env:
           UDID: ${{ steps.sim.outputs.udid }}
           APP: ${{ runner.temp }}/DerivedData/Build/Products/Debug-iphonesimulator/ShutterManager.app

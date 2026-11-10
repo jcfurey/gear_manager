@@ -77,6 +77,8 @@ this section). The first four of the roadmap's later candidates, and a review of
   November 10, 2026. No data leaves the device in a new way.
 - **Tests' typing:** `replaceText` checks what arrived and types again when the simulator
   dropped keystrokes.
+- **Tests:** 119 Foundation-only tests (49 new), 294 unit tests in all (115 new), and 25 UI
+  tests on each device (8 new).
 
 ### Verified
 Each commit ran CI, the later ones with UI tests on iPhone 17 and iPad (iOS 26.5):
@@ -91,8 +93,14 @@ Each commit ran CI, the later ones with UI tests on iPhone 17 and iPad (iOS 26.5
   passed 99 Foundation-only tests on Linux, 273 unit tests, the Release build and all 23 UI tests
   on iPhone. On iPad 21 passed, both new usage tests among them, and the first two of the run
   never launched the app: see below.
-- The lens compatibility commit and the CI change that follows it: the run is recorded here once
-  it finishes.
+- The lens compatibility commit and the CI change after it (`c0b8607`):
+  [run 42743213703](https://github.com/jcfurey/gear_manager/actions/runs/42743213703) passed
+  every job:
+  - 119 Foundation-only tests in the Swift 6.2 Linux image;
+  - the Debug and Release builds with warnings as errors;
+  - 294 unit tests;
+  - 25 UI tests on each of iPhone 17 and iPad Pro 11-inch (iOS 26.5), the accessibility audit
+    included.
 
 ### Changes from the plan
 - **Usage from photos stores no tally.** The roadmap said "count shots per body and lens … and
@@ -124,7 +132,9 @@ Each commit ran CI, the later ones with UI tests on iPhone 17 and iPad (iOS 26.5
 - The iPad UI run on `1f8c38d` failed its first two tests with "Timed out while launching
   application", one of them holding the job for ten minutes; the other 21 passed. A newly booted
   simulator's first launch of a newly installed app outlasted XCUITest's launch limit. The job
-  now installs the app and launches it once before the tests.
+  now installs the app and launches it once before the tests. In the next run that first
+  install and launch took 4 minutes on iPhone and 2.5 on iPad, and then all 25 tests passed on
+  both.
 
 ### Left for later
 These came out of the review and weren't fixed here. The first two are in the roadmap's open list.
