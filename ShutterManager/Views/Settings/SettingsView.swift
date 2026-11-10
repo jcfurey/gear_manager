@@ -190,6 +190,13 @@ struct SettingsView: View {
                         }
                         .accessibilityIdentifier("settings.insurerReport")
 
+                        NavigationLink {
+                            DuplicateRecordsView()
+                        } label: {
+                            SettingsRow(icon: "square.on.square.dashed", iconColor: .orange, title: "Find Duplicates", constants: constants)
+                        }
+                        .accessibilityIdentifier("settings.duplicates")
+
                         Button {
                             HapticFeedbackManager.shared.buttonTap()
                             showingDeleteConfirmation = true
