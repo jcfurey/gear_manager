@@ -18,6 +18,7 @@ SOURCES=(
   ShutterManager/Models/Catalog/FilmStock.swift
   ShutterManager/Models/Catalog/FilmStockCatalog.swift
   ShutterManager/Utilities/PrivacyPolicy.swift
+  ShutterManager/Utilities/LabelLink.swift
 )
 TESTS=(
   ShutterManagerTests/PhotoMathTests.swift
@@ -25,6 +26,7 @@ TESTS=(
   ShutterManagerTests/AstronomyTests.swift
   ShutterManagerTests/LightMeterTests.swift
   ShutterManagerTests/PrivacyPolicyTests.swift
+  ShutterManagerTests/LabelLinkTests.swift
 )
 
 WORK="$(mktemp -d)"

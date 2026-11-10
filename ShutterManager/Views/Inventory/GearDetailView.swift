@@ -20,6 +20,7 @@ struct GearDetailView: View {
     @State private var draft: GearItem?
     @State private var saveFailed = false
     @State private var showingDeleteConfirm = false
+    @State private var showingLabel = false
     /// Downsampled hero image, loaded once per hero-photo change rather than decoded in `body`.
     @State private var heroImage: UIImage?
 
@@ -35,6 +36,9 @@ struct GearDetailView: View {
             }
         }
         .persistenceErrorAlert(isPresented: $saveFailed)
+        .sheet(isPresented: $showingLabel) {
+            LabelsView(gear: [item.id])
+        }
         .navigationTitle(draft?.displayName ?? item.displayName)
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
@@ -404,6 +408,12 @@ struct GearDetailView: View {
                     Label("Maintenance", systemImage: "wrench.and.screwdriver")
                 }
             }
+            Button {
+                showingLabel = true
+            } label: {
+                Label("QR Label", systemImage: "qrcode")
+            }
+            .accessibilityIdentifier("gearLabelButton")
         }
     }
 

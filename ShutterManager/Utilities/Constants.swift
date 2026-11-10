@@ -151,6 +151,8 @@ enum Constants {
 
         /// The name last put on a report for the user's insurer. Per device, not exported.
         static let reportOwnerName = "report.ownerName"
+        /// The line printed at the foot of QR labels, such as "If found: 555-0100". Per device.
+        static let labelContactLine = "labels.contactLine"
     }
 
     // MARK: - UI Constants

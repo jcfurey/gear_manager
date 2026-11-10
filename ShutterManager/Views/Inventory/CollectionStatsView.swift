@@ -15,6 +15,7 @@ struct CollectionStatsView: View {
     /// Each category's bar, taller with larger text so the labels don't overlap.
     @ScaledMetric private var categoryRowHeight: CGFloat = 34
     @State private var showingInsurerReport = false
+    @State private var showingLabels = false
 
     var body: some View {
         let valuation = GearValuationService.collectionValue(of: items)
@@ -56,8 +57,14 @@ struct CollectionStatsView: View {
                         Label("Report for Your Insurer", systemImage: "doc.richtext")
                     }
                     .accessibilityIdentifier("collectionInsurerReportButton")
+                    Button {
+                        showingLabels = true
+                    } label: {
+                        Label("QR Labels", systemImage: "qrcode")
+                    }
+                    .accessibilityIdentifier("collectionLabelsButton")
                 } footer: {
-                    Text("A PDF of your gear with serial numbers, values and photos.")
+                    Text("A PDF of your gear with serial numbers, values and photos, and labels to print for bags, cases and gear.")
                 }
             }
         }
@@ -65,6 +72,9 @@ struct CollectionStatsView: View {
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showingInsurerReport) {
             InsurerReportView()
+        }
+        .sheet(isPresented: $showingLabels) {
+            LabelsView()
         }
     }
 
@@ -78,7 +88,7 @@ struct CollectionStatsView: View {
 
     @ViewBuilder
     private var attentionSection: some View {
-        let flagged = items.filter { $0.isOnLoan || $0.serviceNeeded || $0.isSensorCleaningDue || $0.isNearShutterLife }
+        let flagged = items.filter { !$0.attentionReasons.isEmpty }
         if !flagged.isEmpty {
             Section("Needs Attention") {
                 ForEach(flagged) { item in
@@ -87,22 +97,13 @@ struct CollectionStatsView: View {
                     } label: {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(item.displayName)
-                            Text(reasons(for: item).joined(separator: " · "))
+                            Text(item.attentionReasons.joined(separator: " · "))
                                 .font(.caption).foregroundStyle(.secondary)
                         }
                     }
                 }
             }
         }
-    }
-
-    private func reasons(for item: GearItem) -> [String] {
-        var reasons: [String] = []
-        if let loan = item.openLoan { reasons.append(loan.isOverdue ? "\(loan.summary), overdue" : loan.summary) }
-        if item.serviceNeeded { reasons.append("Needs service") }
-        if item.isSensorCleaningDue { reasons.append("Sensor cleaning due") }
-        if item.isNearShutterLife { reasons.append("Shutter near rated life") }
-        return reasons
     }
 
     // MARK: - Charts

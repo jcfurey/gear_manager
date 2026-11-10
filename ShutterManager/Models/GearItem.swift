@@ -316,6 +316,21 @@ extension GearItem {
     var isLoanOverdue: Bool { openLoan?.isOverdue ?? false }
 }
 
+// MARK: - Attention
+
+extension GearItem {
+    /// Why the item needs a look, in words: on loan, needing service, a sensor cleaning due, a
+    /// shutter near its rated life. Empty when nothing does.
+    var attentionReasons: [String] {
+        var reasons: [String] = []
+        if let loan = openLoan { reasons.append(loan.isOverdue ? "\(loan.summary), overdue" : loan.summary) }
+        if serviceNeeded { reasons.append("Needs service") }
+        if isSensorCleaningDue { reasons.append("Sensor cleaning due") }
+        if isNearShutterLife { reasons.append("Shutter near rated life") }
+        return reasons
+    }
+}
+
 // MARK: - Value
 
 extension GearItem {

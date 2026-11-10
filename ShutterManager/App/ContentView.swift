@@ -46,6 +46,19 @@ struct ContentView: View {
         }
         .environment(tipJarStore)
         .environment(navigation)
+        // A label's code is a link to the app; the Camera app opens it here.
+        .onOpenURL { navigation.open($0) }
+        .sheet(item: $navigation.openedLabel) { link in
+            NavigationStack {
+                LabelDestinationView(link: link)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Close") { navigation.openedLabel = nil }
+                                .accessibilityIdentifier("closeLabelButton")
+                        }
+                    }
+            }
+        }
         .toast()
         .preferredColorScheme(colorScheme)
     }

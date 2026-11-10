@@ -2,25 +2,11 @@
 //  InsurerReportRenderer.swift
 //  ShutterManager
 //
-//  Lays an `InsurerReport` out on pages and draws them as a PDF. Layout comes first, as a list of
-//  placed elements for each page, so the page count is known before anything is drawn (for "Page 2
-//  of 5") and tests can check the layout without reading a PDF back.
+//  Lays an `InsurerReport` out on pages, for `PrintDocument` to draw as a PDF. The layout is done
+//  before anything is drawn, so every page can say "Page 2 of 5".
 //
 
 import UIKit
-
-/// Paper for printable documents: US Letter where it's the norm, A4 everywhere else.
-enum PrintPaper {
-    static let letter = CGSize(width: 612, height: 792)
-    static let a4 = CGSize(width: 595, height: 842)
-
-    /// Regions whose printers are loaded with US Letter.
-    private static let letterRegions: Set<String> = ["US", "CA", "MX", "PR", "PH", "CL", "CO", "CR", "GT", "PA", "DO", "VE"]
-
-    static func size(for locale: Locale = .current) -> CGSize {
-        letterRegions.contains(locale.region?.identifier ?? "") ? letter : a4
-    }
-}
 
 struct InsurerReportRenderer: Sendable {
     let pageSize: CGSize
@@ -29,19 +15,7 @@ struct InsurerReportRenderer: Sendable {
         self.pageSize = pageSize
     }
 
-    /// One thing placed on a page, in points from the page's top-left corner.
-    enum Element {
-        case text(NSAttributedString, CGRect)
-        case photo(Data, CGRect)
-        /// A hairline across the content width.
-        case rule(CGRect)
-
-        var frame: CGRect {
-            switch self {
-            case .text(_, let frame), .photo(_, let frame), .rule(let frame): return frame
-            }
-        }
-    }
+    typealias Element = PrintElement
 
     private let margin: CGFloat = 48
     /// Kept clear at the foot of every page for the page number.
@@ -59,77 +33,25 @@ struct InsurerReportRenderer: Sendable {
     // MARK: - PDF
 
     func pdfData(for report: InsurerReport) -> Data {
-        let laidOut = pages(for: report)
-        let format = UIGraphicsPDFRendererFormat()
-        format.documentInfo = [
-            kCGPDFContextCreator as String: Constants.App.name,
-            kCGPDFContextTitle as String: InsurerReport.title
-        ]
-        let renderer = UIGraphicsPDFRenderer(bounds: CGRect(origin: .zero, size: pageSize), format: format)
-        return renderer.pdfData { context in
-            for (index, page) in laidOut.enumerated() {
-                context.beginPage()
-                for element in page { draw(element, in: context.cgContext) }
-                drawFooter(page: index + 1, of: laidOut.count)
-            }
+        PrintDocument.pdfData(pages: pages(for: report), pageSize: pageSize, title: InsurerReport.title) { page, count in
+            let frame = CGRect(x: margin, y: pageSize.height - margin - 10, width: contentWidth, height: 12)
+            return [
+                .text(Self.text("Prepared with \(Constants.App.name)", size: 8, color: Self.secondary), frame),
+                .text(Self.text("Page \(page) of \(count)", size: 8, color: Self.secondary, alignment: .right), frame)
+            ]
         }
-    }
-
-    private func draw(_ element: Element, in context: CGContext) {
-        switch element {
-        case .text(let string, let frame):
-            string.draw(with: frame, options: Self.textOptions, context: nil)
-        case .photo(let jpeg, let frame):
-            // From a JPEG data provider, so the PDF keeps the compressed bytes instead of storing
-            // the decoded pixels. The page's origin is top-left; images draw bottom-up.
-            guard let provider = CGDataProvider(data: jpeg as CFData),
-                  let image = CGImage(jpegDataProviderSource: provider, decode: nil, shouldInterpolate: true,
-                                      intent: .defaultIntent) else { return }
-            context.saveGState()
-            context.translateBy(x: frame.minX, y: frame.maxY)
-            context.scaleBy(x: 1, y: -1)
-            context.draw(image, in: CGRect(origin: .zero, size: frame.size))
-            context.restoreGState()
-        case .rule(let frame):
-            context.setFillColor(UIColor(white: 0.75, alpha: 1).cgColor)
-            context.fill(frame)
-        }
-    }
-
-    /// Drawn into the page that's current.
-    private func drawFooter(page: Int, of count: Int) {
-        let frame = CGRect(x: margin, y: pageSize.height - margin - 10, width: contentWidth, height: 12)
-        Self.text("Prepared with \(Constants.App.name)", size: 8, color: Self.secondary)
-            .draw(with: frame, options: Self.textOptions, context: nil)
-        Self.text("Page \(page) of \(count)", size: 8, color: Self.secondary, alignment: .right)
-            .draw(with: frame, options: Self.textOptions, context: nil)
-    }
-
-    // MARK: - File
-
-    /// Reports wait here to be previewed and shared. Emptied before each new one.
-    static var directory: URL {
-        FileManager.default.temporaryDirectory.appendingPathComponent("Reports", isDirectory: true)
     }
 
     /// "Gear Inventory 2026-11-10.pdf": a name that still makes sense in the insurer's inbox.
     static func fileName(for date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.calendar = Calendar(identifier: .gregorian)
-        formatter.dateFormat = "yyyy-MM-dd"
-        return "\(InsurerReport.title) \(formatter.string(from: date)).pdf"
+        "\(InsurerReport.title) \(PrintDocument.dateStamp(date)).pdf"
     }
 
-    /// Draws the report off the main actor and writes it to `directory`, replacing earlier reports.
+    /// Draws the report off the main actor and writes it where the preview finds it.
     static func writeFile(for report: InsurerReport, pageSize: CGSize = PrintPaper.size()) async throws -> URL {
         try await Task.detached(priority: .userInitiated) {
             let data = InsurerReportRenderer(pageSize: pageSize).pdfData(for: report)
-            try? FileManager.default.removeItem(at: directory)
-            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-            let url = directory.appendingPathComponent(fileName(for: report.preparedDate))
-            try data.write(to: url, options: .atomic)
-            return url
+            return try PrintDocument.write(data, named: fileName(for: report.preparedDate))
         }.value
     }
 
@@ -286,25 +208,16 @@ struct InsurerReportRenderer: Sendable {
 
     // MARK: - Text and geometry
 
-    private static let secondary = UIColor(white: 0.4, alpha: 1)
+    private static let secondary = PrintDocument.secondary
     private static let detail = UIColor(white: 0.2, alpha: 1)
-    private static let textOptions: NSStringDrawingOptions = [.usesLineFragmentOrigin, .usesFontLeading, .truncatesLastVisibleLine]
 
     private static func text(_ string: String, size: CGFloat, weight: UIFont.Weight = .regular, color: UIColor = .black,
                              alignment: NSTextAlignment = .left, lineSpacing: CGFloat = 0) -> NSAttributedString {
-        let paragraph = NSMutableParagraphStyle()
-        paragraph.alignment = alignment
-        paragraph.lineSpacing = lineSpacing
-        return NSAttributedString(string: string, attributes: [
-            .font: UIFont.systemFont(ofSize: size, weight: weight),
-            .foregroundColor: color,
-            .paragraphStyle: paragraph
-        ])
+        PrintDocument.text(string, size: size, weight: weight, color: color, alignment: alignment, lineSpacing: lineSpacing)
     }
 
     private static func height(of text: NSAttributedString, width: CGFloat) -> CGFloat {
-        ceil(text.boundingRect(with: CGSize(width: width, height: .greatestFiniteMagnitude),
-                               options: [.usesLineFragmentOrigin, .usesFontLeading], context: nil).height)
+        PrintDocument.height(of: text, width: width)
     }
 
     /// The largest rectangle of the photo's shape inside `box`, against its top-left corner.
