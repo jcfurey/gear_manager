@@ -65,6 +65,12 @@ Keep these when changing CI:
 external dependencies. The targets use folder-synced groups, so a new file in a folder is part of
 the target without a project edit.
 
+**Targets:** the app (`ShutterManager/`), its widget extension (`ShutterManagerWidgets/`, bundle
+ID `jcameronfurey.shuttermanager.widgets`, embedded in the app), and the unit and UI tests.
+`ShutterManagerShared/` is one folder in two targets: the app and the extension both compile
+what's in it. The extension's `Info.plist` is `ShutterManagerWidgets-Info.plist` at the root,
+beside the app's.
+
 **Tabs** (`App/ContentView.swift`): **Inventory · Tools · Light Meter · Shoots · Settings**.
 
 **Folders (`ShutterManager/`):**
@@ -240,6 +246,20 @@ Development schema. Deploying to Production is done by hand in CloudKit Console.
   - When notifications can't be shown, `ToolTimers.giveDueCues` gives each alert through
     `TimerCue` while the app is open: a banner, a haptic and a tone made in code
     (`TimerToneData`). With notifications on it does nothing, so no alert comes twice.
+- **Live Activities** (a running timer on the Lock Screen and in the Dynamic Island).
+  - `ShutterManagerShared/TimerActivityAttributes.swift` is what an activity shows, with the
+    words and numbers worked out there so the app's tests can check them. The extension
+    (`TimerLiveActivity`) only draws.
+  - `ToolTimers` asks `TimerActivityPresenting` to show or end; `TimerActivityController` is the
+    ActivityKit one, and only `ToolTimers.shared` has it. Tests pass a recorder, or nothing.
+  - Nothing is pushed to an activity: there's no server. A running countdown is drawn by the
+    system (`Text(timerInterval:)`), and its stale date, set to when it runs out, is what makes
+    the activity say "Time's up" with the app asleep. Anything that must change at a moment the
+    app may not be running has to work that way.
+  - What the extension needs from the app goes in the activity's content state. It can't read
+    the library: sharing that would take an App Group, which the app doesn't have.
+  - The extension's version and build number must match the app's, and its bundle ID must start
+    with the app's. The convention checks hold both.
 - **Photography math.**
   - `Models/PhotoMath/` stays Foundation-only, with lengths in millimetres, times in seconds and
     temperatures in °C.

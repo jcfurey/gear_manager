@@ -53,7 +53,7 @@ enum PrivacyPolicy {
             • Maps, place search and place names come from Apple Maps (MapKit). Searches you type, and the points you pick on the map, are sent to Apple to find places and their names.
             """),
         Section(title: "Notifications", body: """
-            Reminders for sensor cleanings and loans due back, alerts for running exposure and development timers, and golden-hour heads-ups for shoots you plan are scheduled on your device. Nothing is sent to a server.
+            Reminders for sensor cleanings and loans due back, alerts for running exposure and development timers, and golden-hour heads-ups for shoots you plan are scheduled on your device. A running timer also shows on the Lock Screen and in the Dynamic Island, with the name you gave the exposure or recipe. Nothing is sent to a server.
             """),
         Section(title: "Other Services", body: """
             • Barcode lookup: when you scan a barcode, its number is sent to UPCitemdb (upcitemdb.com) to look up the product. Product images it returns are downloaded from their hosts. You can always enter gear by hand instead.

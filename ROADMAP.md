@@ -308,6 +308,9 @@ GPS or iCloud happens on your Mac and devices. Work down the list in order.
   `iCloud.jcameronfurey.shuttermanager`.
 - [ ] In Xcode → Signing & Capabilities, turn on iCloud (CloudKit, with that container) and
   Background Modes → Remote notifications.
+- [ ] Open the project once and select the `ShutterManagerWidgets` target → Signing &
+  Capabilities. With automatic signing, Xcode registers its App ID,
+  `jcameronfurey.shuttermanager.widgets`, on your team. It needs no capabilities of its own.
 
 **2. CloudKit schema**
 - [ ] Run a Debug build from Xcode once, on a device signed in to iCloud, with the launch argument
@@ -374,11 +377,15 @@ as they come up.
 - From usage from photos: the focal lengths and apertures each lens was used at.
 - Find Duplicates, for a library doubled by importing a file before iCloud finished syncing.
 - Timer alerts in the app when notifications are off.
+- A Live Activity for the bulb and development timers, on the Lock Screen and in the Dynamic
+  Island, from a widget extension (the app's second target).
 
 **Still open**
 - More categories and category-specific fields as they're needed.
-- Widgets or a Live Activity for the development and bulb timers. Needs a widget extension, the
-  app's first second target.
+- Home Screen widgets. The widget extension is there now, holding the timers' Live Activity; a
+  widget would be a second entry in its bundle. The obvious ones (tonight's golden hour or
+  dark-sky window at a saved place, the next shoot) need the library or a place shared with the
+  extension through an App Group, which is a new capability to add in the Developer account.
 - Cloud cover via WeatherKit. It is an Apple framework, but it sends your location to Apple and
   has a usage quota, so it changes the privacy story.
 - Rental-house or studio mode (checking gear out to clients). A big build for a different user;

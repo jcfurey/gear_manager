@@ -5,7 +5,8 @@ optional Tip Jar and no paid tier. Version 1.0 is ready for the App Store, apart
 only the owner can do (see the release checklist in the [roadmap](ROADMAP.md)).
 
 - **Platform:** iOS 18.6 or later; Xcode 26; Swift 5 language mode
-- **Architecture:** SwiftUI, SwiftData with private CloudKit sync, and feature services
+- **Architecture:** SwiftUI, SwiftData with private CloudKit sync, and feature services; a
+  widget extension for the timers' Live Activity
 - **Dependencies:** Apple frameworks only
 
 The five tabs are **Inventory · Tools · Light Meter · Shoots · Settings**.
@@ -124,6 +125,9 @@ These are built and tested, and aren't in the 1.0 App Store text or release note
   library puts every record in twice. This counts the records that share an ID and folds each
   set into one, keeping the copy changed last with anything only another copy had. A backup is
   made first, and the import screen now warns when iCloud hasn't finished.
+- **Timers on the Lock Screen and in the Dynamic Island:** a running bulb exposure or
+  development step shows as a Live Activity, with a countdown that keeps moving while the phone
+  is locked, a progress bar, and what follows ("Next: Stop", "Close the shutter").
 - **Timers alert in the app when notifications are off:** a banner, a haptic and a short tone at
   each agitation, pour and end, on whichever screen is up, while the app is open.
 - **Fixes from a review of the 1.0 code:** maintenance reminders now notify; timer alerts keep

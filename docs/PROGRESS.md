@@ -12,6 +12,65 @@ is still to check on a device. Add a section when a milestone finishes.
 | M5 — 1.0 release prep | Done in code (2026-10-12); the release checklist in the roadmap is the owner's |
 | After 1.0 — later candidates, round 1 | Done (2026-11-10); not merged to `main` yet |
 | After 1.0 — round 2: what the review left | Done (2026-11-10); not merged to `main` yet |
+| After 1.0 — round 3: the timers' Live Activity | Done (2026-11-10); not merged to `main` yet |
+
+---
+
+## After 1.0 — round 3: the timers' Live Activity
+
+**Done 2026-11-10** on `claude/camera-gear-manager-e1zzxt` (commit `02a3a78` and the one that adds
+this section). The roadmap's "widgets or a Live Activity for the development and bulb timers",
+built as the Live Activity, in the app's first extension.
+
+### What shipped
+- **A running timer on the Lock Screen and in the Dynamic Island.** A bulb exposure or a
+  development step shows what's being timed, a countdown, a progress bar and what follows
+  ("Close the shutter", "Next: Stop", "Last step").
+  - The system draws the countdown, so it keeps moving with the phone locked and the app
+    suspended. When it runs out the activity says "Time's up" by itself.
+  - A development run shows from its first step's start to its last step's end: through a
+    pause ("Paused", with the time left) and the wait between steps ("Ready to start").
+  - A finished exposure's activity goes when you come back to the app, which shows "Done"
+    itself. Clearing the timer, ending the run or starting another removes it at once.
+- **The widget extension** (`ShutterManagerWidgets`, bundle ID
+  `jcameronfurey.shuttermanager.widgets`): the app's second target, embedded in it. It holds
+  the one Live Activity.
+- **A folder in two targets** (`ShutterManagerShared`): what the activity shows, and the words
+  and numbers worked out from it, compiled into the app and the extension alike. That keeps the
+  extension to drawing, and lets the app's tests check what it will say.
+- **Checks that the pieces stay joined:**
+  - the convention checks cover the new folders, the extension's bundle ID, its
+    `NSExtension` entry and the app's `NSSupportsLiveActivities`;
+  - the Release job looks inside the built app for the extension, at the app's version.
+- **The privacy policy** says a running timer shows on the Lock Screen, with the name you gave
+  it. Nothing leaves the device.
+- **Tests:** 330 unit tests in all (10 new). The UI tests that start timers now start their
+  Live Activities too.
+
+### Verified
+VERIFIED_PLACEHOLDER
+
+### Changes from the plan
+- **A Live Activity, not a Home Screen widget.** A timer is only worth showing while it runs,
+  which is what a Live Activity is for. A widget is now a small step (a second entry in the
+  extension's bundle), but the useful ones need the library or a place shared with the
+  extension, and that takes an App Group. It's in the roadmap's open list.
+- **Nothing is pushed to the activity.** There's no server, so the app can only update it while
+  it's running. The countdown and the "Time's up" at its end don't need the app. What does: the
+  move from "Time's up" to the next step, and a finished exposure's activity going away. Both
+  happen when the app is next opened. An activity nobody comes back to stays until iOS removes
+  it (up to eight hours, then four more on the Lock Screen).
+- **Agitation isn't in the activity.** It can't change at each agitation without the app
+  running. Those alerts still come as notifications.
+
+### Still to check on a device
+- **The activity itself:** start a bulb timer and a development step, lock the phone, and watch
+  the Lock Screen and the Dynamic Island through a pause, the end of a step and the next step.
+  The first one asks, on the Lock Screen, whether to allow Live Activities from the app.
+- **Signing:** open the project and let Xcode register the extension's App ID (release
+  checklist, step 1), then archive and check the upload is accepted with the extension inside.
+- **iPad:** the Lock Screen activity (an iPad has no Dynamic Island).
+- **Live Activities turned off** in Settings: the timers should run as before, with no activity.
 
 ---
 

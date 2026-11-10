@@ -37,7 +37,7 @@ Shutter Manager has no account system, no ads, no analytics and no tracking. You
 
 ## Notifications
 
-Reminders for sensor cleanings and loans due back, alerts for running exposure and development timers, and golden-hour heads-ups for shoots you plan are scheduled on your device. Nothing is sent to a server.
+Reminders for sensor cleanings and loans due back, alerts for running exposure and development timers, and golden-hour heads-ups for shoots you plan are scheduled on your device. A running timer also shows on the Lock Screen and in the Dynamic Island, with the name you gave the exposure or recipe. Nothing is sent to a server.
 
 ## Other Services
 

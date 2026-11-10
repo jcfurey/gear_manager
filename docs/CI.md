@@ -54,6 +54,11 @@ screenshots, logs and the full test report.
   minutes between the test command starting and the first test, with nothing in the log to say
   why. With the boot and first launch in their own step, a slow simulator shows there, and the
   job's 30 minutes aren't spent inside a command that prints nothing.
+- **The Release job checks the widget extension is in the app.** The builds are quiet, and a
+  target that stopped being embedded would still compile. `Tools/ci/check-embedded-extension.sh`
+  looks in the built app for `PlugIns/ShutterManagerWidgets.appex`, that it's a WidgetKit
+  extension with a bundle ID under the app's, that the app sets `NSSupportsLiveActivities`, and
+  that the two versions and build numbers match, which App Store Connect insists on.
 - **The unit-test host app uses a temporary in-memory library.** The unit tests build their own
   containers, so the app hosting them doesn't open the simulator's library or start CloudKit
   setup. That alone took the unit-test step from about 7 minutes to under 4.

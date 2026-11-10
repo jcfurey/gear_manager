@@ -203,6 +203,10 @@ jobs:
       - name: Summarize build
         if: always()
         run: python3 Tools/ci/summarize_xcresult.py build "$RUNNER_TEMP/Release.xcresult" "Release build (device)"
+      # The build is quiet. This looks at what it made: the widget extension inside the app, as a
+      # WidgetKit extension, at the app's version.
+      - name: Check the widget extension is in the app
+        run: Tools/ci/check-embedded-extension.sh "$RUNNER_TEMP/DerivedData/Build/Products/Release-iphoneos/ShutterManager.app"
       - name: Upload result bundle
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
