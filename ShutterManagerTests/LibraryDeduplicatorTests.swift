@@ -365,6 +365,29 @@ struct LibraryDeduplicatorTests {
         #expect(try count(FilmRoll.self, in: context) == 1)
     }
 
+    /// Find Duplicates makes a backup first. It has to cope with the doubled library it's
+    /// protecting, and restoring it brings each record back once.
+    @Test func aDoubledLibraryBacksUpAndRestoresOnce() async throws {
+        let container = try TestSupport.makeContainer()
+        let context = container.mainContext
+        let ids = IDs()
+        insertCopy(ids, into: context)
+        insertCopy(ids, into: context)
+        try context.save()
+
+        let directory = try TestSupport.makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let manager = BackupManager(directory: directory, defaults: TestSupport.makeDefaults())
+        try await manager.createBackup(library: try LibraryContents.fetch(from: context))
+        let backup = try #require(manager.availableBackups.first)
+        #expect(backup.itemCounts.gearItems == 4, "The backup holds the library as it was, doubles and all")
+
+        let restored = try TestSupport.makeContainer()
+        try await manager.restoreBackup(backup, to: restored.mainContext)
+        #expect(try counts(in: restored.mainContext) == Self.oneCopy)
+        #expect(try LibraryDeduplicator.find(in: restored.mainContext).isEmpty)
+    }
+
     // MARK: - The import screen's warning
 
     /// Importing is the moment a library gets doubled, so the import screen says when iCloud

@@ -45,7 +45,9 @@ round took what round 1's review had left, and the one extension round 1 had not
 - **Usage from photos says how each lens was used** (`0a982ca`): a zoom's range and its most
   used focal lengths, with a chart of shots at each focal length marked on a zoom ring, and the
   apertures used most.
-- **Tests:** 127 Foundation-only tests (8 new), 319 unit tests in all (25 new), and 26 UI
+- **The banner's close button** has a full 44-point target. The accessibility audit caught the
+  bare glyph (see below).
+- **Tests:** 127 Foundation-only tests (8 new), 320 unit tests in all (26 new), and 26 UI
   tests on each device (1 new).
 
 ### Verified
@@ -71,6 +73,15 @@ round took what round 1's review had left, and the one extension round 1 had not
 - The unit-test step on `0a982ca` took 17 minutes for 38 seconds of tests: the runner's
   simulator sat for 16 minutes before the first test. The job now boots the simulator and
   launches the app once in a step of its own, as the UI-test job has since round 1.
+- The first UI test of the run, `AccessibilityAuditTests.testInventoryScreens`, failed on both
+  devices in [run 42759636285](https://github.com/jcfurey/gear_manager/actions/runs/42759636285),
+  for two reasons. The other 25 passed on each.
+  - On iPad the audit flagged the close button on the "Gear saved" banner, whose touch target
+    was the 12-point glyph. The banner then left while the test was reading the finding, and the
+    lookup failed. The button now has a 44-point target, and the audit waits for a banner to go.
+  - On iPhone the simulator was at its slowest in its first minute (18 seconds to go idle, 11 to
+    find a button), and the Add Gear sheet took more than the 10 seconds the test allowed. That
+    class's waits are now 30 seconds.
 
 ### Left for later
 - A package format so a large library exports and backs up with its photos. It changes the

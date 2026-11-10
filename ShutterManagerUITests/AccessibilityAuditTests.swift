@@ -120,18 +120,26 @@ final class AccessibilityAuditTests: XCTestCase {
     // MARK: - Helpers
 
     /// Waits for a control a later step needs; a missing one ends the test, since nothing after it
-    /// can run.
+    /// can run. The wait is long: this class runs first, while a newly booted simulator is still
+    /// at its slowest, and a sheet once took more than ten seconds to come up.
     @discardableResult
     private func wait(for element: XCUIElement, _ message: String,
                       file: StaticString = #filePath, line: UInt = #line) throws -> XCUIElement {
-        try XCTUnwrap(element.waitForExistence(timeout: 10) ? element : nil, message, file: file, line: line)
+        try XCTUnwrap(element.waitForExistence(timeout: 30) ? element : nil, message, file: file, line: line)
     }
 
-    /// Audits what is on screen. The keyboard is dismissed first, since its keys are the system's.
+    /// Audits what is on screen. The keyboard is dismissed first, since its keys are the system's,
+    /// and a passing banner ("Gear saved") is given time to go: it isn't part of the screen, and a
+    /// finding on it can't be read once it has gone.
     @MainActor
     private func audit(_ screen: String, file: StaticString = #filePath, line: UInt = #line) throws {
         if app.keyboards.firstMatch.exists {
             app.navigationBars.firstMatch.tap()
+        }
+        let banner = app.buttons["dismissToastButton"].firstMatch
+        if banner.exists {
+            XCTAssertTrue(banner.waitForNonExistence(timeout: 10), "\(screen): the banner should go on its own",
+                          file: file, line: line)
         }
         var failures: [String] = []
         try app.performAccessibilityAudit(for: auditTypes) { issue in
