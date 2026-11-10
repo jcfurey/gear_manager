@@ -19,8 +19,8 @@ is still to check on a device. Add a section when a milestone finishes.
 
 ## After 1.0 — round 4: the cloud forecast
 
-**Done 2026-11-10** on `claude/camera-gear-manager-e1zzxt` (commit `6cc7039` and the one that
-adds this section). The roadmap's "cloud cover via WeatherKit".
+**Done 2026-11-10** on `claude/camera-gear-manager-e1zzxt` (commits `6cc7039` and `eb91a07`).
+The roadmap's "cloud cover via WeatherKit".
 
 ### What shipped
 - **A Clouds section** in the sun and moon planner, the Milky Way planner (the list of nights and
@@ -54,7 +54,19 @@ adds this section). The roadmap's "cloud cover via WeatherKit".
   while the screen's own Back button is still there.
 
 ### Verified
-VERIFIED_PLACEHOLDER
+[CI run 42890412459](https://github.com/jcfurey/gear_manager/actions/runs/42890412459) passed
+every job on `eb91a07`:
+- 144 Foundation-only tests in the Swift 6.2 Linux image;
+- the Debug and Release builds with warnings as errors;
+- 365 unit tests;
+- 27 UI tests on each of iPhone 17 and iPad Pro 11-inch (iOS 26.5), the accessibility audit
+  included.
+
+The run before it, on `6cc7039`, passed all but one iPhone UI test: the Back tap described
+above.
+
+Every test ran against a stand-in for Apple Weather. CI's builds aren't signed for WeatherKit,
+so no real forecast has been fetched yet: that's in the device list below.
 
 ### Changes from the plan
 - **WeatherKit after all.** The free sources that need no API key were compared first:
