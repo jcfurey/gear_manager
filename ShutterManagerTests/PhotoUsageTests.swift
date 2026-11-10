@@ -211,6 +211,93 @@ struct PhotoUsageTests {
         #expect(body.firstDate == Self.start.addingTimeInterval(300), "Only dated photos set the dates")
     }
 
+    // MARK: - How a lens was used
+
+    private static func zoomShot(_ focalLength: Double?, _ aperture: Double?) -> PhotoUsageSample {
+        var sample = shot(lens: "NIKKOR Z 24-70mm f/2.8 S")
+        sample.focalLength = focalLength
+        sample.aperture = aperture
+        return sample
+    }
+
+    @Test func aZoomSaysWhereOnItsRangeItWasUsed() {
+        let samples = [(24.0, 8.0), (35.0, 2.8), (35.2, 2.8), (34.6, 2.8), (50.0, 4.0), (70.0, 2.8), (70.0, 5.6), (35.0, 4.0)]
+            .map { Self.zoomShot($0.0, $0.1) }
+        let lens = PhotoUsageSummary(samples: samples, candidates: []).lenses[0]
+        #expect(lens.photoCount == 8)
+        #expect(lens.focalLengthCounts == [24: 1, 35: 4, 50: 1, 70: 2], "By whole millimetre")
+        #expect(lens.focalLengthRange == 24...70)
+        #expect(lens.mostUsedFocalLengths() == [
+            PhotoUsageGroup.Share(value: 35, count: 4, fraction: 0.5), PhotoUsageGroup.Share(value: 70, count: 2, fraction: 0.25)
+        ])
+        #expect(lens.focalLengthSummary == "24–70 mm, most at 35 mm (50%) and 70 mm (25%)")
+        #expect(lens.apertureCounts == [28: 4, 40: 2, 56: 1, 80: 1])
+        #expect(lens.apertureSummary == "Most at f/2.8 (50%) and f/4 (25%)")
+        #expect(lens.mostUsedApertures(1).map(\.value) == [28])
+        #expect(lens.mostUsedApertures(0).isEmpty)
+    }
+
+    /// Every mark from the shortest used to the longest, the unused ones at nothing.
+    @Test func aZoomsSpreadFollowsTheMarksOnItsRing() {
+        let samples = [24.0, 26, 32, 35, 36, 70, 68].map { Self.zoomShot($0, 4) }
+        let lens = PhotoUsageSummary(samples: samples, candidates: []).lenses[0]
+        let spread = lens.focalLengthSpread
+        #expect(spread.map(\.value) == [24, 28, 35, 40, 50, 60, 70])
+        #expect(spread.map(\.count) == [1, 1, 3, 0, 0, 0, 2], "26 mm is nearer 28; 32 and 36 are nearer 35; 68 is nearer 70")
+        #expect(spread.map(\.count).reduce(0, +) == 7)
+        #expect(abs(spread.map(\.fraction).reduce(0, +) - 1) < 1e-9)
+        // By ratio, the halfway point between 28 and 35 is 31.3, not 31.5.
+        #expect(PhotoUsageGroup.nearestMark(to: 31) == 28)
+        #expect(PhotoUsageGroup.nearestMark(to: 32) == 35)
+        #expect(PhotoUsageGroup.nearestMark(to: 1200) == 800)
+        #expect(PhotoUsageGroup.nearestMark(to: 0) == 8)
+    }
+
+    @Test func aPrimeSaysOnlyItsApertures() {
+        let samples = [(50.0, 1.8), (50.0, 1.8), (50.0, 8.0)].map { Self.zoomShot($0.0, $0.1) }
+        let lens = PhotoUsageSummary(samples: samples, candidates: []).lenses[0]
+        #expect(lens.focalLengthRange == 50...50)
+        #expect(lens.focalLengthSummary == nil, "One focal length is nothing to report")
+        #expect(lens.apertureSummary == "Most at f/1.8 (67%) and f/8 (33%)")
+        #expect(lens.focalLengthSpread.map(\.value) == [50])
+
+        let wideOpen = PhotoUsageSummary(samples: [Self.zoomShot(50, 11), Self.zoomShot(50, 11)], candidates: []).lenses[0]
+        #expect(wideOpen.apertureSummary == "All at f/11")
+    }
+
+    /// A manual lens reports no aperture, and a damaged file can report nonsense.
+    @Test func missingAndImpossibleValuesAreLeftOut() {
+        let samples = [Self.zoomShot(nil, nil), Self.zoomShot(0, 0), Self.zoomShot(.infinity, .nan),
+                       Self.zoomShot(-35, -4), Self.zoomShot(35, 4)]
+        let lens = PhotoUsageSummary(samples: samples, candidates: []).lenses[0]
+        #expect(lens.photoCount == 5)
+        #expect(lens.focalLengthCounts == [35: 1])
+        #expect(lens.apertureCounts == [40: 1])
+        #expect(lens.apertureSummary == "All at f/4")
+
+        let silent = PhotoUsageSummary(samples: [Self.zoomShot(nil, nil)], candidates: []).lenses[0]
+        #expect(silent.focalLengthRange == nil)
+        #expect(silent.focalLengthSummary == nil)
+        #expect(silent.apertureSummary == nil)
+        #expect(silent.focalLengthSpread.isEmpty)
+        #expect(silent.mostUsedFocalLengths().isEmpty)
+    }
+
+    @Test func aperturesReadAsFNumbers() {
+        #expect(PhotoUsageGroup.apertureText(28) == "f/2.8")
+        #expect(PhotoUsageGroup.apertureText(40) == "f/4")
+        #expect(PhotoUsageGroup.apertureText(110) == "f/11")
+        #expect(PhotoUsageGroup.apertureText(9) == "f/0.9")
+        #expect(PhotoUsageGroup.apertureText(12) == "f/1.2")
+    }
+
+    /// Only lenses keep these: a camera's group says nothing of focal lengths.
+    @Test func camerasKeepNoFocalLengths() {
+        let summary = PhotoUsageSummary(samples: [Self.zoomShot(35, 4)], candidates: [])
+        #expect(summary.cameras[0].focalLengthCounts.isEmpty)
+        #expect(summary.cameras[0].apertureCounts.isEmpty)
+    }
+
     @Test func anEmptyBatchIsEmpty() {
         let summary = PhotoUsageSummary(samples: [], candidates: [Self.candidate("Nikon", "Z8")])
         #expect(summary.photoCount == 0)

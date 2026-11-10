@@ -17,6 +17,10 @@ struct PhotoUsageSample: Equatable, Sendable {
     var lensSerialNumber: String?
     var shutterCount: Int?
     var dateTaken: Date?
+    /// The focal length the photo was taken at, in millimetres.
+    var focalLength: Double?
+    /// The aperture it was taken at, as an f-number.
+    var aperture: Double?
 
     var namesCamera: Bool { cameraModel != nil || bodySerialNumber != nil }
     var namesLens: Bool { lensModel != nil || lensSerialNumber != nil }
@@ -58,6 +62,10 @@ struct PhotoUsageGroup: Equatable, Sendable, Identifiable {
     /// The shutter count of the latest photo that carries one, and when that photo was taken.
     var shutterCount: Int?
     var shutterCountDate: Date?
+    /// A lens's shots at each focal length, by whole millimetre.
+    var focalLengthCounts: [Int: Int] = [:]
+    /// A lens's shots at each aperture, by tenths of an f-number: 28 is f/2.8.
+    var apertureCounts: [Int: Int] = [:]
     var match: PhotoUsageMatch = .unmatched
 
     var id: String { key }
@@ -96,6 +104,16 @@ struct PhotoUsageGroup: Equatable, Sendable, Identifiable {
         lastDate = max(lastDate ?? dateTaken, dateTaken)
     }
 
+    /// Counts a shot's focal length and aperture, where the photo gives them.
+    fileprivate mutating func count(focalLength: Double?, aperture: Double?) {
+        if let focalLength, focalLength.isFinite, focalLength >= 0.5, focalLength < 100_000 {
+            focalLengthCounts[Int(focalLength.rounded()), default: 0] += 1
+        }
+        if let aperture, aperture.isFinite, aperture >= 0.05, aperture < 1_000 {
+            apertureCounts[Int((aperture * 10).rounded()), default: 0] += 1
+        }
+    }
+
     /// Keeps the count of the later photo. A count only goes up, so the higher one decides when
     /// a date is missing or two photos share a second.
     fileprivate mutating func note(shutterCount count: Int, dateTaken: Date?) {
@@ -114,6 +132,87 @@ struct PhotoUsageGroup: Equatable, Sendable, Identifiable {
             shutterCount = count
             shutterCountDate = dateTaken
         }
+    }
+}
+
+// MARK: - How a lens was used
+
+extension PhotoUsageGroup {
+    /// One focal length or aperture, and how much of the lens's shots were taken at it.
+    struct Share: Equatable, Sendable {
+        /// Millimetres for a focal length; tenths of an f-number for an aperture.
+        let value: Int
+        let count: Int
+        /// Of the shots that recorded one.
+        let fraction: Double
+
+        var percent: Int { Int((fraction * 100).rounded()) }
+    }
+
+    /// The focal lengths a zoom ring is marked with. Shots are gathered to the nearest, by ratio.
+    static let focalLengthMarks = [8, 10, 12, 14, 16, 18, 20, 24, 28, 35, 40, 50, 60, 70, 85, 100, 135, 200, 300, 400,
+                                   500, 600, 800]
+
+    /// The shortest and longest focal lengths used, or nil when the photos don't give any.
+    var focalLengthRange: ClosedRange<Int>? {
+        guard let shortest = focalLengthCounts.keys.min(), let longest = focalLengthCounts.keys.max() else { return nil }
+        return shortest...longest
+    }
+
+    /// The focal lengths used most, most first.
+    func mostUsedFocalLengths(_ limit: Int = 2) -> [Share] { Self.shares(of: focalLengthCounts, limit: limit) }
+
+    /// The apertures used most, most first.
+    func mostUsedApertures(_ limit: Int = 2) -> [Share] { Self.shares(of: apertureCounts, limit: limit) }
+
+    /// Shots gathered to the nearest mark, for every mark from the shortest used to the longest:
+    /// a zoom's picture of where on its range it gets used.
+    var focalLengthSpread: [Share] {
+        let total = focalLengthCounts.values.reduce(0, +)
+        guard total > 0 else { return [] }
+        var counts: [Int: Int] = [:]
+        for (focalLength, count) in focalLengthCounts {
+            counts[Self.nearestMark(to: focalLength), default: 0] += count
+        }
+        guard let first = counts.keys.min(), let last = counts.keys.max() else { return [] }
+        return Self.focalLengthMarks.filter { $0 >= first && $0 <= last }
+            .map { Share(value: $0, count: counts[$0] ?? 0, fraction: Double(counts[$0] ?? 0) / Double(total)) }
+    }
+
+    /// The mark closest to `focalLength` by ratio: 32 mm is nearer 35 than 28.
+    static func nearestMark(to focalLength: Int) -> Int {
+        let target = log(Double(max(focalLength, 1)))
+        return focalLengthMarks.min { abs(log(Double($0)) - target) < abs(log(Double($1)) - target) } ?? focalLength
+    }
+
+    /// "24–70 mm, most at 35 mm (41%) and 50 mm (22%)". Nil for a lens used at one focal length
+    /// only, which is every prime, or when the photos don't say.
+    var focalLengthSummary: String? {
+        guard let range = focalLengthRange, range.lowerBound != range.upperBound else { return nil }
+        let most = mostUsedFocalLengths().map { "\($0.value) mm (\($0.percent)%)" }
+        return "\(range.lowerBound)–\(range.upperBound) mm, most at \(most.joined(separator: " and "))"
+    }
+
+    /// "Most at f/2.8 (60%) and f/4 (25%)", or "All at f/8"; nil when the photos don't say.
+    var apertureSummary: String? {
+        let most = mostUsedApertures()
+        guard let first = most.first else { return nil }
+        if apertureCounts.count == 1 { return "All at \(Self.apertureText(first.value))" }
+        return "Most at " + most.map { "\(Self.apertureText($0.value)) (\($0.percent)%)" }.joined(separator: " and ")
+    }
+
+    /// "f/2.8", "f/4", "f/11" from tenths of an f-number.
+    static func apertureText(_ tenths: Int) -> String {
+        tenths % 10 == 0 ? "f/\(tenths / 10)" : "f/\(tenths / 10).\(tenths % 10)"
+    }
+
+    /// The values with the highest counts, most first; ties go to the smaller value.
+    private static func shares(of counts: [Int: Int], limit: Int) -> [Share] {
+        let total = counts.values.reduce(0, +)
+        guard total > 0 else { return [] }
+        return counts.sorted { ($1.value, $0.key) < ($0.value, $1.key) }
+            .prefix(max(limit, 0))
+            .map { Share(value: $0.key, count: $0.value, fraction: Double($0.value) / Double(total)) }
     }
 }
 
@@ -162,6 +261,7 @@ struct PhotoUsageSummary: Equatable, Sendable {
                                             serialNumber: sample.lensSerialNumber)
                 group = lensGroups[group.key] ?? group
                 group.count(dateTaken: sample.dateTaken)
+                group.count(focalLength: sample.focalLength, aperture: sample.aperture)
                 lensGroups[group.key] = group
             } else {
                 unnamedLensCount += 1

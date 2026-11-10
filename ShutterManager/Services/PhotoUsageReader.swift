@@ -15,7 +15,8 @@ extension PhotoUsageSample {
         self.init(cameraMake: metadata.cameraMake, cameraModel: metadata.cameraModel,
                   bodySerialNumber: metadata.bodySerialNumber, lensMake: metadata.lensMake,
                   lensModel: metadata.lensModel, lensSerialNumber: metadata.lensSerialNumber,
-                  shutterCount: metadata.shutterCount, dateTaken: metadata.dateTaken)
+                  shutterCount: metadata.shutterCount, dateTaken: metadata.dateTaken,
+                  focalLength: metadata.focalLength, aperture: metadata.aperture)
     }
 }
 
@@ -189,20 +190,21 @@ final class PhotoUsageImporter {
 #if DEBUG
 extension PhotoUsageImporter.Batch {
     /// What the UI tests read in place of real photos (`-uiTestPhotoUsageSample`): three shots
-    /// on a Nikon body that reports its shutter count, and one on a Fujifilm.
+    /// on a Nikon body that reports its shutter count, through a zoom at 24, 35 and 35 mm, and
+    /// one on a Fujifilm.
     static var uiTestSample: Self {
         let day = Date(timeIntervalSince1970: 1_750_000_000)
         var batch = Self()
-        for shot in 0..<3 {
+        for (shot, focalLength) in [24.0, 35, 35].enumerated() {
             batch.samples.append(PhotoUsageSample(
                 cameraMake: "Nikon", cameraModel: "Z6_3", bodySerialNumber: "3000123", lensMake: "Nikon",
                 lensModel: "NIKKOR Z 24-70mm f/2.8 S", lensSerialNumber: nil, shutterCount: 20_000 + shot,
-                dateTaken: day.addingTimeInterval(Double(shot) * 60)))
+                dateTaken: day.addingTimeInterval(Double(shot) * 60), focalLength: focalLength, aperture: 4))
         }
         batch.samples.append(PhotoUsageSample(
             cameraMake: "Fujifilm", cameraModel: "X-T5", bodySerialNumber: nil, lensMake: nil,
             lensModel: "XF23mmF1.4 R LM WR", lensSerialNumber: nil, shutterCount: nil,
-            dateTaken: day.addingTimeInterval(3600)))
+            dateTaken: day.addingTimeInterval(3600), focalLength: 23, aperture: 2))
         return batch
     }
 }

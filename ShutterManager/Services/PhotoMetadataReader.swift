@@ -30,6 +30,10 @@ struct CameraPhotoMetadata: Equatable {
     var pixelWidth: Int?
     var pixelHeight: Int?
     var dateTaken: Date?
+    /// The focal length this photo was taken at, in millimetres, and its aperture as an
+    /// f-number. They say how the lens was used, not what it is, so they aren't "details".
+    var focalLength: Double?
+    var aperture: Double?
 
     var hasCameraDetails: Bool {
         cameraModel != nil || bodySerialNumber != nil || firmware != nil || shutterCount != nil
@@ -90,6 +94,8 @@ struct CameraPhotoMetadata: Equatable {
         pixelHeight = Self.number(exif[kCGImagePropertyExifPixelYDimension as String]).flatMap(Self.pixels)
             ?? Self.number(properties[kCGImagePropertyPixelHeight as String]).flatMap(Self.pixels)
         dateTaken = Self.text(exif[kCGImagePropertyExifDateTimeOriginal as String]).flatMap(Self.exifDate)
+        focalLength = Self.number(exif[kCGImagePropertyExifFocalLength as String]).flatMap(Self.positive)
+        aperture = Self.number(exif[kCGImagePropertyExifFNumber as String]).flatMap(Self.positive)
     }
 
     /// A trimmed, non-empty string from a metadata value (EXIF text often ends in spaces or NULs).

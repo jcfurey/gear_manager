@@ -8,6 +8,7 @@
 
 import SwiftUI
 import SwiftData
+import Charts
 import PhotosUI
 import UniformTypeIdentifiers
 
@@ -226,6 +227,16 @@ struct PhotoUsageView: View {
                         if let count = group.shutterCount {
                             Text("Shutter count \(count.formatted())").font(.caption).foregroundStyle(.secondary)
                         }
+                        // How a lens was used: where on a zoom's range, and at which apertures.
+                        if let focalLengths = group.focalLengthSummary {
+                            Text(focalLengths).font(.caption).foregroundStyle(.secondary)
+                        }
+                        if let apertures = group.apertureSummary {
+                            Text(apertures).font(.caption).foregroundStyle(.secondary)
+                        }
+                        if group.focalLengthSpread.count >= FocalLengthSpreadChart.minimumMarks {
+                            FocalLengthSpreadChart(spread: group.focalLengthSpread)
+                        }
                         if case .ambiguous = group.match, assignments[group.key] == nil {
                             Text("More than one item fits. Choose which one.")
                                 .font(.caption).foregroundStyle(AppColors.warningText)
@@ -375,6 +386,31 @@ struct PhotoUsageView: View {
                          : "\(summary.unnamedLensCount.formatted()) photos don't name a lens. Manual and adapted lenses aren't recorded.")
         }
         return notes
+    }
+}
+
+/// Where on a zoom's range it was used: a bar for each focal length marked on its ring, from the
+/// shortest used to the longest. The line of text above it says the same in words, so VoiceOver
+/// skips the chart.
+struct FocalLengthSpreadChart: View {
+    let spread: [PhotoUsageGroup.Share]
+
+    /// Fewer marks than this is said well enough in words.
+    static let minimumMarks = 3
+
+    var body: some View {
+        Chart(spread, id: \.value) { share in
+            BarMark(x: .value("Focal length", "\(share.value)"), y: .value("Shots", share.count))
+        }
+        .chartYAxis(.hidden)
+        .chartXAxis {
+            AxisMarks { _ in
+                AxisValueLabel().font(.caption2)
+            }
+        }
+        .frame(height: 72)
+        .padding(.top, 4)
+        .accessibilityHidden(true)
     }
 }
 

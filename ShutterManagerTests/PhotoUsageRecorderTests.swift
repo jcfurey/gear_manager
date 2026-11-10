@@ -54,7 +54,9 @@ struct PhotoUsageRecorderTests {
             kCGImagePropertyTIFFDictionary: [kCGImagePropertyTIFFMake: "FUJIFILM", kCGImagePropertyTIFFModel: model],
             kCGImagePropertyExifDictionary: [kCGImagePropertyExifBodySerialNumber: serial,
                                              kCGImagePropertyExifLensModel: "XF23mmF1.4 R LM WR",
-                                             kCGImagePropertyExifDateTimeOriginal: "2026:05:03 10:15:00"]
+                                             kCGImagePropertyExifDateTimeOriginal: "2026:05:03 10:15:00",
+                                             kCGImagePropertyExifFocalLength: 23,
+                                             kCGImagePropertyExifFNumber: 5.6] as [CFString: Any]
         ])
         try data.write(to: folder.appendingPathComponent(name))
     }
@@ -71,6 +73,8 @@ struct PhotoUsageRecorderTests {
         #expect(sample.lensModel == "XF23mmF1.4 R LM WR")
         #expect(sample.dateTaken != nil)
         #expect(sample.shutterCount == nil)
+        #expect(sample.focalLength == 23)
+        #expect(abs((sample.aperture ?? 0) - 5.6) < 0.001)
     }
 
     @Test func whatIsNotAPhotoReadsAsNothing() throws {
@@ -134,6 +138,8 @@ struct PhotoUsageRecorderTests {
         let summary = PhotoUsageSummary(samples: read.samples, candidates: [])
         #expect(summary.cameras.map(\.photoCount) == [2, 1])
         #expect(summary.lenses.map(\.photoCount) == [3])
+        #expect(summary.lenses[0].focalLengthCounts == [23: 3])
+        #expect(summary.lenses[0].apertureSummary == "All at f/5.6")
 
         importer.cancel()
         #expect(importer.state == .idle)
