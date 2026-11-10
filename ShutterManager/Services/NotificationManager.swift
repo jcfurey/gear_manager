@@ -69,7 +69,9 @@ final class NotificationManager: ObservableObject {
         authorizationStatus = await authorizationProvider()
     }
 
-    private var canDeliver: Bool {
+    /// Whether a scheduled notification will be shown. When it won't, a running timer gives its
+    /// alerts itself while the app is open (`ToolTimers.giveDueCues`).
+    var canDeliver: Bool {
         authorizationStatus == .authorized || authorizationStatus == .provisional
     }
 

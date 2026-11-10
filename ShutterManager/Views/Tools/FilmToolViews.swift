@@ -525,7 +525,7 @@ private struct DevelopmentRunView: View {
                 .sensoryFeedback(.impact(weight: .heavy), trigger: isAgitating(phase)) { wasAgitating, agitating in
                     agitating && !wasAgitating
                 }
-                NotificationsOffNote(what: "agitation and step alerts only show while this screen is open")
+                NotificationsOffNote(what: "agitation and step alerts come only while the app is open")
             }
             Section("Steps") {
                 ForEach(Array(session.steps.enumerated()), id: \.element.id) { index, step in

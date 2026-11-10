@@ -270,7 +270,7 @@ struct BulbTimerRows: View {
                 }
                 .accessibilityIdentifier("\(identifier).stopTimer")
             }
-            NotificationsOffNote(what: "the timer can't alert you when it ends")
+            NotificationsOffNote(what: "the timer alerts you only while the app is open")
         } else {
             Button {
                 HapticFeedbackManager.shared.buttonTap()

@@ -23,6 +23,7 @@ SOURCES=(
   ShutterManager/Utilities/PrivacyPolicy.swift
   ShutterManager/Utilities/LabelLink.swift
   ShutterManager/Models/PhotoUsage.swift
+  ShutterManager/Utilities/TimerToneData.swift
 )
 TESTS=(
   ShutterManagerTests/PhotoMathTests.swift
@@ -33,6 +34,7 @@ TESTS=(
   ShutterManagerTests/LabelLinkTests.swift
   ShutterManagerTests/PhotoUsageTests.swift
   ShutterManagerTests/MountCompatibilityTests.swift
+  ShutterManagerTests/TimerToneTests.swift
 )
 
 WORK="$(mktemp -d)"
