@@ -37,8 +37,7 @@ final class ToolsUITests: XCTestCase {
             reveal(row, in: app)
             row.tap()
             XCTAssertTrue(app.navigationBars[tool.title].waitForExistence(timeout: 5), "\(tool.title) didn't open")
-            app.navigationBars.buttons.element(boundBy: 0).tap()
-            XCTAssertTrue(app.navigationBars["Tools"].waitForExistence(timeout: 5), "Back to Tools from \(tool.title)")
+            goBack(to: "Tools", in: app)
         }
     }
 

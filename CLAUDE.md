@@ -88,12 +88,15 @@ beside the app's.
   - `Export/`: `LibraryExport` and its DTOs, and the values the printed pages are laid out from
     (`InsurerReport`, `GearLabel` and `LabelSheet`).
   - `PhotoUsage.swift`: Foundation-only counting and matching for Usage from Photos.
+  - `CloudForecast.swift`: Foundation-only: a place's cloud forecast by the hour, and what it
+    says about a window of time.
 - `Services/`: persistence, export/import, backups, reminders, EXIF, Tip Jar, iCloud status,
   `ToolTimers` (the running bulb and development timers), the camera (`CaptureSessionCoordinator`,
   `BarcodeScannerService`, `LightMeterService`), `LocationService`, `ShootAlertScheduler`, the
   printed pages (`PrintDocument`, `InsurerReportRenderer`, `LabelSheetRenderer`), Usage from
-  Photos (`PhotoUsageReader`, `PhotoUsageRecorder`), `LibraryDeduplicator` and `TimerCue` (a
-  timer's alert when notifications can't show it).
+  Photos (`PhotoUsageReader`, `PhotoUsageRecorder`), `LibraryDeduplicator`, `TimerCue` (a
+  timer's alert when notifications can't show it), and the cloud forecast (`CloudForecastStore`,
+  `WeatherKitCloudProvider`).
 - `Views/`: `Inventory/`, `Tools/`, `LightMeter/`, `Shoots/` (the shoot log, kits, film rolls,
   shot-list templates), `Places/` (choosing a place), `Settings/`, `Shared/`.
 - `Utilities/`: constants, schema, formatters, import validation, photo ingest, marketplace links.
@@ -112,8 +115,11 @@ beside the app's.
   text) on each tab's main screens. Its header says why the other audit types are left out.
 - The UI-test helpers expect a slow simulator, because CI's is: `replaceText` types again when
   characters went missing, `selectTab` checks that the tab came up and taps again if it didn't,
-  and the audit waits for a passing banner to go. Use them rather than a bare `typeText` or
-  `tap` on a tab.
+  `goBack(to:)` taps Back again when the first tap landed mid-push, and the audit waits for a
+  passing banner to go. Use them rather than a bare `typeText`, or a bare `tap` on a tab or a
+  Back button.
+- Settings a UI test leaves behind stay on the simulator for the tests after it: the planners'
+  place is one, so a later test finds the sun and moon planner already showing a day.
 
 ### Data layer
 
@@ -299,6 +305,26 @@ Development schema. Deploying to Production is done by hand in CloudKit Console.
     one per device as JSON; `SavedPlace` is the synced list.
   - `LocationService` asks for one location, while in use, only when "Use My Location" is tapped.
   - Sky times show in the place's own time zone, not the device's.
+- **Cloud forecast** (Apple Weather, in the sky planners and on a shoot still to come).
+  - It's off until the user turns it on (`CloudForecastStore.setEnabled`), because asking sends
+    the place to Apple. Nothing asks for weather while it's off. The switch is per device and
+    never exported: a file from another device can't agree for this one.
+  - `CloudForecastStore.shared` is the one owner, and `WeatherKitCloudProvider` the one file that
+    imports WeatherKit. The convention checks hold that, and the entitlement it needs.
+  - A place is asked for at `GeoCoordinate.forecastPoint` (two decimal places, about a
+    kilometre), and again only once its forecast is `Constants.CloudForecast.lifetime` old: each
+    request counts against the developer account's monthly allowance.
+  - Forecasts live in memory for the session. Don't store or sync one: Apple's terms allow only
+    temporary caching.
+  - Apple's terms also ask for its credit wherever its data shows: the Apple Weather mark and
+    the legal link (`WeatherAttributionRow`). A screen shows a forecast through
+    `CloudForecastRows`, which adds the credit, and asks for it with
+    `task(id: CloudForecastStore.shared.request(for:))`.
+  - `Models/CloudForecast.swift` stays Foundation-only. A window's clouds weigh each hour by its
+    share of the window; one that runs past the forecast's ten days gets no summary.
+  - CI's simulator isn't signed for WeatherKit, so the real provider always fails there.
+    `-uiTestCloudSample` (Debug) puts a fixed forecast in its place, and under `-uiTestInMemory`
+    the switch starts off and isn't saved.
 - **Sky math.**
   - Every event is an altitude crossing found by `SkySearch` (sample, then bisect to a second), so
     polar day and night come out as no crossing.

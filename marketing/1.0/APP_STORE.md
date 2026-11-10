@@ -41,6 +41,9 @@ kept longer than it takes to answer the request. This app:
   developer can't read;
 - sends a scanned barcode's number to UPCitemdb, in real time, to look up the product;
 - sends map searches and picked points to Apple Maps;
+- with the cloud forecast turned on, sends the place's position, rounded to about a kilometre, to
+  Apple Weather (WeatherKit). Apple's guidance is that you don't declare data Apple collects, and
+  the app keeps no forecast past the session;
 - has no analytics, ads, crash reporting SDK, account or server.
 
 If you ever add analytics or a server, this answer has to change before that version ships.

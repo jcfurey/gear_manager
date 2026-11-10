@@ -13,6 +13,68 @@ is still to check on a device. Add a section when a milestone finishes.
 | After 1.0 — later candidates, round 1 | Done (2026-11-10); not merged to `main` yet |
 | After 1.0 — round 2: what the review left | Done (2026-11-10); not merged to `main` yet |
 | After 1.0 — round 3: the timers' Live Activity | Done (2026-11-10); not merged to `main` yet |
+| After 1.0 — round 4: the cloud forecast | Done (2026-11-10); not merged to `main` yet |
+
+---
+
+## After 1.0 — round 4: the cloud forecast
+
+**Done 2026-11-10** on `claude/camera-gear-manager-e1zzxt` (commit `6cc7039` and the one that
+adds this section). The roadmap's "cloud cover via WeatherKit".
+
+### What shipped
+- **A Clouds section** in the sun and moon planner, the Milky Way planner (the list of nights and
+  each night's screen) and on a shoot still to come:
+  - a chart of the share of sky covered, hour by hour, on the place's clock, with the golden and
+    blue hours (or the dark, moonless hours) shaded;
+  - the clouds over each golden hour, blue hour, dark window, or the shoot's own hours: the
+    weather in Apple's words, the share covered, the cloud by height (low, mid, high) and the
+    chance of precipitation;
+  - in the sun and moon planner, the hour at the moment picked on the altitude chart;
+  - in the list of nights, each night's cloud beside its moon.
+- **Off until it's turned on.** Each of those screens offers it, saying what is sent; Settings →
+  Weather has the switch. Turning it off drops every forecast on hand.
+- **What leaves the device:** the place's position rounded to two decimal places, about a
+  kilometre, to Apple Weather. That includes the user's own location when it's the place chosen
+  with "Use My Location". The privacy policy says so.
+- **Sparing with requests.** A place is asked for once an hour at most, ten days of hours at a
+  time, and nearby spots share one forecast. Forecasts are kept in memory for the session only.
+- **When it can't be fetched:** a line saying so with Try Again. A forecast already on hand
+  stays up through a failed refresh, and the credit row says when it's from: out with no
+  signal, this morning's forecast beats none.
+- **Apple Weather's credit** goes wherever its numbers do: the Apple Weather mark and the link
+  to its other data sources, as its terms ask.
+- **Tests:** 17 Foundation-only tests for the forecast (windows, weighting, what's past or too
+  far ahead) and 18 for the store (off by default, rounding, hourly re-asking, failures, turning
+  off mid-request, the credit), with a stand-in for Apple Weather. A UI test turns the forecast
+  on in the planner, checks the credit, and turns it off in Settings.
+- **A UI-test fix the new test brought out.** It leaves the planners a place, so the test that
+  opens every tool now finds the sun and moon planner showing a full day, which takes longer to
+  settle; on CI's iPhone a Back tap landed mid-push and was ignored. `goBack(to:)` taps again
+  while the screen's own Back button is still there.
+
+### Verified
+VERIFIED_PLACEHOLDER
+
+### Changes from the plan
+- **WeatherKit after all.** The free sources that need no API key were compared first:
+  Open-Meteo (free for non-commercial use, which its terms say a tip jar is; under 10,000 calls
+  a day) and MET Norway (any use, but its terms want mobile apps to go through a proxy, and it
+  is six-hourly past about two and a half days). WeatherKit's 500,000 requests a month come
+  with the developer membership, it gives hourly cloud by height for ten days, and what Apple
+  collects isn't the app's to declare, so the App Privacy answer stays "Data Not Collected".
+- **The weather in Apple's words.** Each hour's condition ("Mostly Clear") and symbol are
+  Apple's own; the app draws no line of its own between clear and cloudy.
+- **No forecast in the golden-hour heads-up.** A notification is scheduled days ahead and the
+  app can't fetch when it fires.
+
+### Still to check on a device
+- **The capability:** WeatherKit on the App ID (release checklist, step 1). Until then every
+  forecast fails; CI can't sign for it, so no test has seen a real forecast.
+- **The numbers:** a few hours against the Weather app. WeatherKit's cover is read as a share
+  from 0 to 1, by height too; a value the wrong way round would show as 0% or 100% everywhere.
+- **The mark:** Apple's image loads and reads in light and dark mode, and the link opens.
+- **Use:** the request count in the developer account after a day's use.
 
 ---
 

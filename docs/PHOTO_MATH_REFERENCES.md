@@ -415,3 +415,28 @@ says which lenses it puts on which bodies. Pages read November 2026; several are
 0.9 of the body's. The margin keeps one maker's APS-C lens from being flagged on another's
 slightly larger APS-C sensor.
 
+
+## Cloud forecast
+
+The numbers are Apple Weather's, through WeatherKit; the app works none of them out. What the
+code relies on, from Apple's pages (read November 2026):
+
+| What | Source |
+|---|---|
+| An hourly forecast reaches ten days ahead, and one request returns at most ten days (about 240 hours), from the start date up to but not including the end date. | [`WeatherQuery.hourly(startDate:endDate:)`](https://developer.apple.com/documentation/weatherkit/weatherquery/hourly(startdate:enddate:)) |
+| `cloudCover` is the share of the sky covered with cloud; `cloudCoverByAltitude` splits it into low (up to 1,800 m above the model's surface), medium (1,800 to 6,300 m) and high (above 6,300 m). | [`HourWeather`](https://developer.apple.com/documentation/weatherkit/hourweather), [`CloudCoverByAltitude`](https://developer.apple.com/documentation/weatherkit/cloudcoverbyaltitude) |
+| Weather data from Apple is shown with the Apple Weather trademark and the legal link to its other data sources. | [WeatherKit, "Apple Weather and third-party attribution"](https://developer.apple.com/weatherkit/) |
+| 500,000 requests a month come with the Apple Developer Program membership. | The same page |
+| Apple uses the location only to provide the forecast, doesn't associate it with anything that identifies the user, and doesn't track it between requests. | The same page, "Privacy first" |
+
+**A window's clouds** (a golden hour, a night's dark hours, a shoot) are the mean of its hours,
+each weighed by how much of the window it holds; the chance of precipitation is the highest
+among them; the words and symbol are those of the hour that holds most of it. A window that
+runs past the forecast's last hour gets no summary, rather than one for the part that's known.
+
+**The words** for each hour ("Mostly Clear") are Apple's `WeatherCondition`. The app sets no
+thresholds of its own between clear and cloudy.
+
+**Where it's asked for.** The place's coordinates are rounded to two decimal places before they
+are sent, about 1.1 km of latitude: finer than a forecast's grid, and coarser than where anyone
+stood.

@@ -152,6 +152,24 @@ extension XCTestCase {
         return false
     }
 
+    /// Goes back one screen, to the one whose bar is titled `title`; an absent screen always fails.
+    ///
+    /// A back tap that lands while the push that brought this screen is still finishing is
+    /// ignored. That's rare on a light screen, but the sun and moon planner with a place chosen
+    /// takes long enough to settle that CI's iPhone lost one. So this taps again while this
+    /// screen's back button is still there and the earlier screen hasn't come.
+    func goBack(to title: String, in app: XCUIApplication,
+                file: StaticString = #file, line: UInt = #line) {
+        let destination = app.navigationBars[title]
+        // Named, so a later try can't tap some other button once the earlier screen is back.
+        let named = app.navigationBars.buttons["BackButton"].firstMatch
+        (named.exists ? named : app.navigationBars.buttons.element(boundBy: 0)).tap()
+        for _ in 0..<2 where !destination.waitForExistence(timeout: 3) {
+            if named.exists && named.isHittable { named.tap() }
+        }
+        XCTAssertTrue(destination.waitForExistence(timeout: 5), "Back to \(title) didn't happen", file: file, line: line)
+    }
+
     /// Chooses a place for a planner from typed coordinates, starting on a screen with the place
     /// row and ending back on it. Typed, so it needs no location permission and no network.
     func chooseTypedPlace(latitude: String, longitude: String, in app: XCUIApplication,

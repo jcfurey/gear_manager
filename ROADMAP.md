@@ -311,6 +311,16 @@ GPS or iCloud happens on your Mac and devices. Work down the list in order.
 - [ ] Open the project once and select the `ShutterManagerWidgets` target → Signing &
   Capabilities. With automatic signing, Xcode registers its App ID,
   `jcameronfurey.shuttermanager.widgets`, on your team. It needs no capabilities of its own.
+- [ ] WeatherKit, for the cloud forecast. The entitlement is already in
+  `ShutterManager.entitlements`; the App ID has to allow it too:
+  - in Xcode, the `ShutterManager` target → Signing & Capabilities should list WeatherKit (add it
+    with **+ Capability** if it doesn't);
+  - at developer.apple.com → Certificates, Identifiers & Profiles → Identifiers →
+    `jcameronfurey.shuttermanager`, check WeatherKit is ticked under **Capabilities**, and under
+    **App Services** if that tab lists it, and save.
+
+  Until it is, every forecast fails and the app says it couldn't be loaded. A change there can
+  take a while to reach Apple's servers.
 
 **2. CloudKit schema**
 - [ ] Run a Debug build from Xcode once, on a device signed in to iCloud, with the launch argument
@@ -348,6 +358,9 @@ GPS or iCloud happens on your Mac and devices. Work down the list in order.
 - [ ] Light meter: compare with your camera's meter or a handheld meter, then set the
   calibration.
 - [ ] Sky: "Use My Location", and sunrise and sunset against a source you trust.
+- [ ] Cloud forecast: turn it on in the sun and moon planner and compare a few hours with the
+  Weather app; check the Apple Weather mark reads in light and dark mode and its link opens;
+  turn it off in Settings and see the forecast go.
 - [ ] Notifications: a gear reminder, a bulb timer with the app in the background, a development
   run, and a golden-hour heads-up.
 - [ ] Tip Jar: buy a tip (TestFlight purchases are free).
@@ -379,6 +392,11 @@ as they come up.
 - Timer alerts in the app when notifications are off.
 - A Live Activity for the bulb and development timers, on the Lock Screen and in the Dynamic
   Island, from a widget extension (the app's second target).
+- The cloud forecast from Apple Weather (WeatherKit) in the sun and moon planner, the Milky Way
+  planner and on a shoot still to come. Off until the user turns it on, and asked for to about a
+  kilometre. Open-Meteo and MET Norway were looked at as free sources that need no key; WeatherKit
+  was chosen because its allowance (500,000 requests a month) comes with the developer membership
+  and Apple's own collection isn't the app's to declare.
 
 **Still open**
 - More categories and category-specific fields as they're needed.
@@ -386,8 +404,6 @@ as they come up.
   widget would be a second entry in its bundle. The obvious ones (tonight's golden hour or
   dark-sky window at a saved place, the next shoot) need the library or a place shared with the
   extension through an App Group, which is a new capability to add in the Developer account.
-- Cloud cover via WeatherKit. It is an Apple framework, but it sends your location to Apple and
-  has a usage quota, so it changes the privacy story.
 - Rental-house or studio mode (checking gear out to clients). A big build for a different user;
   scope it only if there's demand.
 - A package format for exports and backups, so a large library keeps its photos in one file (today

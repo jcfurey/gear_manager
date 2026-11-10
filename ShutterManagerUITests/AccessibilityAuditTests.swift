@@ -68,8 +68,7 @@ final class AccessibilityAuditTests: XCTestCase {
             row.tap()
             try wait(for: app.navigationBars[title], "\(title) should open")
             try audit(title)
-            app.navigationBars.buttons.element(boundBy: 0).tap()
-            try wait(for: app.navigationBars["Tools"], "Back to Tools from \(title)")
+            goBack(to: "Tools", in: app)
         }
     }
 
@@ -112,8 +111,7 @@ final class AccessibilityAuditTests: XCTestCase {
             row.tap()
             try wait(for: app.navigationBars[title], "\(title) should open")
             try audit(title)
-            app.navigationBars.buttons.element(boundBy: 0).tap()
-            try wait(for: app.navigationBars["Settings"], "Back to Settings from \(title)")
+            goBack(to: "Settings", in: app)
         }
     }
 

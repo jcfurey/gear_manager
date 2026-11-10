@@ -123,7 +123,9 @@ xcodebuild test -project ShutterManager.xcodeproj -scheme ShutterManager \
 - **logging**: app code logs with `os.Logger`, not `print`, `debugPrint`, `NSLog` or `dump`.
 - **capabilities**: the entitlements name the `iCloud.jcameronfurey.shuttermanager` container
   (and Swift code names no other), don't set `default-data-protection`, and Info.plist keeps the
-  remote-notification background mode CloudKit sync needs.
+  remote-notification background mode CloudKit sync needs. One file imports WeatherKit
+  (`WeatherKitCloudProvider.swift`), and while it does the entitlements carry
+  `com.apple.developer.weatherkit`.
 - **project**: deployment target, version, build number and Swift version agree across every
   target and configuration; bundle IDs are the expected three; Swift files aren't referenced
   individually (the targets use folder-synced groups); asset catalog JSON parses.

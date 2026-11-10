@@ -48,6 +48,7 @@ The five tabs are **Inventory · Tools · Light Meter · Shoots · Settings**.
     of the directions, and the coming moon phases;
   - a Milky Way planner that lists the coming nights' dark, moonless hours with the galactic core
     up;
+  - the cloud forecast for those hours, if you turn it on (see below);
   - astro exposure: the NPF and 500 rules from your camera's pixel pitch, and star trails.
 - **Places:** your current location, a place found by search or a tap on the map, or typed
   coordinates. Save places to reuse them; they sync with the rest of your library.
@@ -128,6 +129,11 @@ These are built and tested, and aren't in the 1.0 App Store text or release note
 - **Timers on the Lock Screen and in the Dynamic Island:** a running bulb exposure or
   development step shows as a Live Activity, with a countdown that keeps moving while the phone
   is locked, a progress bar, and what follows ("Next: Stop", "Close the shutter").
+- **Cloud forecast**, from Apple Weather, in the sun and moon planner, the Milky Way planner and
+  on a shoot still to come: a chart of the hours, and the cloud over each golden hour, dark
+  window or the shoot itself, by height (low, mid, high), with the chance of precipitation. It
+  reaches ten days ahead. It's off until you turn it on, because getting it sends the place's
+  position to Apple, rounded to about a kilometre.
 - **Timers alert in the app when notifications are off:** a banner, a haptic and a short tone at
   each agitation, pour and end, on whichever screen is up, while the app is open.
 - **Fixes from a review of the 1.0 code:** maintenance reminders now notify; timer alerts keep
