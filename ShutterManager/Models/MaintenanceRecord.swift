@@ -196,6 +196,13 @@ final class MaintenanceReminder {
 
     var isOverdue: Bool { daysUntilDue < 0 }
 
+    /// Whether this reminder gets a notification of its own: not once it's done, and not a
+    /// sensor cleaning on an item that keeps its own cleaning schedule, which already reminds.
+    func notifies(for item: GearItem) -> Bool {
+        guard isActive else { return false }
+        return !(type == .sensorCleaning && item.gearCategory.hasSensorCleaning && item.sensorCleaningIntervalDays > 0)
+    }
+
     /// Moves a recurring reminder that's due to its next occurrence after `now` on its own
     /// schedule (due date + a whole number of intervals). No-op for one-shot reminders and for
     /// reminders not yet due.

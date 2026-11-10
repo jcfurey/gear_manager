@@ -17,7 +17,6 @@ struct ReciprocityView: View {
     @AppStorage(ToolKey.toolValuesPrefix + "reciprocity.film") private var stockID = FilmStock.builtIns.first?.id ?? ""
     @AppStorage(ToolKey.toolValuesPrefix + "reciprocity.metered") private var metered = 8.0
 
-    private let timers = ToolTimers.shared
     private var stock: FilmStock? { FilmStock(id: stockID) }
 
     var body: some View {
@@ -33,14 +32,11 @@ struct ReciprocityView: View {
             if let stock, let result = stock.reciprocity.correct(metered: metered) {
                 Section("Expose For") {
                     ReciprocityResultRows(result: result, stock: stock)
-                    if timers.exposure == nil, result.corrected >= 1 {
-                        Button {
-                            timers.startExposure(seconds: result.corrected,
-                                                 title: "\(stock.name) \(ExposureScale.shutterLabel(result.corrected))")
-                        } label: {
-                            Label("Start Bulb Timer", systemImage: "timer")
-                        }
-                    }
+                    // The same rows as the ND tool: the countdown and its Stop, so a timer
+                    // started here can be seen and ended here.
+                    BulbTimerRows(seconds: result.corrected,
+                                  title: "\(stock.name) \(ExposureScale.shutterLabel(result.corrected))",
+                                  identifier: "reciprocity")
                 }
                 Section {
                     ReciprocityGuidance(stock: stock)
@@ -529,6 +525,7 @@ private struct DevelopmentRunView: View {
                 .sensoryFeedback(.impact(weight: .heavy), trigger: isAgitating(phase)) { wasAgitating, agitating in
                     agitating && !wasAgitating
                 }
+                NotificationsOffNote(what: "agitation and step alerts only show while this screen is open")
             }
             Section("Steps") {
                 ForEach(Array(session.steps.enumerated()), id: \.element.id) { index, step in

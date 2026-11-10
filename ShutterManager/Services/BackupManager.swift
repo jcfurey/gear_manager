@@ -51,6 +51,9 @@ class BackupManager: ObservableObject {
     /// could be verified and restored (see `ComprehensiveExportData.replaceUnrestorableNumbers()`);
     /// 0 when none. The library itself keeps its values.
     @Published private(set) var lastBackupReplacedValueCount = 0
+    /// Whether the most recent successful backup had to leave photos out, although they were
+    /// asked for, because with them the file would be too large to restore.
+    @Published private(set) var lastBackupLeftPhotosOut = false
 
     /// Why the schedule stopped producing backups, for Backup Management.
     struct AutomaticBackupFailure: Equatable {
@@ -64,11 +67,12 @@ class BackupManager: ObservableObject {
     private let backupsDirectory: URL
     private let defaults: UserDefaults
 
-    init(directory: URL? = nil, defaults: UserDefaults = .standard) {
+    init(directory: URL? = nil, defaults: UserDefaults = .standard,
+         maximumBackupBytes: Int = Constants.DataLimits.maximumImportBytes) {
         self.backupsDirectory = (directory ?? URL.documentsDirectory.appendingPathComponent("Backups", isDirectory: true)).standardizedFileURL
         self.defaults = defaults
         // Back up the same preferences a restore writes back.
-        self.exportService = DataExportService(settingsStore: defaults)
+        self.exportService = DataExportService(settingsStore: defaults, maximumBytes: maximumBackupBytes)
         self.configuration = BackupConfiguration()
         self.lastBackupDate = defaults.object(forKey: Constants.UserDefaultsKeys.lastBackupDate) as? Date
         if let stored = defaults.dictionary(forKey: Constants.UserDefaultsKeys.lastAutomaticBackupFailure),
@@ -92,14 +96,23 @@ class BackupManager: ObservableObject {
         lastBackupError = nil
         
         do {
+            // Counted now: after the awaits below, a record deleted in the meantime (here or on
+            // another device) can't be read.
+            let itemCounts = BackupItemCounts(gearItems: library.gearItems.count,
+                                              otherRecords: library.otherRecordCount)
+
             // Create backup configuration
             var backupConfig = DataExportService.ExportConfiguration(format: .json)
             backupConfig.includePhotos = configuration.includePhotos
+            // A library with a few hundred photos passes what one file can hold; its records
+            // are still worth backing up.
+            backupConfig.dropsPhotosIfTooLarge = true
 
             let exportURL = try await exportService.exportData(configuration: backupConfig, library: library)
             
             defer { try? fileManager.removeItem(at: exportURL) }
             let replacedValues = exportService.lastReplacedValueCount
+            let leftPhotosOut = exportService.lastExportDroppedPhotos
             // Never advertise a backup that the restore path cannot read or validate.
             do {
                 _ = try await Task.detached { try ImportDocument.decode(ImportDocument.read(exportURL)) }.value
@@ -118,9 +131,8 @@ class BackupManager: ObservableObject {
                 date: Date(),
                 fileURL: backupURL,
                 fileSize: try fileSize(at: backupURL),
-                itemCounts: BackupItemCounts(gearItems: library.gearItems.count,
-                                             otherRecords: library.otherRecordCount),
-                includesPhotos: backupConfig.includePhotos
+                itemCounts: itemCounts,
+                includesPhotos: backupConfig.includePhotos && !leftPhotosOut
             )
             
             // Save metadata
@@ -134,6 +146,7 @@ class BackupManager: ObservableObject {
                 self.lastAutomaticBackupFailure = nil
                 defaults.removeObject(forKey: Constants.UserDefaultsKeys.lastAutomaticBackupFailure)
                 self.lastBackupReplacedValueCount = replacedValues
+                self.lastBackupLeftPhotosOut = leftPhotosOut
                 self.loadAvailableBackups()
                 self.isBackingUp = false
             }

@@ -57,7 +57,7 @@ struct ShootEditorView: View {
                 .environment(\.timeZone, draft.place?.timeZone ?? .current)
 
                 Section {
-                    PlaceRow(place: $draft.place)
+                    PlaceRow(place: Binding(get: { draft.place }, set: { draft.setPlace($0) }))
                 } header: {
                     Text("Where")
                 } footer: {
@@ -72,6 +72,9 @@ struct ShootEditorView: View {
                         }
                     }
                     .disabled(draft.place == nil)
+                    if draft.goldenHourAlertMinutes > 0 {
+                        NotificationsOffNote(what: "the heads-up can't be delivered")
+                    }
                 } footer: {
                     Text(draft.place == nil ? "Choose a place to get a heads-up before golden hour."
                          : "A notification before the golden hour during the shoot, or the next one after it starts.")

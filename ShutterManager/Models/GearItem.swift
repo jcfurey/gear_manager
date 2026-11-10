@@ -327,6 +327,13 @@ extension GearItem {
         if serviceNeeded { reasons.append("Needs service") }
         if isSensorCleaningDue { reasons.append("Sensor cleaning due") }
         if isNearShutterLife { reasons.append("Shutter near rated life") }
+        // Maintenance reminders that have come due, soonest first; one line for each kind.
+        let due = (maintenanceReminders ?? [])
+            .filter { $0.notifies(for: self) && $0.daysUntilDue <= 0 }
+            .sorted { $0.dueDate < $1.dueDate }
+        for reminder in due where !reasons.contains("\(reminder.type.displayName) due") {
+            reasons.append("\(reminder.type.displayName) due")
+        }
         return reasons
     }
 }

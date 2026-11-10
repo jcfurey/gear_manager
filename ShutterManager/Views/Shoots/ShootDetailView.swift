@@ -351,8 +351,7 @@ struct ShootDetailView: View {
     private func saveTemplate() {
         let name = templateName.trimmingCharacters(in: .whitespacesAndNewlines)
         shoot.saveShotList(asTemplateNamed: name.isEmpty ? shoot.displayTitle : name, in: context)
-        commit()
-        ToastNotificationManager.shared.success("Template saved")
+        if commit() { ToastNotificationManager.shared.success("Template saved") }
     }
 
     // MARK: - Film
@@ -401,13 +400,16 @@ struct ShootDetailView: View {
 
     // MARK: - Saving
 
-    private func commit() {
+    /// Saves the shoot. A failed save is undone and reported; returns whether it succeeded.
+    @discardableResult
+    private func commit() -> Bool {
         shoot.markModified()
         guard context.saveOrLog() else {
             context.rollback()
             saveFailed = true
-            return
+            return false
         }
+        return true
     }
 
     private func remove(_ item: GearItem) {
@@ -419,8 +421,7 @@ struct ShootDetailView: View {
     private func applyGearSelection() {
         shoot.gear = allGear.filter { gearSelection.contains($0.id) }
         shoot.packedIDs = shoot.packedIDs.intersection(gearSelection)
-        commit()
-        choosingGear = false
+        if commit() { choosingGear = false }
     }
 
     private func deleteShoot() {
@@ -428,9 +429,11 @@ struct ShootDetailView: View {
         dismiss()
         DispatchQueue.main.async {
             context.delete(shoot)
-            if context.saveOrLog() {
-                Task { await ShootAlertScheduler.refresh(in: context) }
+            guard context.saveOrLog() else {
+                context.rollback()
+                return
             }
+            Task { await ShootAlertScheduler.refresh(in: context) }
         }
     }
 }

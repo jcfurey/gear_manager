@@ -147,14 +147,14 @@ enum ExposureScale {
             return label
         }
         // Faster than 1/8000.
-        return "1/\(Int((1 / seconds).rounded()))"
+        return "1/\(Int(saturating: (1 / seconds).rounded()))"
     }
 
     /// "45 s", "4 min 16 s", "1 h 2 min": whole seconds, for timers and long exposures.
     static func durationLabel(_ seconds: Double) -> String {
         guard seconds.isFinite, seconds >= 0 else { return "—" }
         if seconds < 10 { return decimal(seconds, places: 1) + " s" }
-        let total = Int(seconds.rounded())
+        let total = Int(saturating: seconds.rounded())
         let hours = total / 3600, minutes = (total % 3600) / 60, secs = total % 60
         if hours > 0 { return minutes > 0 ? "\(hours) h \(minutes) min" : "\(hours) h" }
         if minutes > 0 { return secs > 0 ? "\(minutes) min \(secs) s" : "\(minutes) min" }
@@ -192,7 +192,7 @@ enum ExposureScale {
         if abs(thirds - nearest) <= 0.5, let index = Int(exactly: nearest), isoRange.contains(index) {
             return "ISO \(isoLabels[index + 12])"
         }
-        return "ISO \(Int(iso.rounded()))"
+        return "ISO \(Int(saturating: iso.rounded()))"
     }
 
     // MARK: - Snapping

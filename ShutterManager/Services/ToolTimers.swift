@@ -57,7 +57,7 @@ final class ToolTimers {
         let countdown = Countdown(title: title, duration: seconds, endsAt: now.addingTimeInterval(seconds))
         exposure = countdown
         notifications.scheduleTimerAlerts(
-            [.init(date: countdown.endsAt, title: "Exposure done", body: "Close the shutter: \(title).")],
+            [.init(date: countdown.endsAt, title: "Exposure done", body: "Close the shutter: \(title).", isRequired: true)],
             group: Self.exposureGroup)
     }
 
@@ -96,6 +96,13 @@ final class ToolTimers {
         notifications.cancelTimerAlerts(group: Self.developmentGroup)
     }
 
+    /// Schedules the running step's alerts again from `now`. A long step has more agitations
+    /// than iOS keeps pending at once, so coming back to the app tops them up.
+    func refreshDevelopmentAlerts(now: Date = Date()) {
+        guard let run = development, run.session.isRunning else { return }
+        notifications.scheduleTimerAlerts(Self.alerts(for: run.session, now: now), group: Self.developmentGroup)
+    }
+
     private func updateDevelopment(now: Date, _ change: (inout DevelopmentSession) -> Void) {
         guard var run = development else { return }
         change(&run.session)
@@ -113,11 +120,11 @@ final class ToolTimers {
         }
         if step.duration >= 60 {
             alerts.append(.init(date: end.addingTimeInterval(-pourWarningSeconds), title: "\(step.name): pour out",
-                                body: "\(Int(pourWarningSeconds)) seconds left. Start pouring."))
+                                body: "\(Int(pourWarningSeconds)) seconds left. Start pouring.", isRequired: true))
         }
         let next = session.steps.indices.contains(session.currentIndex + 1) ? session.steps[session.currentIndex + 1] : nil
         alerts.append(.init(date: end, title: "\(step.name) done",
-                            body: next.map { "Next: \($0.name)." } ?? "That was the last step."))
+                            body: next.map { "Next: \($0.name)." } ?? "That was the last step.", isRequired: true))
         return alerts
     }
 }

@@ -87,24 +87,26 @@ final class DataImportService {
             gearByID[item.id] = item
         }
 
-        let existing = try strategy == .merge ? ExistingIDs(in: context) : ExistingIDs()
-        for dto in document.maintenanceRecords where !existing.maintenanceRecords.contains(dto.id) {
+        // Each ID is added as its record goes in, so a file that lists a record twice (an export
+        // of a library that already had duplicates) inserts it once.
+        var existing = try strategy == .merge ? ExistingIDs(in: context) : ExistingIDs()
+        for dto in document.maintenanceRecords where existing.maintenanceRecords.insert(dto.id).inserted {
             context.insert(dto.toMaintenanceRecord(gearByID: gearByID))
         }
-        for dto in document.maintenanceReminders where !existing.maintenanceReminders.contains(dto.id) {
+        for dto in document.maintenanceReminders where existing.maintenanceReminders.insert(dto.id).inserted {
             context.insert(dto.toMaintenanceReminder(gearByID: gearByID))
         }
-        for dto in document.shutterCountReadings where !existing.shutterCountReadings.contains(dto.id) {
+        for dto in document.shutterCountReadings where existing.shutterCountReadings.insert(dto.id).inserted {
             context.insert(dto.toReading(gearByID: gearByID))
         }
-        for dto in document.loans where !existing.loans.contains(dto.id) {
+        for dto in document.loans where existing.loans.insert(dto.id).inserted {
             context.insert(dto.toLoan(gearByID: gearByID))
         }
-        for dto in document.places where !existing.savedPlaces.contains(dto.id) {
+        for dto in document.places where existing.savedPlaces.insert(dto.id).inserted {
             if let place = dto.toPlace() { context.insert(place) }
         }
         // A recipe merges whole: one already in the library keeps its own steps.
-        for dto in document.recipes where !existing.developmentRecipes.contains(dto.id) {
+        for dto in document.recipes where existing.developmentRecipes.insert(dto.id).inserted {
             let (recipe, steps) = dto.toRecipe()
             context.insert(recipe)
             steps.forEach(context.insert)
@@ -121,15 +123,15 @@ final class DataImportService {
             shotList.forEach(context.insert)
             shootByID[shoot.id] = shoot
         }
-        for dto in document.kitList where !existing.kits.contains(dto.id) {
+        for dto in document.kitList where existing.kits.insert(dto.id).inserted {
             context.insert(dto.toKit(gearByID: gearByID))
         }
-        for dto in document.templateList where !existing.shotListTemplates.contains(dto.id) {
+        for dto in document.templateList where existing.shotListTemplates.insert(dto.id).inserted {
             let (template, items) = dto.toTemplate()
             context.insert(template)
             items.forEach(context.insert)
         }
-        for dto in document.rollList where !existing.filmRolls.contains(dto.id) {
+        for dto in document.rollList where existing.filmRolls.insert(dto.id).inserted {
             context.insert(dto.toRoll(gearByID: gearByID, shootByID: shootByID))
         }
         try saveChanges(context)

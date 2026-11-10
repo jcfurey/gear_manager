@@ -48,6 +48,7 @@ struct ShutterManagerApp: App {
                 Task { await store.syncManager.refresh() }
                 NotificationManager.shared.clearBadge()
                 refreshGearReminders()
+                ToolTimers.shared.refreshDevelopmentAlerts()
             } else if newPhase == .background {
                 performAutomaticBackupIfNeeded()
             }

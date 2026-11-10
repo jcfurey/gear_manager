@@ -125,6 +125,10 @@ struct BackupManagementView: View {
                         if let error = backupManager.lastBackupError {
                             Text("Error: \(error)")
                                 .foregroundColor(AppColors.badText)
+                        } else if backupManager.lastBackupLeftPhotosOut {
+                            Text("Backed up without photos: with them the file would be too large to restore. Everything else is in the backup.")
+                                .foregroundStyle(AppColors.warningText)
+                                .accessibilityIdentifier("backup.leftPhotosOut")
                         } else if backupManager.lastBackupReplacedValueCount > 0 {
                             // Values a backup can't hold (left by an older version or a mistyped
                             // unit) are written as blanks or zeros so the rest is backed up.

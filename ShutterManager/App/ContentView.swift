@@ -28,17 +28,18 @@ struct ContentView: View {
 
     var body: some View {
         TabView(selection: $navigation.tab) {
+            // Rebuilt when the library is replaced; Settings, where that's done from, stays put.
             Tab("Inventory", systemImage: "camera", value: AppTab.inventory) {
-                InventoryView()
+                InventoryView().id(navigation.libraryGeneration)
             }
             Tab("Tools", systemImage: "wrench.and.screwdriver", value: AppTab.tools) {
-                ToolsView()
+                ToolsView().id(navigation.libraryGeneration)
             }
             Tab("Light Meter", systemImage: "camera.aperture", value: AppTab.lightMeter) {
-                LightMeterView()
+                LightMeterView().id(navigation.libraryGeneration)
             }
             Tab("Shoots", systemImage: "calendar", value: AppTab.shoots) {
-                ShootsView()
+                ShootsView().id(navigation.libraryGeneration)
             }
             Tab("Settings", systemImage: "gearshape", value: AppTab.settings) {
                 SettingsView()
@@ -46,6 +47,11 @@ struct ContentView: View {
         }
         .environment(tipJarStore)
         .environment(navigation)
+        // A restore or an import commits here, whichever screen started it.
+        .onReceive(NotificationCenter.default.publisher(for: DataImportService.didImportNotification)
+            .receive(on: DispatchQueue.main)) { _ in
+            navigation.libraryWasReplaced()
+        }
         // A label's code is a link to the app; the Camera app opens it here.
         .onOpenURL { navigation.open($0) }
         .sheet(item: $navigation.openedLabel) { link in

@@ -17,6 +17,7 @@ struct SettingsView: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.modelContext) private var modelContext
     @Environment(iCloudSyncManager.self) private var syncManager
+    @Environment(AppNavigation.self) private var navigation
 
     /// All gear, to reschedule reminders when the preference changes.
     @Query private var gearItems: [GearItem]
@@ -82,10 +83,13 @@ struct SettingsView: View {
                                     }
                                 }
                         }
+                        if gearRemindersEnabled {
+                            NotificationsOffNote(what: "reminders can't be delivered")
+                        }
                     } header: {
                         Text("Reminders")
                     } footer: {
-                        Text("Sensor cleanings due and loans due back. Set each item's schedule and reminder time in Inventory.")
+                        Text("Sensor cleanings and other maintenance due, and loans due back. Set each item's schedule and reminder time in Inventory.")
                     }
 
                     Section {
@@ -265,6 +269,8 @@ struct SettingsView: View {
             // Every model in the schema, so nothing is left orphaned or forgotten.
             try modelContext.deleteEveryRecord()
             try modelContext.save()
+            // The other tabs go back to their first screens, off whatever was just deleted.
+            navigation.libraryWasReplaced()
             // No gear or shoots means no reminders: this removes every pending one.
             Task {
                 await NotificationManager.shared.refreshGearReminders(for: [])
@@ -282,5 +288,6 @@ struct SettingsView: View {
     SettingsView()
         .modelContainer(PreviewModelContainer.make())
         .environment(iCloudSyncManager())
+        .environment(AppNavigation())
         .preferredColorScheme(.dark)
 }

@@ -24,8 +24,16 @@ final class DataExportService {
     /// (see `LibraryExport.replaceUnrestorableNumbers()`). 0 when there were none.
     private(set) var lastReplacedValueCount = 0
 
-    init(settingsStore: UserDefaults = .standard) {
+    /// Whether the most recent export left its photos out because they made the file too large
+    /// (see `ExportConfiguration.dropsPhotosIfTooLarge`).
+    private(set) var lastExportDroppedPhotos = false
+
+    /// The largest JSON file an export may write: what import and restore will read.
+    private let maximumBytes: Int
+
+    init(settingsStore: UserDefaults = .standard, maximumBytes: Int = Constants.DataLimits.maximumImportBytes) {
         self.settingsStore = settingsStore
+        self.maximumBytes = maximumBytes
     }
 
     struct ExportConfiguration {
@@ -42,6 +50,9 @@ final class DataExportService {
         var includeShoots = true
         var includePhotos = true
         var includeSettings = true
+        /// When the photos make the file too large to read back, write it without them instead
+        /// of failing. For backups, where records without photos beat no backup at all.
+        var dropsPhotosIfTooLarge = false
         var format: ExportFormat
 
         var hasAnyDataSelected: Bool { includeGear || includeSettings }
@@ -52,9 +63,20 @@ final class DataExportService {
     /// Writes a JSON or CSV file to the temporary directory and returns its URL.
     func exportData(configuration: ExportConfiguration, library: LibraryContents) async throws -> URL {
         let data = buildExportData(configuration: configuration, library: library)
+        lastExportDroppedPhotos = false
         switch configuration.format {
-        case .json: return try await exportJSON(data)
-        case .csv: return try await exportCSV(data)
+        case .json:
+            do {
+                return try await exportJSON(data)
+            } catch let error as ExportError {
+                guard configuration.dropsPhotosIfTooLarge, data.includesPhotos else { throw error }
+                let url = try await exportJSON(data.removingPhotos())
+                lastExportDroppedPhotos = true
+                logger.warning("Export left photos out: with them the file would be too large to read back")
+                return url
+            }
+        case .csv:
+            return try await exportCSV(data)
         }
     }
 
@@ -111,6 +133,13 @@ final class DataExportService {
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
             return try encoder.encode(data)
         }.value
+        // Import and restore refuse anything larger, so writing it would hand over a file that
+        // can never be read back.
+        guard json.count <= maximumBytes else {
+            throw ExportError.tooLarge(megabytes: (json.count + 1_048_575) / 1_048_576,
+                                       limitMegabytes: maximumBytes / 1_048_576,
+                                       includesPhotos: data.includesPhotos)
+        }
         return try await saveToFile(data: json, extension: "json")
     }
 
@@ -270,6 +299,20 @@ final class DataExportService {
             .replacingOccurrences(of: "\r", with: " ")
             .replacingOccurrences(of: "\"", with: "\"\"")
         return "\"\(escaped)\""
+    }
+}
+
+/// Why an export wasn't written.
+enum ExportError: LocalizedError, Equatable {
+    /// The file would be larger than import and restore can read.
+    case tooLarge(megabytes: Int, limitMegabytes: Int, includesPhotos: Bool)
+
+    var errorDescription: String? {
+        switch self {
+        case .tooLarge(let megabytes, let limit, let includesPhotos):
+            let size = "The file would be \(megabytes) MB, and \(Constants.App.name) can read back at most \(limit) MB."
+            return includesPhotos ? size + " Turn Photos off to export everything else." : size
+        }
     }
 }
 

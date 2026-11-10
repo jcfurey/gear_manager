@@ -39,7 +39,7 @@ struct LibraryExport: Codable {
     var filmRolls: [FilmRollDTO]? = nil
     let settings: [String: String]?
     /// Whether photos were included, so a restore can warn before replacing photos with none.
-    let includesPhotos: Bool
+    var includesPhotos: Bool
 
     /// Total records, for previews and the record-count limit.
     var recordCount: Int {
@@ -65,6 +65,16 @@ struct LibraryExport: Codable {
     var kitList: [KitDTO] { kits ?? [] }
     var templateList: [ShotListTemplateDTO] { shotListTemplates ?? [] }
     var rollList: [FilmRollDTO] { filmRolls ?? [] }
+
+    /// The same export with no photos, as `includePhotos: false` would have built it. For a
+    /// library whose photos make the file too large to read back.
+    func removingPhotos() -> LibraryExport {
+        var copy = self
+        for index in copy.gearItems.indices { copy.gearItems[index].photos = nil }
+        for index in copy.maintenanceRecords.indices { copy.maintenanceRecords[index].photoData = nil }
+        copy.includesPhotos = false
+        return copy
+    }
 }
 
 /// Header written into every export file.
@@ -179,7 +189,7 @@ struct GearItemDTO: Codable {
     let cardType: String?
     let speedRating: String?
     let referenceLinks: String?
-    let photos: [GearPhotoDTO]?
+    var photos: [GearPhotoDTO]?
 
     /// `includePhotos: false` leaves out the gallery, for size-sensitive exports and backups.
     init(from item: GearItem, includePhotos: Bool = true) {
@@ -321,7 +331,7 @@ struct MaintenanceRecordDTO: Codable {
     let notes: String?
     let performedBy: String?
     let nextDueDate: Date?
-    let photoData: Data?
+    var photoData: Data?
     let isCompleted: Bool
 
     init(from record: MaintenanceRecord, includePhotos: Bool = true) {

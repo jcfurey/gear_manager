@@ -57,6 +57,12 @@ struct MeasurementUnits: Equatable {
         millimetres / (metric ? 1000 : Self.millimetresPerFoot)
     }
 
+    /// A distance for an editable field: metres or feet to three decimals. 5000 mm reads
+    /// "16.404" ft, not the sixteen-digit quotient, and 7 ft typed in comes back as 7.
+    func fieldDistance(millimetres: Double) -> Double {
+        (displayDistance(millimetres: millimetres) * 1000).rounded() / 1000
+    }
+
     /// "3.39 m", "11.1 ft", "∞". Short distances get more decimals.
     func format(millimetres: Double) -> String {
         guard millimetres.isFinite else { return "∞" }

@@ -91,6 +91,8 @@ struct DataImportView: View {
                                   description: "Appearance and haptics settings in the file replace the current ones.")
                     ImportInfoRow(title: "Before You Import",
                                   description: "Consider exporting or backing up your current library first.")
+                    ImportInfoRow(title: "With iCloud Sync",
+                                  description: "Your library already reaches your other devices through iCloud, so there's no need to import it there. On a new device, let iCloud finish syncing before importing a file, or records it hasn't downloaded yet end up twice.")
                 }
             }
             .navigationTitle("Import Data")

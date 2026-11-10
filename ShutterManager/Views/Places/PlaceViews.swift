@@ -160,6 +160,9 @@ struct PlacePickerView: View {
     @State private var camera: MapCameraPosition
     @State private var picked: GeoCoordinate?
     @State private var name = ""
+    /// The name the geocoder or a search result last filled in. A name the user typed is kept
+    /// when another point is picked; one filled in for the previous point is replaced.
+    @State private var filledName = ""
     @State private var timeZoneIdentifier = TimeZone.current.identifier
     @State private var searchText = ""
     @State private var results: [MKMapItem] = []
@@ -268,22 +271,22 @@ struct PlacePickerView: View {
             picked = initial.coordinate
             name = initial.name == "Current Location" ? "" : initial.name
             timeZoneIdentifier = initial.timeZone.identifier
-            latitudeText = String(format: "%.5f", initial.coordinate.latitude)
-            longitudeText = String(format: "%.5f", initial.coordinate.longitude)
+            latitudeText = PlaceValue.fieldText(degrees: initial.coordinate.latitude)
+            longitudeText = PlaceValue.fieldText(degrees: initial.coordinate.longitude)
         }
     }
 
     private var typedCoordinate: GeoCoordinate? {
-        guard let latitude = Double(localizedInput: latitudeText.trimmingCharacters(in: .whitespaces)),
-              let longitude = Double(localizedInput: longitudeText.trimmingCharacters(in: .whitespaces)) else { return nil }
+        guard let latitude = PlaceValue.degrees(from: latitudeText),
+              let longitude = PlaceValue.degrees(from: longitudeText) else { return nil }
         let coordinate = GeoCoordinate(latitude: latitude, longitude: longitude)
         return coordinate.isValid ? coordinate : nil
     }
 
     private func pick(_ coordinate: GeoCoordinate, lookUpName: Bool) {
         picked = coordinate
-        latitudeText = String(format: "%.5f", coordinate.latitude)
-        longitudeText = String(format: "%.5f", coordinate.longitude)
+        latitudeText = PlaceValue.fieldText(degrees: coordinate.latitude)
+        longitudeText = PlaceValue.fieldText(degrees: coordinate.longitude)
         camera = .region(MKCoordinateRegion(center: CLLocationCoordinate2D(coordinate),
                                             span: MKCoordinateSpan(latitudeDelta: 0.2, longitudeDelta: 0.2)))
         guard lookUpName else { return }
@@ -292,13 +295,17 @@ struct PlacePickerView: View {
             let location = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
             guard let placemark = try? await CLGeocoder().reverseGeocodeLocation(location).first,
                   picked == coordinate else { return }
-            if name.isEmpty { name = placemark.name ?? placemark.locality ?? "" }
+            if name.isEmpty || name == filledName {
+                name = placemark.name ?? placemark.locality ?? ""
+                filledName = name
+            }
             if let zone = placemark.timeZone { timeZoneIdentifier = zone.identifier }
         }
     }
 
     private func choose(_ item: MKMapItem) {
         name = item.name ?? ""
+        filledName = name
         if let zone = item.timeZone { timeZoneIdentifier = zone.identifier }
         pick(GeoCoordinate(item.placemark.coordinate), lookUpName: item.timeZone == nil)
         results = []
@@ -322,7 +329,12 @@ struct PlacePickerView: View {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         var value = PlaceValue(name: trimmed.isEmpty ? PlaceValue.coordinateText(picked) : trimmed,
                                coordinate: picked, timeZoneIdentifier: timeZoneIdentifier)
-        if saveToPlaces {
+        if let initial, initial.savedPlaceID != nil, initial.coordinate == picked, initial.name == value.name,
+           initial.timeZone.identifier == value.timeZone.identifier {
+            // Already in My Places and unchanged: use it as it is, rather than saving a copy
+            // every time the map is opened and closed.
+            value.savedPlaceID = initial.savedPlaceID
+        } else if saveToPlaces {
             let place = SavedPlace(name: value.name, coordinate: picked, timeZoneIdentifier: timeZoneIdentifier)
             context.insert(place)
             guard context.saveOrLog() else {

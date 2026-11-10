@@ -56,7 +56,7 @@ enum StarTrails {
     static func frames(totalSeconds: Double, exposure: Double, gap: Double = 0) -> Int {
         let cycle = exposure + max(gap, 0)
         guard totalSeconds > 0, exposure > 0, cycle.isFinite, totalSeconds.isFinite else { return 0 }
-        return Int((totalSeconds / cycle).rounded(.down))
+        return Int(saturating: (totalSeconds / cycle).rounded(.down))
     }
 }
 
@@ -78,7 +78,7 @@ struct TimeLapsePlan: Equatable {
     }
 
     /// Whole frames the event gives: event ÷ interval, rounded down.
-    var frames: Int { Int((eventDuration / interval).rounded(.down)) }
+    var frames: Int { Int(saturating: (eventDuration / interval).rounded(.down)) }
 
     /// Seconds the finished clip plays: frames ÷ fps.
     var clipDuration: Double { Double(frames) / framesPerSecond }
@@ -161,7 +161,7 @@ enum PrintSize {
     /// Pixels needed to cover `inches` at `dpi`, rounded up.
     static func pixels(inches: Double, dpi: Double) -> Int? {
         guard inches > 0, dpi > 0, inches.isFinite, dpi.isFinite else { return nil }
-        return Int((inches * dpi).rounded(.up))
+        return Int(saturating: (inches * dpi).rounded(.up))
     }
 
     /// How a resolution holds up, by common print-shop guidance.

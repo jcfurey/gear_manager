@@ -482,14 +482,18 @@ struct GearDetailView: View {
     }
 
     private func deleteItem() {
-        NotificationManager.shared.cancelReminders(for: item)
+        let reminders = NotificationManager.shared.reminderIdentifiers(for: item)
         // Pop first, then delete on the next runloop so this view isn't rendering a deleted model.
         dismiss()
         DispatchQueue.main.async {
             context.delete(item)
-            if context.saveOrLog() {
-                ToastNotificationManager.shared.gearDeleted()
+            guard context.saveOrLog() else {
+                // Undone, so the item is back in the list with its reminders.
+                context.rollback()
+                return
             }
+            NotificationManager.shared.cancelReminders(identifiers: reminders)
+            ToastNotificationManager.shared.gearDeleted()
         }
     }
 }

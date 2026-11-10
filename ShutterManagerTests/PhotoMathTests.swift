@@ -356,3 +356,36 @@ struct DevelopmentSessionTests {
         #expect(!AgitationPattern.none.isAgitating(at: 0))
     }
 }
+
+/// Numbers the calculators can reach that an `Int` can't hold. Each of these used to trap.
+struct SafeConversionTests {
+    @Test func saturatingKeepsOrdinaryNumbersAndClampsTheRest() {
+        #expect(Int(saturating: 41.9) == 41)
+        #expect(Int(saturating: -41.9) == -41)
+        #expect(Int(saturating: 0) == 0)
+        #expect(Int(saturating: 1e30) == .max)
+        #expect(Int(saturating: -1e30) == .min)
+        #expect(Int(saturating: .infinity) == .max)
+        #expect(Int(saturating: -.infinity) == .min)
+        #expect(Int(saturating: .nan) == 0)
+        #expect(Int(saturating: 9_223_372_036_854_775_808.0) == .max, "2^63 is one past Int.max")
+        #expect(Int(saturating: 9_223_372_036_854_774_784.0) == 9_223_372_036_854_774_784, "The largest Double below it")
+    }
+
+    @Test func labelsSurviveAbsurdExposures() {
+        // Seventy stops of ND on 1/125 s: about 3 × 10^11 years.
+        let stacked = NDFilter.exposure(base: 1.0 / 128, stops: 70)
+        #expect(stacked > 9e18)
+        #expect(ExposureScale.shutterLabel(stacked).contains(" h"))
+        #expect(ExposureScale.durationLabel(1e300).contains(" h"))
+        #expect(ExposureScale.shutterLabel(1e-300).hasPrefix("1/"))
+        #expect(ExposureScale.isoLabel(1e300).hasPrefix("ISO "))
+        #expect(ExposureScale.durationLabel(3725) == "1 h 2 min", "Ordinary durations read as before")
+    }
+
+    @Test func countsSurviveZeroAndTinyDivisors() {
+        #expect(StarTrails.frames(totalSeconds: 1e30, exposure: 1e-30) == Int.max)
+        #expect(PrintSize.pixels(inches: 1e200, dpi: 1e200) == Int.max)
+        #expect(PrintSize.pixels(inches: 10, dpi: 300) == 3000)
+    }
+}

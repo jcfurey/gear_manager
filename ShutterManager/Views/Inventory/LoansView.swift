@@ -104,11 +104,16 @@ struct LoansView: View {
     }
 
     private func delete(_ loans: [GearLoan]) {
+        // Named before the delete: afterwards the item no longer lists them, so nothing else
+        // would take their due-back reminders away.
+        let reminders = loans.map { NotificationManager.GearReminder.identifier(for: $0) }
         for loan in loans { context.delete(loan) }
-        if !context.saveOrLog() {
+        guard context.saveOrLog() else {
             context.rollback()
             saveFailed = true
+            return
         }
+        NotificationManager.shared.cancelReminders(identifiers: reminders)
     }
 }
 
