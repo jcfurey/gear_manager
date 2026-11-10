@@ -13,7 +13,8 @@ import Testing
 
 @MainActor
 struct LibraryDeduplicatorTests {
-    private static let base = Date(timeIntervalSince1970: 1_750_000_000)
+    /// Nonisolated: `insertCopy` reads it in a default argument, which is evaluated off the main actor.
+    private nonisolated static let base = Date(timeIntervalSince1970: 1_750_000_000)
 
     /// The IDs of a small library: every copy of it made with these is a double of the others.
     private struct IDs {
