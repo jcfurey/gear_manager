@@ -114,5 +114,7 @@ xcodebuild test -project ShutterManager.xcodeproj -scheme ShutterManager \
 - **leftovers**: no names from the Axe Manager port (guitar, tuner, axemanager, and so on).
 - **store-text**: each `marketing/<version>/` folder has every App Store text field, each within
   App Store Connect's limit, and the keywords have no spaces after commas or repeats.
+- **wording**: no text the user reads, in the app or the App Store copy, says "insurance". The
+  report is "a report for your insurer"; the app doesn't value gear or speak about cover.
 
 To accept a flagged line on purpose, end it with `// conventions:allow <check-name>`.

@@ -275,11 +275,17 @@ final class DataExportService {
 
 // MARK: - PDF Rendering
 
-/// Renders titled text sections onto US Letter pages, breaking pages as needed.
+/// Renders titled text sections onto pages of the region's paper (US Letter or A4), breaking
+/// pages as needed.
 final class PDFRenderer {
-    private let pageWidth: CGFloat = 612
-    private let pageHeight: CGFloat = 792
+    private let pageWidth: CGFloat
+    private let pageHeight: CGFloat
     private let margin: CGFloat = 50
+
+    init(pageSize: CGSize = PrintPaper.size()) {
+        pageWidth = pageSize.width
+        pageHeight = pageSize.height
+    }
 
     func createPDF(title: String, subtitle: String, sections: [PDFSection]) -> Data {
         let format = UIGraphicsPDFRendererFormat()

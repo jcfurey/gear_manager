@@ -134,6 +134,22 @@ extension XCTestCase {
         return false
     }
 
+    /// Adds an item from the Inventory tab with a make and model, leaving the tab showing the
+    /// list. New items are camera bodies unless the category is changed.
+    func addGear(make: String, model: String, in app: XCUIApplication,
+                 file: StaticString = #file, line: UInt = #line) {
+        selectTab("Inventory", in: app, file: file, line: line)
+        let add = app.buttons["addGearButton"].firstMatch
+        XCTAssertTrue(add.waitForExistence(timeout: 10), "Missing Add Gear button", file: file, line: line)
+        add.tap()
+        replaceText(in: app.textFields["gearMakeField"], with: make, file: file, line: line)
+        replaceText(in: app.textFields["gearModelField"], with: model, file: file, line: line)
+        let save = app.buttons["saveGearButton"]
+        XCTAssertTrue(save.isEnabled, file: file, line: line)
+        save.tap()
+        XCTAssertTrue(save.waitForNonExistence(timeout: 5), "The sheet should close", file: file, line: line)
+    }
+
     func replaceText(in field: XCUIElement, with text: String,
                      file: StaticString = #file, line: UInt = #line) {
         XCTAssertTrue(field.waitForExistence(timeout: 5), file: file, line: line)

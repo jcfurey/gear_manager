@@ -14,6 +14,7 @@ struct CollectionStatsView: View {
     @Query(sort: \GearItem.dateAdded, order: .reverse) private var items: [GearItem]
     /// Each category's bar, taller with larger text so the labels don't overlap.
     @ScaledMetric private var categoryRowHeight: CGFloat = 34
+    @State private var showingInsurerReport = false
 
     var body: some View {
         let valuation = GearValuationService.collectionValue(of: items)
@@ -47,10 +48,24 @@ struct CollectionStatsView: View {
                         }
                     }
                 }
+
+                Section {
+                    Button {
+                        showingInsurerReport = true
+                    } label: {
+                        Label("Report for Your Insurer", systemImage: "doc.richtext")
+                    }
+                    .accessibilityIdentifier("collectionInsurerReportButton")
+                } footer: {
+                    Text("A PDF of your gear with serial numbers, values and photos.")
+                }
             }
         }
         .navigationTitle("Collection")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showingInsurerReport) {
+            InsurerReportView()
+        }
     }
 
     private func valueFootnote(_ valuation: CollectionValuation) -> String {

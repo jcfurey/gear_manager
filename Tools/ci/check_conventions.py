@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Checks the project rules a compiler can't: CloudKit-safe models, the model registry, logging,
-project settings that must agree across targets, leftovers from the Axe Manager port, and the App
-Store text's length limits.
+project settings that must agree across targets, leftovers from the Axe Manager port, the App
+Store text's length limits, and wording the app must not use.
 
 Usage: python3 Tools/ci/check_conventions.py
 
@@ -259,6 +259,25 @@ def check_project_settings():
             report("project", path, 1, f"Invalid JSON: {error}")
 
 
+# MARK: - Wording
+
+# The report for the user's insurer is never called anything else: the app doesn't value gear and
+# says nothing about cover. This looks inside string literals, where the user would read it.
+BANNED_WORDING = re.compile(r"insuranc", re.IGNORECASE)
+
+
+def check_wording():
+    for path in swift_files(APP):
+        for number, line in enumerate(path.read_text().splitlines(), 1):
+            literals = re.findall(r'"((?:\\.|[^"\\])*)"', line.split("//", 1)[0])
+            if any(BANNED_WORDING.search(literal) for literal in literals) and not allowed(line, "wording"):
+                report("wording", path, number, 'Say "a report for your insurer", never "insurance".')
+    for path in sorted((ROOT / "marketing").glob("*/*.txt")):
+        for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+            if BANNED_WORDING.search(line):
+                report("wording", path, number, 'Say "a report for your insurer", never "insurance".')
+
+
 # MARK: - App Store text
 
 # App Store Connect's limits, in characters, for each file in a marketing/<version>/ folder.
@@ -307,6 +326,7 @@ def main():
     check_capabilities()
     check_project_settings()
     check_store_text()
+    check_wording()
 
     for check, path, line, message in problems:
         print(f"::error file={path},line={line},title=conventions/{check}::{message}")

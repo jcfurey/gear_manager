@@ -148,6 +148,9 @@ enum Constants {
 
         // Per-device tool state, not exported: the last values typed into each calculator.
         static let toolValuesPrefix = "tools.values."
+
+        /// The name last put on a report for the user's insurer. Per device, not exported.
+        static let reportOwnerName = "report.ownerName"
     }
 
     // MARK: - UI Constants

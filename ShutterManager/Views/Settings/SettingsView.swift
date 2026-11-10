@@ -31,6 +31,7 @@ struct SettingsView: View {
 
     @State private var showingDataExport = false
     @State private var showingDataImport = false
+    @State private var showingInsurerReport = false
     @State private var showingDeleteConfirmation = false
     @State private var clearFailed = false
 
@@ -174,6 +175,19 @@ struct SettingsView: View {
 
                         Button {
                             HapticFeedbackManager.shared.buttonTap()
+                            showingInsurerReport = true
+                        } label: {
+                            SettingsRow(icon: "doc.richtext", iconColor: .indigo, title: "Report for Your Insurer", constants: constants) {
+                                Image(systemName: "chevron.right")
+                                    .font(constants.captionFont)
+                                    .foregroundColor(.secondary)
+                                    .accessibilityHidden(true)
+                            }
+                        }
+                        .accessibilityIdentifier("settings.insurerReport")
+
+                        Button {
+                            HapticFeedbackManager.shared.buttonTap()
                             showingDeleteConfirmation = true
                         } label: {
                             SettingsRow(icon: "trash", iconColor: .red, title: "Clear All Data", titleColor: .red, constants: constants)
@@ -240,6 +254,9 @@ struct SettingsView: View {
         }
         .sheet(isPresented: $showingDataImport) {
             DataImportView()
+        }
+        .sheet(isPresented: $showingInsurerReport) {
+            InsurerReportView()
         }
     }
 
