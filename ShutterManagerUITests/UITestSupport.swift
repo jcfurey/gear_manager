@@ -152,6 +152,25 @@ extension XCTestCase {
         return false
     }
 
+    /// Taps `element` and waits for what the tap should bring up; if that never comes, the test
+    /// fails.
+    ///
+    /// A tap made just as a sheet closes or a screen pops can be lost on a slow simulator: the
+    /// control is there to be found, but isn't listening yet. So while the control is still on
+    /// screen and `destination` hasn't come, it's tapped again. Use it for a tap that opens a
+    /// screen or a sheet, never for one that flips something (a switch, a tick): tapped twice,
+    /// that would end where it began.
+    func tap(_ element: XCUIElement, toShow destination: XCUIElement, timeout: TimeInterval = 5,
+             file: StaticString = #file, line: UInt = #line) {
+        XCTAssertTrue(element.waitForExistence(timeout: timeout), "Missing control: \(element)", file: file, line: line)
+        element.tap()
+        for _ in 0..<2 where !destination.waitForExistence(timeout: 3) {
+            if element.exists && element.isHittable { element.tap() }
+        }
+        XCTAssertTrue(destination.waitForExistence(timeout: timeout), "Tapping \(element) didn't bring up \(destination)",
+                      file: file, line: line)
+    }
+
     /// Goes back one screen, to the one whose bar is titled `title`; an absent screen always fails.
     ///
     /// A back tap that lands while the push that brought this screen is still finishing is
@@ -203,7 +222,7 @@ extension XCTestCase {
         selectTab("Inventory", in: app, file: file, line: line)
         let add = app.buttons["addGearButton"].firstMatch
         XCTAssertTrue(add.waitForExistence(timeout: 10), "Missing Add Gear button", file: file, line: line)
-        add.tap()
+        tap(add, toShow: app.textFields["gearMakeField"], file: file, line: line)
         replaceText(in: app.textFields["gearMakeField"], with: make, file: file, line: line)
         replaceText(in: app.textFields["gearModelField"], with: model, file: file, line: line)
         let save = app.buttons["saveGearButton"]

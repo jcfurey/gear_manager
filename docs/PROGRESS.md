@@ -58,6 +58,13 @@ photos. Past that an export was refused and a backup was written without its pho
   "RR6", and two audit tests failed on names that were never there. `replaceText` now gives the
   text five seconds to show, clears as much as could be in the field before a retry, and says
   what the field holds if it still isn't right.
+- **And the taps that kept getting lost.** Three full runs in a row each failed a different UI
+  test the same way: a tap made just as a sheet closed or a screen popped did nothing. Under
+  UI tests the app now runs with animations off, so there's no part-way to land in, and
+  `tap(_:toShow:)` taps again when what it should have opened hasn't come.
+- **A bug the tests caught on their third run:** photos went into a package in whatever order
+  each fetch returned them, so the same library could write a different file each time. They
+  go in gallery order now. Nothing was lost on import either way: each photo carries its place.
 
 ### Verified
 VERIFIED_PLACEHOLDER

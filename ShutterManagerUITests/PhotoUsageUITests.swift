@@ -55,13 +55,11 @@ final class PhotoUsageUITests: XCTestCase {
     func testCountPhotosAndRecordTheShutterCount() throws {
         addGear(make: "Nikon", model: "Z6 III", in: app)
 
-        let stats = app.buttons["Collection stats"].firstMatch
-        XCTAssertTrue(stats.waitForExistence(timeout: 5))
-        stats.tap()
-        XCTAssertTrue(app.navigationBars["Collection"].waitForExistence(timeout: 5))
+        // Tapped just after Add Gear's sheet has closed: on CI that tap was once lost.
+        tap(app.buttons["Collection stats"].firstMatch, toShow: app.navigationBars["Collection"])
         let usage = app.buttons["collectionPhotoUsageButton"].firstMatch
         reveal(usage, in: app)
-        usage.tap()
+        tap(usage, toShow: app.navigationBars["Usage from Photos"])
         readSamplePhotos()
 
         // The Z6 III was matched by name ("Z6_3" in the files), so its count can be saved.
@@ -94,9 +92,7 @@ final class PhotoUsageUITests: XCTestCase {
 
         selectTab("Shoots", in: app)
         XCTAssertTrue(app.navigationBars["Shoots"].waitForExistence(timeout: 10))
-        let add = app.buttons["addShootButton"].firstMatch
-        XCTAssertTrue(add.waitForExistence(timeout: 5))
-        add.tap()
+        tap(app.buttons["addShootButton"].firstMatch, toShow: app.textFields["shootTitleField"].firstMatch)
         replaceText(in: app.textFields["shootTitleField"].firstMatch, with: "Harbour Test")
         app.buttons["saveShootButton"].firstMatch.tap()
         XCTAssertTrue(app.navigationBars["Harbour Test"].waitForExistence(timeout: 5), "The new shoot opens")
@@ -104,7 +100,7 @@ final class PhotoUsageUITests: XCTestCase {
 
         let fromPhotos = app.buttons["shootPhotoUsageButton"].firstMatch
         reveal(fromPhotos, in: app)
-        fromPhotos.tap()
+        tap(fromPhotos, toShow: app.navigationBars["Usage from Photos"])
         readSamplePhotos()
         let toggle = app.switches["photoUsageShootToggle"].firstMatch
         reveal(toggle, in: app)

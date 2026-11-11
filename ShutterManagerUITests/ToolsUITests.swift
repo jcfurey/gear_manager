@@ -35,8 +35,7 @@ final class ToolsUITests: XCTestCase {
         for tool in tools {
             let row = app.buttons["tool.\(tool.id)"].firstMatch
             reveal(row, in: app)
-            row.tap()
-            XCTAssertTrue(app.navigationBars[tool.title].waitForExistence(timeout: 5), "\(tool.title) didn't open")
+            tap(row, toShow: app.navigationBars[tool.title])
             goBack(to: "Tools", in: app)
         }
     }

@@ -93,7 +93,7 @@ final class InventoryUITests: XCTestCase {
     private func addCameraBody(make: String, model: String, file: StaticString = #file, line: UInt = #line) {
         let add = app.buttons["addGearButton"]
         XCTAssertTrue(add.waitForExistence(timeout: 10), "Missing Add Gear button", file: file, line: line)
-        add.tap()
+        tap(add, toShow: app.textFields["gearMakeField"], file: file, line: line)
         replaceText(in: app.textFields["gearMakeField"], with: make, file: file, line: line)
         replaceText(in: app.textFields["gearModelField"], with: model, file: file, line: line)
         let save = app.buttons["saveGearButton"]
@@ -107,8 +107,6 @@ final class InventoryUITests: XCTestCase {
     private func openItem(named name: String, file: StaticString = #file, line: UInt = #line) {
         let row = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", name + ",")).firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 5), "\(name) should be listed", file: file, line: line)
-        row.tap()
-        XCTAssertTrue(app.buttons["editGearButton"].waitForExistence(timeout: 5), "Detail should open",
-                      file: file, line: line)
+        tap(row, toShow: app.buttons["editGearButton"], file: file, line: line)
     }
 }

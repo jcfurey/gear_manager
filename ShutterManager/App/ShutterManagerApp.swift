@@ -20,6 +20,14 @@ struct ShutterManagerApp: App {
 
     init() {
         _store = StateObject(wrappedValue: AppStoreController())
+        #if DEBUG
+        // UI tests tap sooner than a slow simulator finishes animating: a tap made as a sheet
+        // closes or a screen pops lands on a control that isn't listening yet, and is lost. With
+        // nothing animated there is no part-way to land in.
+        if ProcessInfo.processInfo.arguments.contains("-uiTestInMemory") {
+            UIView.setAnimationsEnabled(false)
+        }
+        #endif
         guard !AppStoreController.isSchemaInitialization else { return }
         // Without a delegate, iOS discards notifications delivered while the app is active.
         // Installed before launch finishes.

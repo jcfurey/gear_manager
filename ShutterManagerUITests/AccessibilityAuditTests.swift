@@ -40,7 +40,8 @@ final class AccessibilityAuditTests: XCTestCase {
         try wait(for: app.navigationBars["Inventory"], "The Inventory tab should open")
         try audit("Inventory (empty)")
 
-        try wait(for: app.buttons["addGearButton"].firstMatch, "Missing Add Gear button").tap()
+        try tap(wait(for: app.buttons["addGearButton"].firstMatch, "Missing Add Gear button"),
+                toShow: app.buttons["saveGearButton"].firstMatch, timeout: 30)
         let save = try wait(for: app.buttons["saveGearButton"].firstMatch, "Add Gear should open")
         try audit("Add Gear")
         replaceText(in: app.textFields["gearMakeField"].firstMatch, with: "Canon")
@@ -49,8 +50,9 @@ final class AccessibilityAuditTests: XCTestCase {
         XCTAssertTrue(save.waitForNonExistence(timeout: 5), "The sheet should close")
         try audit("Inventory")
 
-        try wait(for: app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Canon R6,")).firstMatch,
-                 "The new item should be listed").tap()
+        try tap(wait(for: app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Canon R6,")).firstMatch,
+                     "The new item should be listed"),
+                toShow: app.buttons["editGearButton"].firstMatch, timeout: 30)
         try wait(for: app.buttons["editGearButton"].firstMatch, "The item should open")
         try audit("Gear detail")
     }
@@ -65,7 +67,7 @@ final class AccessibilityAuditTests: XCTestCase {
                             ("sunAndMoon", "Sun & Moon"), ("development", "Development Timer")] {
             let row = app.buttons["tool.\(id)"].firstMatch
             reveal(row, in: app)
-            row.tap()
+            tap(row, toShow: app.navigationBars[title], timeout: 30)
             try wait(for: app.navigationBars[title], "\(title) should open")
             try audit(title)
             goBack(to: "Tools", in: app)
@@ -90,7 +92,8 @@ final class AccessibilityAuditTests: XCTestCase {
         try wait(for: app.navigationBars["Shoots"], "The Shoots tab should open")
         try audit("Shoots (empty)")
 
-        try wait(for: app.buttons["addShootButton"].firstMatch, "Missing New Shoot button").tap()
+        try tap(wait(for: app.buttons["addShootButton"].firstMatch, "Missing New Shoot button"),
+                toShow: app.buttons["saveShootButton"].firstMatch, timeout: 30)
         let save = try wait(for: app.buttons["saveShootButton"].firstMatch, "The shoot editor should open")
         try audit("New Shoot")
         replaceText(in: app.textFields["shootTitleField"].firstMatch, with: "Harbour")
@@ -108,7 +111,7 @@ final class AccessibilityAuditTests: XCTestCase {
         for (link, title) in [("About the App", "About"), ("Tip Jar", "Tip Jar"), ("Privacy Policy", "Privacy Policy")] {
             let row = app.buttons[link].firstMatch
             reveal(row, in: app)
-            row.tap()
+            tap(row, toShow: app.navigationBars[title], timeout: 30)
             try wait(for: app.navigationBars[title], "\(title) should open")
             try audit(title)
             goBack(to: "Settings", in: app)

@@ -22,9 +22,7 @@ final class ShootsUITests: XCTestCase {
 
     @MainActor
     func testPlanAShootAndTickItsShotList() throws {
-        let add = app.buttons["addShootButton"].firstMatch
-        XCTAssertTrue(add.waitForExistence(timeout: 5))
-        add.tap()
+        tap(app.buttons["addShootButton"].firstMatch, toShow: app.textFields["shootTitleField"].firstMatch)
         replaceText(in: app.textFields["shootTitleField"].firstMatch, with: "Harbour Test")
         let save = app.buttons["saveShootButton"].firstMatch
         XCTAssertTrue(save.waitForExistence(timeout: 5))

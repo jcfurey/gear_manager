@@ -118,9 +118,12 @@ beside the app's.
 - The UI-test helpers expect a slow simulator, because CI's is: `replaceText` waits for typed
   text to show (it can lag by seconds) and types again only if characters are still missing,
   `selectTab` checks that the tab came up and taps again if it didn't,
-  `goBack(to:)` taps Back again when the first tap landed mid-push, and the audit waits for a
-  passing banner to go. Use them rather than a bare `typeText`, or a bare `tap` on a tab or a
-  Back button.
+  `goBack(to:)` taps Back again when the first tap landed mid-push, `tap(_:toShow:)` taps again
+  when a tap that should open a screen or a sheet didn't, and the audit waits for a passing
+  banner to go. Use them rather than a bare `typeText`, or a bare `tap` on a tab, a Back button
+  or anything tapped just after a sheet closes or a screen pops.
+- Under `-uiTestInMemory` the app turns UIKit animations off (Debug), so a tap can't land
+  part-way through a push, a pop or a sheet.
 - Settings a UI test leaves behind stay on the simulator for the tests after it: the planners'
   place is one, so a later test finds the sun and moon planner already showing a day.
 
