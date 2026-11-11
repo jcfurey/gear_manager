@@ -26,8 +26,7 @@ final class ReportsUITests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 10))
         let row = app.buttons["settings.insurerReport"].firstMatch
         reveal(row, in: app)
-        row.tap()
-        XCTAssertTrue(app.navigationBars["Report for Your Insurer"].waitForExistence(timeout: 5), "The report sheet opens")
+        tap(row, toShow: app.navigationBars["Report for Your Insurer"])
 
         XCTAssertTrue(app.textFields["reportOwnerField"].firstMatch.exists, "The report can carry the owner's name")
         let create = app.buttons["createReportButton"].firstMatch
@@ -45,7 +44,7 @@ final class ReportsUITests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 10))
         let row = app.buttons["settings.insurerReport"].firstMatch
         reveal(row, in: app)
-        row.tap()
+        tap(row, toShow: app.navigationBars["Report for Your Insurer"])
         let create = app.buttons["createReportButton"].firstMatch
         reveal(create, in: app)
         XCTAssertFalse(create.isEnabled, "There's nothing to report yet")

@@ -24,10 +24,9 @@ final class LabelsUITests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Shoots"].waitForExistence(timeout: 10))
         let kits = app.buttons["kitsLink"].firstMatch
         reveal(kits, in: app)
-        kits.tap()
-        XCTAssertTrue(app.navigationBars["Kits"].waitForExistence(timeout: 5))
+        tap(kits, toShow: app.navigationBars["Kits"])
 
-        app.buttons["addKitButton"].firstMatch.tap()
+        tap(app.buttons["addKitButton"].firstMatch, toShow: app.textFields["kitNameField"].firstMatch)
         replaceText(in: app.textFields["kitNameField"].firstMatch, with: "Wedding")
         let save = app.buttons["saveKitButton"].firstMatch
         XCTAssertTrue(save.isEnabled)
@@ -36,8 +35,7 @@ final class LabelsUITests: XCTestCase {
 
         let labels = app.buttons["kitLabelsButton"].firstMatch
         reveal(labels, in: app)
-        labels.tap()
-        XCTAssertTrue(app.navigationBars["QR Labels"].waitForExistence(timeout: 5), "The labels sheet opens")
+        tap(labels, toShow: app.navigationBars["QR Labels"])
         let row = app.buttons.matching(identifier: "labelKitRow").firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 5))
         XCTAssertTrue(row.isSelected, "Opened from Kits, every kit is already chosen")

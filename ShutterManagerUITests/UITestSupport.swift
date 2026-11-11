@@ -171,6 +171,20 @@ extension XCTestCase {
                       file: file, line: line)
     }
 
+    /// Taps a control that closes the sheet or screen it's on (Save, Done) and waits for it to
+    /// go, tapping again while it's still there to be tapped. For a Save that comes just after
+    /// another screen has gone back, where a tap can be lost like any other.
+    func tapToClose(_ element: XCUIElement, timeout: TimeInterval = 5,
+                    file: StaticString = #file, line: UInt = #line) {
+        XCTAssertTrue(element.waitForExistence(timeout: timeout), "Missing control: \(element)", file: file, line: line)
+        element.tap()
+        for _ in 0..<2 where !element.waitForNonExistence(timeout: 3) {
+            if element.exists && element.isHittable { element.tap() }
+        }
+        XCTAssertTrue(element.waitForNonExistence(timeout: timeout), "\(element) didn't close what it was on",
+                      file: file, line: line)
+    }
+
     /// Goes back one screen, to the one whose bar is titled `title`; an absent screen always fails.
     ///
     /// A back tap that lands while the push that brought this screen is still finishing is
@@ -179,26 +193,30 @@ extension XCTestCase {
     /// screen's back button is still there and the earlier screen hasn't come.
     func goBack(to title: String, in app: XCUIApplication,
                 file: StaticString = #file, line: UInt = #line) {
-        let destination = app.navigationBars[title]
+        goBack(toShow: app.navigationBars[title], in: app, file: file, line: line)
+    }
+
+    /// Goes back one screen, to the one that shows `destination`. For a screen whose bar has no
+    /// fixed title to look for.
+    func goBack(toShow destination: XCUIElement, in app: XCUIApplication,
+                file: StaticString = #file, line: UInt = #line) {
         // Named, so a later try can't tap some other button once the earlier screen is back.
         let named = app.navigationBars.buttons["BackButton"].firstMatch
         (named.exists ? named : app.navigationBars.buttons.element(boundBy: 0)).tap()
         for _ in 0..<2 where !destination.waitForExistence(timeout: 3) {
             if named.exists && named.isHittable { named.tap() }
         }
-        XCTAssertTrue(destination.waitForExistence(timeout: 5), "Back to \(title) didn't happen", file: file, line: line)
+        XCTAssertTrue(destination.waitForExistence(timeout: 5), "Going back didn't bring up \(destination)",
+                      file: file, line: line)
     }
 
     /// Chooses a place for a planner from typed coordinates, starting on a screen with the place
     /// row and ending back on it. Typed, so it needs no location permission and no network.
     func chooseTypedPlace(latitude: String, longitude: String, in app: XCUIApplication,
                           file: StaticString = #file, line: UInt = #line) {
-        let place = app.buttons["placeRow"].firstMatch
-        XCTAssertTrue(place.waitForExistence(timeout: 5), file: file, line: line)
-        place.tap()
         let findOnMap = app.buttons["findOnMapButton"].firstMatch
-        XCTAssertTrue(findOnMap.waitForExistence(timeout: 5), file: file, line: line)
-        findOnMap.tap()
+        tap(app.buttons["placeRow"].firstMatch, toShow: findOnMap, file: file, line: line)
+        tap(findOnMap, toShow: app.textFields["latitudeField"].firstMatch, file: file, line: line)
 
         replaceText(in: app.textFields["latitudeField"].firstMatch, with: latitude)
         replaceText(in: app.textFields["longitudeField"].firstMatch, with: longitude)

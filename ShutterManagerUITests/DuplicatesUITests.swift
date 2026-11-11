@@ -27,8 +27,7 @@ final class DuplicatesUITests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 10))
         let row = app.buttons["settings.duplicates"].firstMatch
         reveal(row, in: app)
-        row.tap()
-        XCTAssertTrue(app.navigationBars["Find Duplicates"].waitForExistence(timeout: 5), "The screen opens")
+        tap(row, toShow: app.navigationBars["Find Duplicates"])
         XCTAssertTrue(app.staticTexts["No Duplicates"].firstMatch.waitForExistence(timeout: 10),
                       "A library held once has nothing to remove")
         XCTAssertFalse(app.buttons["removeDuplicatesButton"].firstMatch.exists, "So there's nothing to tap")

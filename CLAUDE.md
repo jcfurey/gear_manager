@@ -119,9 +119,11 @@ beside the app's.
   text to show (it can lag by seconds) and types again only if characters are still missing,
   `selectTab` checks that the tab came up and taps again if it didn't,
   `goBack(to:)` taps Back again when the first tap landed mid-push, `tap(_:toShow:)` taps again
-  when a tap that should open a screen or a sheet didn't, and the audit waits for a passing
-  banner to go. Use them rather than a bare `typeText`, or a bare `tap` on a tab, a Back button
-  or anything tapped just after a sheet closes or a screen pops.
+  when a tap that should open a screen or a sheet didn't (`tapToClose` for one that should close
+  it), and the audit waits for a passing banner to go. Use them rather than a bare `typeText`,
+  or a bare `tap` on a tab, a Back button or anything that opens or closes a screen: a tap made
+  just after a sheet closes or a screen pops can be lost. A bare `tap` is for what flips in
+  place (a switch, a tick, a step added), where tapping twice would undo or double it.
 - Under `-uiTestInMemory` the app turns UIKit animations off (Debug), so a tap can't land
   part-way through a push, a pop or a sheet.
 - Settings a UI test leaves behind stay on the simulator for the tests after it: the planners'

@@ -24,14 +24,13 @@ final class CompatibilityUITests: XCTestCase {
         selectTab("Inventory", in: app, file: file, line: line)
         let add = app.buttons["addGearButton"].firstMatch
         XCTAssertTrue(add.waitForExistence(timeout: 10), "Missing Add Gear button", file: file, line: line)
-        add.tap()
+        // Tapped just after the last item's sheet closed: on CI that tap was once lost.
+        tap(add, toShow: app.textFields["gearMakeField"], file: file, line: line)
         if let category {
             let picker = app.descendants(matching: .any).matching(identifier: "gearCategoryPicker").firstMatch
             XCTAssertTrue(picker.waitForExistence(timeout: 5), "Missing the category picker", file: file, line: line)
-            picker.tap()
             let choice = app.buttons[category].firstMatch
-            XCTAssertTrue(choice.waitForExistence(timeout: 5), "The category menu should list \(category)",
-                          file: file, line: line)
+            tap(picker, toShow: choice, file: file, line: line)
             choice.tap()
         }
         replaceText(in: app.textFields["gearMakeField"], with: make, file: file, line: line)
@@ -48,7 +47,7 @@ final class CompatibilityUITests: XCTestCase {
     private func openCompatibility(of name: String, file: StaticString = #file, line: UInt = #line) {
         let row = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", name + ",")).firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 5), "\(name) should be listed", file: file, line: line)
-        row.tap()
+        tap(row, toShow: app.buttons["editGearButton"].firstMatch, file: file, line: line)
         let link = app.buttons["compatibilityLink"].firstMatch
         reveal(link, in: app, file: file, line: line)
         link.tap()

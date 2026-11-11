@@ -47,7 +47,7 @@ final class LightMeterUITests: XCTestCase {
 
         let send = app.buttons["meter.sendToND"].firstMatch
         reveal(send, in: app)
-        send.tap()
-        XCTAssertTrue(app.navigationBars["ND Filter"].waitForExistence(timeout: 5), "The reading opens in the ND calculator")
+        // The reading opens in the ND calculator.
+        tap(send, toShow: app.navigationBars["ND Filter"])
     }
 }

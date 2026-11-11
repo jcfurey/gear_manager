@@ -27,8 +27,7 @@ final class CloudForecastUITests: XCTestCase {
     func testTheForecastIsOffUntilAskedForAndSettingsTurnsItOff() throws {
         let row = app.buttons["tool.sunAndMoon"].firstMatch
         reveal(row, in: app)
-        row.tap()
-        XCTAssertTrue(app.navigationBars["Sun & Moon"].waitForExistence(timeout: 5))
+        tap(row, toShow: app.navigationBars["Sun & Moon"])
         chooseTypedPlace(latitude: "51.5", longitude: "-0.12", in: app)
         XCTAssertTrue(app.navigationBars["Sun & Moon"].waitForExistence(timeout: 5), "Using the place returns to the planner")
 
@@ -63,8 +62,7 @@ final class CloudForecastUITests: XCTestCase {
         selectTab("Tools", in: app)
         if !app.navigationBars["Sun & Moon"].waitForExistence(timeout: 3) {
             reveal(row, in: app)
-            row.tap()
-            XCTAssertTrue(app.navigationBars["Sun & Moon"].waitForExistence(timeout: 5))
+            tap(row, toShow: app.navigationBars["Sun & Moon"])
         }
         reveal(show, in: app)
         XCTAssertFalse(credit.exists, "Off drops the forecast")

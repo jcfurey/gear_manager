@@ -73,10 +73,9 @@ final class PhotoUsageUITests: XCTestCase {
         // top bar on iPad: let it go before reaching for Back.)
         let banner = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "Usage Saved")).firstMatch
         XCTAssertTrue(banner.waitForNonExistence(timeout: 8))
-        app.navigationBars.buttons.element(boundBy: 0).tap()
         let row = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Nikon Z6 III,")).firstMatch
-        XCTAssertTrue(row.waitForExistence(timeout: 5), "Back in the inventory")
-        row.tap()
+        goBack(toShow: row, in: app)
+        tap(row, toShow: app.buttons["editGearButton"].firstMatch)
         let history = app.buttons["shutterCountLink"].firstMatch
         reveal(history, in: app)
         history.tap()
