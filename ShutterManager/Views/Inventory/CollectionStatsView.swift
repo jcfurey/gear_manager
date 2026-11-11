@@ -14,6 +14,9 @@ struct CollectionStatsView: View {
     @Query(sort: \GearItem.dateAdded, order: .reverse) private var items: [GearItem]
     /// Each category's bar, taller with larger text so the labels don't overlap.
     @ScaledMetric private var categoryRowHeight: CGFloat = 34
+    @State private var showingInsurerReport = false
+    @State private var showingLabels = false
+    @State private var showingPhotoUsage = false
 
     var body: some View {
         let valuation = GearValuationService.collectionValue(of: items)
@@ -47,10 +50,48 @@ struct CollectionStatsView: View {
                         }
                     }
                 }
+
+                Section {
+                    Button {
+                        showingInsurerReport = true
+                    } label: {
+                        Label("Report for Your Insurer", systemImage: "doc.richtext")
+                    }
+                    .accessibilityIdentifier("collectionInsurerReportButton")
+                    Button {
+                        showingLabels = true
+                    } label: {
+                        Label("QR Labels", systemImage: "qrcode")
+                    }
+                    .accessibilityIdentifier("collectionLabelsButton")
+                } footer: {
+                    Text("A PDF of your gear with serial numbers, values and photos, and labels to print for bags, cases and gear.")
+                }
+            }
+
+            // Outside the check for an empty inventory: a batch of photos can fill one.
+            Section {
+                Button {
+                    showingPhotoUsage = true
+                } label: {
+                    Label("Usage from Photos", systemImage: "photo.stack")
+                }
+                .accessibilityIdentifier("collectionPhotoUsageButton")
+            } footer: {
+                Text("Count the shots each body and lens took in a batch of photos, and record the shutter counts they carry.")
             }
         }
         .navigationTitle("Collection")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showingInsurerReport) {
+            InsurerReportView()
+        }
+        .sheet(isPresented: $showingLabels) {
+            LabelsView()
+        }
+        .sheet(isPresented: $showingPhotoUsage) {
+            PhotoUsageView()
+        }
     }
 
     private func valueFootnote(_ valuation: CollectionValuation) -> String {
@@ -63,7 +104,7 @@ struct CollectionStatsView: View {
 
     @ViewBuilder
     private var attentionSection: some View {
-        let flagged = items.filter { $0.isOnLoan || $0.serviceNeeded || $0.isSensorCleaningDue || $0.isNearShutterLife }
+        let flagged = items.filter { !$0.attentionReasons.isEmpty }
         if !flagged.isEmpty {
             Section("Needs Attention") {
                 ForEach(flagged) { item in
@@ -72,22 +113,13 @@ struct CollectionStatsView: View {
                     } label: {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(item.displayName)
-                            Text(reasons(for: item).joined(separator: " · "))
+                            Text(item.attentionReasons.joined(separator: " · "))
                                 .font(.caption).foregroundStyle(.secondary)
                         }
                     }
                 }
             }
         }
-    }
-
-    private func reasons(for item: GearItem) -> [String] {
-        var reasons: [String] = []
-        if let loan = item.openLoan { reasons.append(loan.isOverdue ? "\(loan.summary), overdue" : loan.summary) }
-        if item.serviceNeeded { reasons.append("Needs service") }
-        if item.isSensorCleaningDue { reasons.append("Sensor cleaning due") }
-        if item.isNearShutterLife { reasons.append("Shutter near rated life") }
-        return reasons
     }
 
     // MARK: - Charts
@@ -129,7 +161,10 @@ struct CollectionStatsView: View {
     }
 
     private var mountRows: [MountRow] {
-        let mounted = items.filter { !$0.mount.trimmingCharacters(in: .whitespaces).isEmpty }
+        // An adapter's mount names two mounts: it belongs to neither's count.
+        let mounted = items.filter {
+            !$0.mount.trimmingCharacters(in: .whitespaces).isEmpty && !LensMount.isAdapter($0.mount)
+        }
         // Group case-insensitively, showing the most common spelling.
         let grouped = Dictionary(grouping: mounted) { LensMount.normalized($0.mount) }
         return grouped.values.map { members in

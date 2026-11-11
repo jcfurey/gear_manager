@@ -29,10 +29,9 @@ final class InventoryUITests: XCTestCase {
         // Shutter count: add a reading by hand.
         let shutterLink = app.buttons["shutterCountLink"].firstMatch
         reveal(shutterLink, in: app)
-        shutterLink.tap()
         let addReading = app.buttons["addShutterReadingButton"].firstMatch
-        XCTAssertTrue(addReading.waitForExistence(timeout: 5))
-        addReading.tap()
+        tap(shutterLink, toShow: addReading)
+        tap(addReading, toShow: app.textFields["shutterCountField"].firstMatch)
         replaceText(in: app.textFields["shutterCountField"].firstMatch, with: "12345")
         let saveReading = app.buttons["saveShutterReadingButton"]
         XCTAssertTrue(saveReading.isEnabled, "A positive count should be savable")
@@ -40,22 +39,20 @@ final class InventoryUITests: XCTestCase {
         // Grouping separators vary by locale.
         let reading = app.staticTexts.matching(NSPredicate(format: "label MATCHES %@", "12\\D?345")).firstMatch
         XCTAssertTrue(reading.waitForExistence(timeout: 5), "The reading should be listed")
-        app.navigationBars.buttons.element(boundBy: 0).tap()
+        goBack(to: "Nikon Z8", in: app)
 
         // Loans: lend it out, then mark it returned.
         let loansLink = app.buttons["loansLink"].firstMatch
         reveal(loansLink, in: app)
-        loansLink.tap()
         let newLoan = app.buttons["newLoanButton"].firstMatch
-        XCTAssertTrue(newLoan.waitForExistence(timeout: 5))
-        newLoan.tap()
+        tap(loansLink, toShow: newLoan)
+        tap(newLoan, toShow: app.textFields["loanPersonField"])
         replaceText(in: app.textFields["loanPersonField"], with: "Sam")
         app.buttons["saveLoanButton"].tap()
         let markReturned = app.buttons["markReturnedButton"].firstMatch
         XCTAssertTrue(markReturned.waitForExistence(timeout: 5), "The loan should be open")
-        markReturned.tap()
-        XCTAssertTrue(app.buttons["newLoanButton"].firstMatch.waitForExistence(timeout: 5),
-                      "Returning should close the loan")
+        // Returning closes the loan, and a new one can be made.
+        tap(markReturned, toShow: newLoan)
     }
 
     @MainActor
@@ -65,12 +62,12 @@ final class InventoryUITests: XCTestCase {
 
         let edit = app.buttons["editGearButton"]
         XCTAssertTrue(edit.waitForExistence(timeout: 5))
-        edit.tap()
+        tap(edit, toShow: app.textFields["gearModelField"])
         replaceText(in: app.textFields["gearModelField"], with: "R5")
         app.navigationBars.buttons["Cancel"].tap()
         XCTAssertTrue(app.navigationBars["Canon R6"].waitForExistence(timeout: 5), "Cancel should drop the edit")
 
-        edit.tap()
+        tap(edit, toShow: app.textFields["gearModelField"])
         replaceText(in: app.textFields["gearModelField"], with: "R5")
         app.buttons["doneEditingButton"].tap()
         XCTAssertTrue(app.navigationBars["Canon R5"].waitForExistence(timeout: 5), "Done should keep the edit")
@@ -80,9 +77,8 @@ final class InventoryUITests: XCTestCase {
     func testSaveNeedsAMakeOrModel() throws {
         let add = app.buttons["addGearButton"]
         XCTAssertTrue(add.waitForExistence(timeout: 10))
-        add.tap()
         let save = app.buttons["saveGearButton"]
-        XCTAssertTrue(save.waitForExistence(timeout: 5))
+        tap(add, toShow: save)
         XCTAssertFalse(save.isEnabled, "A blank item can't be saved")
         replaceText(in: app.textFields["gearModelField"], with: "Leica M6")
         XCTAssertTrue(save.isEnabled)
@@ -93,7 +89,7 @@ final class InventoryUITests: XCTestCase {
     private func addCameraBody(make: String, model: String, file: StaticString = #file, line: UInt = #line) {
         let add = app.buttons["addGearButton"]
         XCTAssertTrue(add.waitForExistence(timeout: 10), "Missing Add Gear button", file: file, line: line)
-        add.tap()
+        tap(add, toShow: app.textFields["gearMakeField"], file: file, line: line)
         replaceText(in: app.textFields["gearMakeField"], with: make, file: file, line: line)
         replaceText(in: app.textFields["gearModelField"], with: model, file: file, line: line)
         let save = app.buttons["saveGearButton"]
@@ -107,8 +103,6 @@ final class InventoryUITests: XCTestCase {
     private func openItem(named name: String, file: StaticString = #file, line: UInt = #line) {
         let row = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", name + ",")).firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 5), "\(name) should be listed", file: file, line: line)
-        row.tap()
-        XCTAssertTrue(app.buttons["editGearButton"].waitForExistence(timeout: 5), "Detail should open",
-                      file: file, line: line)
+        tap(row, toShow: app.buttons["editGearButton"], file: file, line: line)
     }
 }

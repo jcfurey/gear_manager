@@ -51,7 +51,7 @@ struct NotificationManagerTests {
         let body = TestSupport.insertSampleBody(into: container.mainContext)
         try container.mainContext.save()
         let reminders = NotificationManager.GearReminder.all(for: body)
-        #expect(reminders.count == 2)
+        #expect(reminders.count == 3, "The cleaning schedule, the loan and the firmware reminder")
         let cleaning = try #require(reminders.first { $0.identifier.hasPrefix("sensor_cleaning_") })
         #expect(cleaning.due == body.nextSensorCleaningDate)
         #expect(cleaning.hour == 9)

@@ -232,7 +232,7 @@ extension GearItem {
     }
 
     /// Why this item might not be ready for `shoot`: lent out, a rental due back before the shoot
-    /// ends, or needing service or a sensor cleaning.
+    /// ends, needing service or a sensor cleaning, or a lens that fits none of the shoot's bodies.
     func packingIssues(for shoot: Shoot) -> [String] {
         var issues: [String] = []
         if let loan = openLoan {
@@ -249,6 +249,10 @@ extension GearItem {
         }
         if serviceNeeded { issues.append("Needs service") }
         if isSensorCleaningDue { issues.append("Sensor cleaning due") }
+        // A lens that goes on none of the bodies packed with it.
+        if let mismatch = CompatibilityList.packingIssue(for: mountedGear, among: (shoot.gear ?? []).map(\.mountedGear)) {
+            issues.append(mismatch)
+        }
         return issues
     }
 }
@@ -291,6 +295,27 @@ struct ShootDraft: Equatable {
     var type: ShootType {
         get { ShootType(storedID: typeID) }
         set { typeID = newValue.rawValue }
+    }
+
+    /// Sets the place. The start and end keep the clock times they show: 7 PM entered before the
+    /// place was chosen is 7 PM there, not 7 PM where the phone is. Without this, choosing a
+    /// place in another time zone moved the shoot by the difference.
+    mutating func setPlace(_ newPlace: PlaceValue?, deviceTimeZone: TimeZone = .current) {
+        let oldZone = place?.timeZone ?? deviceTimeZone
+        let newZone = newPlace?.timeZone ?? deviceTimeZone
+        place = newPlace
+        guard oldZone != newZone else { return }
+        startDate = Self.keepingClockTime(of: startDate, from: oldZone, in: newZone)
+        endDate = Self.keepingClockTime(of: endDate, from: oldZone, in: newZone)
+    }
+
+    /// The moment in `newZone` whose clock reads what `date` reads in `oldZone`.
+    static func keepingClockTime(of date: Date, from oldZone: TimeZone, in newZone: TimeZone) -> Date {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = oldZone
+        let components = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second], from: date)
+        calendar.timeZone = newZone
+        return calendar.date(from: components) ?? date
     }
 
     /// Moves the start and keeps the shoot's length, so the end never comes first.

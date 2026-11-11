@@ -2,8 +2,9 @@
 //  DataExportService.swift
 //  ShutterManager
 //
-//  Exports the library as JSON (complete, importable), CSV (the inventory, for spreadsheets)
-//  or a PDF inventory report. Money stays Decimal in the store and Double on the JSON wire.
+//  Exports the library as a package (everything, photos included, in one zip), JSON (the
+//  records), CSV (the inventory, for spreadsheets) or a PDF inventory report. Money stays
+//  Decimal in the store and Double on the JSON wire.
 //
 
 import Foundation
@@ -24,8 +25,24 @@ final class DataExportService {
     /// (see `LibraryExport.replaceUnrestorableNumbers()`). 0 when there were none.
     private(set) var lastReplacedValueCount = 0
 
-    init(settingsStore: UserDefaults = .standard) {
+    /// Whether the most recent package left its photos out because they made the file too large
+    /// (see `ExportConfiguration.dropsPhotosIfTooLarge`).
+    private(set) var lastExportDroppedPhotos = false
+
+    /// The largest JSON file an export may write: what import and restore will read.
+    private let maximumBytes: Int
+    /// The largest package an export may write.
+    private let maximumPackageBytes: Int
+    /// How many photos go into a package at a time.
+    private let photoBatch: Int
+
+    init(settingsStore: UserDefaults = .standard, maximumBytes: Int = Constants.DataLimits.maximumImportBytes,
+         maximumPackageBytes: Int = Constants.DataLimits.maximumPackageBytes,
+         photoBatch: Int = Constants.DataLimits.packagePhotoBatch) {
         self.settingsStore = settingsStore
+        self.maximumBytes = maximumBytes
+        self.maximumPackageBytes = maximumPackageBytes
+        self.photoBatch = max(photoBatch, 1)
     }
 
     struct ExportConfiguration {
@@ -42,6 +59,9 @@ final class DataExportService {
         var includeShoots = true
         var includePhotos = true
         var includeSettings = true
+        /// For a package: when the photos make the file too large to read back, write it without
+        /// them instead of failing. For backups, where records without photos beat no backup.
+        var dropsPhotosIfTooLarge = false
         var format: ExportFormat
 
         var hasAnyDataSelected: Bool { includeGear || includeSettings }
@@ -52,9 +72,155 @@ final class DataExportService {
     /// Writes a JSON or CSV file to the temporary directory and returns its URL.
     func exportData(configuration: ExportConfiguration, library: LibraryContents) async throws -> URL {
         let data = buildExportData(configuration: configuration, library: library)
+        lastExportDroppedPhotos = false
         switch configuration.format {
-        case .json: return try await exportJSON(data)
-        case .csv: return try await exportCSV(data)
+        case .json:
+            return try await exportJSON(data)
+        case .csv:
+            return try await exportCSV(data)
+        }
+    }
+
+    // MARK: - Package
+
+    /// Writes the library as a package to the temporary directory and returns its URL: the
+    /// records as JSON, and (with `includePhotos`) each photo as a file of its own.
+    ///
+    /// Photos go in a few at a time, read through contexts that are let go, so a library far
+    /// larger than memory can be written. One past the package limit throws
+    /// `ExportError.photosTooLarge`, or with `dropsPhotosIfTooLarge` is written without photos.
+    func exportLibrary(configuration: ExportConfiguration, library: LibraryContents) async throws -> URL {
+        lastExportDroppedPhotos = false
+        // The records carry no photos here: those travel as files beside them.
+        var records = configuration
+        records.includePhotos = false
+        records.format = .json
+        let data = buildExportData(configuration: records, library: library)
+        let manifest = try await encode(data)
+        guard manifest.count <= maximumBytes else {
+            throw ExportError.tooLarge(megabytes: (manifest.count + 1_048_575) / 1_048_576,
+                                       limitMegabytes: maximumBytes / 1_048_576, includesPhotos: false)
+        }
+        let limit = maximumPackageBytes / 1_048_576
+        if configuration.includePhotos {
+            do {
+                return try await writePackage(manifest: manifest, date: data.metadata.exportDate,
+                                              photosOf: library, configuration: configuration)
+            } catch ZipError.tooLarge {
+                guard configuration.dropsPhotosIfTooLarge else {
+                    throw ExportError.photosTooLarge(limitMegabytes: limit, includesPhotos: true)
+                }
+                logger.warning("Package left photos out: with them the file would be too large to read back")
+            }
+        }
+        do {
+            let url = try await writePackage(manifest: manifest, date: data.metadata.exportDate,
+                                             photosOf: nil, configuration: configuration)
+            lastExportDroppedPhotos = configuration.includePhotos
+            return url
+        } catch ZipError.tooLarge {
+            throw ExportError.photosTooLarge(limitMegabytes: limit, includesPhotos: false)
+        }
+    }
+
+    /// Writes one package file. Removes it again if anything goes wrong part-way.
+    private func writePackage(manifest: Data, date: Date, photosOf library: LibraryContents?,
+                              configuration: ExportConfiguration) async throws -> URL {
+        let url = temporaryURL(extension: LibraryPackage.fileExtension)
+        let writer = try LibraryPackageWriter(url: url, date: date, maximumBytes: maximumPackageBytes)
+        do {
+            if let library {
+                try await addPhotos(of: library, configuration: configuration, to: writer)
+            }
+            try await writer.finish(manifest: manifest, includesPhotos: library != nil, appName: Constants.App.name)
+            return url
+        } catch {
+            await writer.cancel()
+            throw error
+        }
+    }
+
+    /// Hands the library's photos to `writer`, `photoBatch` at a time.
+    ///
+    /// The bytes are read through a scratch context for each lot, never from the library's own
+    /// objects: those stay in memory for as long as the screens showing them do, and a photo
+    /// once read would stay with them.
+    private func addPhotos(of library: LibraryContents, configuration: ExportConfiguration,
+                           to writer: LibraryPackageWriter) async throws {
+        let gear = configuration.includeGear ? library.gearItems : []
+        let context = gear.lazy.compactMap(\.modelContext).first
+        // Saved first, so the scratch contexts see what the library's own context does.
+        if let context, context.hasChanges { try context.save() }
+        let container = context?.container
+
+        // Gear photos, in gallery order within each item.
+        var seen = Set<UUID>()
+        var photos: [GearPhoto] = []
+        var ownerByPhoto: [UUID: UUID] = [:]
+        for item in gear {
+            for photo in (item.photos ?? []).sorted(by: { $0.order < $1.order }) where seen.insert(photo.id).inserted {
+                photos.append(photo)
+                ownerByPhoto[photo.id] = item.id
+            }
+        }
+        for start in stride(from: 0, to: photos.count, by: photoBatch) {
+            let lot = Array(photos[start..<min(start + photoBatch, photos.count)])
+            try await writer.add(try Self.read(lot, ownerByPhoto: ownerByPhoto, container: container))
+        }
+
+        // Maintenance records' photos. Which records have one isn't known without reading them,
+        // so every record is looked at, again through scratch contexts.
+        guard configuration.includeMaintenance else { return }
+        var seenRecords = Set<UUID>()
+        let records = gear.flatMap { $0.maintenanceRecords ?? [] }.filter { seenRecords.insert($0.id).inserted }
+        let recordBatch = photoBatch * 4
+        for start in stride(from: 0, to: records.count, by: recordBatch) {
+            let lot = Array(records[start..<min(start + recordBatch, records.count)])
+            let found = try Self.readPhotos(of: lot, container: container)
+            if !found.isEmpty { try await writer.add(found) }
+        }
+    }
+
+    /// The bytes and details of `lot`, read through a scratch context when the photos are in a
+    /// store, and from the objects themselves when they aren't (nothing to let go of there).
+    private static func read(_ lot: [GearPhoto], ownerByPhoto: [UUID: UUID],
+                             container: ModelContainer?) throws -> [LibraryPackageWriter.Photo] {
+        func details(_ source: [GearPhoto]) -> [LibraryPackageWriter.Photo] {
+            source.compactMap { photo in
+                guard let owner = ownerByPhoto[photo.id] else { return nil }
+                return LibraryPackageWriter.Photo(id: photo.id, gearItemID: owner, caption: photo.caption, order: photo.order,
+                                                  dateAdded: photo.dateAdded, isPrimary: photo.isPrimary, data: photo.imageData)
+            }
+        }
+        guard let container else { return details(lot) }
+        let ids = lot.map(\.id)
+        let scratch = ModelContext(container)
+        // The context has to outlive the reading: its objects fetch their bytes through it.
+        return try withExtendedLifetime(scratch) {
+            let fetched = try scratch.fetch(FetchDescriptor<GearPhoto>(predicate: #Predicate { ids.contains($0.id) }))
+            // A fetch comes back in no order of its own. The lot's order is the gallery's, and a
+            // file should come out the same way each time. Of two rows with one ID, the first.
+            var byID: [UUID: GearPhoto] = [:]
+            for photo in fetched where byID[photo.id] == nil { byID[photo.id] = photo }
+            return details(ids.compactMap { byID[$0] })
+        }
+    }
+
+    private static func readPhotos(of lot: [MaintenanceRecord],
+                                   container: ModelContainer?) throws -> [LibraryPackageWriter.MaintenancePhoto] {
+        func details(_ source: [MaintenanceRecord]) -> [LibraryPackageWriter.MaintenancePhoto] {
+            source.compactMap { record in
+                record.photoData.map { LibraryPackageWriter.MaintenancePhoto(recordID: record.id, data: $0) }
+            }
+        }
+        guard let container else { return details(lot) }
+        let ids = lot.map(\.id)
+        let scratch = ModelContext(container)
+        return try withExtendedLifetime(scratch) {
+            let fetched = try scratch.fetch(FetchDescriptor<MaintenanceRecord>(predicate: #Predicate { ids.contains($0.id) }))
+            var byID: [UUID: MaintenanceRecord] = [:]
+            for record in fetched where byID[record.id] == nil { byID[record.id] = record }
+            return details(ids.compactMap { byID[$0] })
         }
     }
 
@@ -102,15 +268,26 @@ final class DataExportService {
 
     // MARK: - JSON
 
-    private func exportJSON(_ data: LibraryExport) async throws -> URL {
-        // The DTOs are plain values, so encoding (including base64 for every photo) runs off the
-        // main actor; encoding in place froze the UI for photo-heavy libraries.
-        let json = try await Task.detached(priority: .userInitiated) {
+    /// The records as JSON. The DTOs are plain values, so encoding (including base64 for any
+    /// photos in them) runs off the main actor; encoding in place froze the UI.
+    private func encode(_ data: LibraryExport) async throws -> Data {
+        try await Task.detached(priority: .userInitiated) {
             let encoder = JSONEncoder()
             encoder.dateEncodingStrategy = .iso8601
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
             return try encoder.encode(data)
         }.value
+    }
+
+    private func exportJSON(_ data: LibraryExport) async throws -> URL {
+        let json = try await encode(data)
+        // Import and restore refuse anything larger, so writing it would hand over a file that
+        // can never be read back.
+        guard json.count <= maximumBytes else {
+            throw ExportError.tooLarge(megabytes: (json.count + 1_048_575) / 1_048_576,
+                                       limitMegabytes: maximumBytes / 1_048_576,
+                                       includesPhotos: data.includesPhotos)
+        }
         return try await saveToFile(data: json, extension: "json")
     }
 
@@ -254,12 +431,16 @@ final class DataExportService {
     }
 
     private func saveToFile(data: Data, extension ext: String) async throws -> URL {
-        // Exports are share-sheet artifacts, so they live in the temporary directory. A short
-        // unique suffix keeps same-second exports from colliding.
-        let name = "shuttermanager_\(DateFormatter.fileTimestamp.string(from: Date()))_\(UUID().uuidString.prefix(8)).\(ext)"
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent(name)
+        let url = temporaryURL(extension: ext)
         try await Task.detached { try data.write(to: url) }.value
         return url
+    }
+
+    /// Exports are share-sheet artifacts, so they live in the temporary directory. A short
+    /// unique suffix keeps same-second exports from colliding.
+    private func temporaryURL(extension ext: String) -> URL {
+        let name = "shuttermanager_\(DateFormatter.fileTimestamp.string(from: Date()))_\(UUID().uuidString.prefix(8)).\(ext)"
+        return FileManager.default.temporaryDirectory.appendingPathComponent(name)
     }
 
     /// One RFC 4180 CSV field: newlines flattened, quotes doubled, always quoted.
@@ -273,13 +454,44 @@ final class DataExportService {
     }
 }
 
+/// Why an export wasn't written.
+enum ExportError: LocalizedError, Equatable {
+    /// The JSON file would be larger than import and restore can read.
+    case tooLarge(megabytes: Int, limitMegabytes: Int, includesPhotos: Bool)
+    /// The library file passed its limit while it was being written. Its full size isn't known:
+    /// writing stopped there.
+    case photosTooLarge(limitMegabytes: Int, includesPhotos: Bool)
+
+    var errorDescription: String? {
+        switch self {
+        case .tooLarge(let megabytes, let limit, let includesPhotos):
+            let size = "The file would be \(megabytes) MB, and \(Constants.App.name) can read back at most \(limit) MB."
+            return includesPhotos ? size + " Turn Photos off to export everything else." : size
+        case .photosTooLarge(let limit, let includesPhotos):
+            let size = "The library is larger than one file can hold: \(Constants.App.name) can read back at most \(Self.sizeText(megabytes: limit))."
+            return includesPhotos ? size + " Turn Photos off to export everything else." : size
+        }
+    }
+
+    /// "3 GB", or "512 MB" below a gigabyte.
+    static func sizeText(megabytes: Int) -> String {
+        megabytes >= 1024 && megabytes % 1024 == 0 ? "\(megabytes / 1024) GB" : "\(megabytes) MB"
+    }
+}
+
 // MARK: - PDF Rendering
 
-/// Renders titled text sections onto US Letter pages, breaking pages as needed.
+/// Renders titled text sections onto pages of the region's paper (US Letter or A4), breaking
+/// pages as needed.
 final class PDFRenderer {
-    private let pageWidth: CGFloat = 612
-    private let pageHeight: CGFloat = 792
+    private let pageWidth: CGFloat
+    private let pageHeight: CGFloat
     private let margin: CGFloat = 50
+
+    init(pageSize: CGSize = PrintPaper.size()) {
+        pageWidth = pageSize.width
+        pageHeight = pageSize.height
+    }
 
     func createPDF(title: String, subtitle: String, sections: [PDFSection]) -> Data {
         let format = UIGraphicsPDFRendererFormat()

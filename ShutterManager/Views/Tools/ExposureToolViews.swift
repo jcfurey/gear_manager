@@ -98,10 +98,21 @@ struct NDFilterView: View {
     @AppStorage(ToolKey.toolValuesPrefix + "nd.film") private var filmStockID = ""
 
     @State private var customStops: Double = 0
-    private let timers = ToolTimers.shared
+    /// Set when a filter wasn't added because the stack was full.
+    @State private var stackIsFull = false
 
+    /// The most a stack of filters can add up to. Far past any real stack, and it keeps the
+    /// filter factor a number that can be shown.
+    static let maximumTotalStops = 40.0
+
+    /// The stored filters, as far as they stay within `maximumTotalStops`.
     private var filters: [Double] {
-        filterList.split(separator: ",").compactMap { Double($0) }.filter { $0 > 0 && $0 <= 30 }
+        var total = 0.0
+        let stored = filterList.split(separator: ",").compactMap { Double($0) }.filter { $0 > 0 && $0 <= 30 }
+        return Array(stored.prefix { stops in
+            total += stops
+            return total <= Self.maximumTotalStops
+        })
     }
 
     private var totalStops: Double { filters.reduce(0, +) }
@@ -148,8 +159,9 @@ struct NDFilterView: View {
             } header: {
                 Text("Filters")
             } footer: {
-                Text(filters.isEmpty ? "Add the filters in front of the lens. Stacked filters add their stops."
-                     : "\(ExposureScale.decimal(totalStops, places: 2)) stops in all: filter factor \(Int(NDFilter.factor(stops: totalStops).rounded())).")
+                Text(stackIsFull ? "A stack can't go past \(Int(Self.maximumTotalStops)) stops."
+                     : filters.isEmpty ? "Add the filters in front of the lens. Stacked filters add their stops."
+                     : "\(ExposureScale.decimal(totalStops, places: 2)) stops in all: filter factor \(Int(saturating: NDFilter.factor(stops: totalStops).rounded())).")
             }
 
             Section {
@@ -164,39 +176,11 @@ struct NDFilterView: View {
                 if let reciprocity, reciprocity.basis != .noCorrection {
                     ReciprocityResultRows(result: reciprocity, stock: FilmStock(id: filmStockID))
                 }
-                bulbTimer
+                BulbTimerRows(seconds: finalTime, title: "\(ExposureScale.shutterLabel(finalTime)) exposure", identifier: "nd")
             }
         }
         .navigationTitle(Tool.ndFilter.title)
         .navigationBarTitleDisplayMode(.inline)
-    }
-
-    @ViewBuilder
-    private var bulbTimer: some View {
-        if let exposure = timers.exposure {
-            TimelineView(.periodic(from: .now, by: 0.5)) { context in
-                LabeledContent {
-                    Text(exposure.isDone(at: context.date) ? "Done" : CountdownText.format(exposure.remaining(at: context.date)))
-                        .font(.title2.monospacedDigit().weight(.semibold))
-                        .accessibilityLabel(exposure.isDone(at: context.date) ? "Done"
-                                            : CountdownText.spoken(exposure.remaining(at: context.date)))
-                        .accessibilityAddTraits(.updatesFrequently)
-                } label: {
-                    Label("Timer", systemImage: "timer")
-                }
-            }
-            Button("Stop Timer", role: .destructive) { timers.cancelExposure() }
-                .accessibilityIdentifier("nd.stopTimer")
-        } else {
-            Button {
-                HapticFeedbackManager.shared.buttonTap()
-                timers.startExposure(seconds: finalTime, title: "\(ExposureScale.shutterLabel(finalTime)) exposure")
-            } label: {
-                Label("Start Bulb Timer", systemImage: "timer")
-            }
-            .disabled(finalTime < 1)
-            .accessibilityIdentifier("nd.startTimer")
-        }
     }
 
     private func filterName(_ stops: Double) -> String {
@@ -205,6 +189,8 @@ struct NDFilterView: View {
 
     private func addFilter(_ stops: Double) {
         guard stops > 0, stops <= 30 else { return }
+        stackIsFull = totalStops + stops > Self.maximumTotalStops
+        guard !stackIsFull else { return }
         filterList = (filters + [stops]).map { ExposureScale.decimal($0, places: 3) }.joined(separator: ",")
     }
 
@@ -212,6 +198,7 @@ struct NDFilterView: View {
         var list = filters
         guard list.indices.contains(index) else { return }
         list.remove(at: index)
+        stackIsFull = false
         filterList = list.map { ExposureScale.decimal($0, places: 3) }.joined(separator: ",")
     }
 }

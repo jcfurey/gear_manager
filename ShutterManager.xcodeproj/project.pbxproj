@@ -6,6 +6,10 @@
 	objectVersion = 100;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		AD4136C94B9B217256C86AFF /* ShutterManagerWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 51AF3F437967162FF00C3142 /* ShutterManagerWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		80C719FA0DF5E234088EA098 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -21,12 +25,32 @@
 			remoteGlobalIDString = FD10546B265312A78CA521AE;
 			remoteInfo = ShutterManager;
 		};
+		06615065DDE5992CE86B97AA /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 38881F36E069398BE51D622B /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B639C26B71740F4684C404BE;
+			remoteInfo = ShutterManagerWidgets;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		1D0841C2F72766FFFFCE07B4 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				AD4136C94B9B217256C86AFF /* ShutterManagerWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		411C23F8321D916E6F858F55 /* ShutterManager.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ShutterManager.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		606947D2BA2C578C51FD3432 /* ShutterManagerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ShutterManagerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		2F2F8B45CE48FCA6FC1FCCE5 /* ShutterManagerUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ShutterManagerUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		51AF3F437967162FF00C3142 /* ShutterManagerWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ShutterManagerWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -43,6 +67,16 @@
 		25C9E6C713E6A2F2D752D936 /* ShutterManagerUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = ShutterManagerUITests;
+			sourceTree = "<group>";
+		};
+		293E6CD76D235E3BCFC626AF /* ShutterManagerShared */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = ShutterManagerShared;
+			sourceTree = "<group>";
+		};
+		642857AD5A07CE2CD0D8C03F /* ShutterManagerWidgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = ShutterManagerWidgets;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -63,6 +97,11 @@
 			files = (
 			);
 		};
+		B38A633B7CE03207243519AA /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			files = (
+			);
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -70,6 +109,8 @@
 			isa = PBXGroup;
 			children = (
 				2745398277E4C7E2D58611FC /* ShutterManager */,
+				293E6CD76D235E3BCFC626AF /* ShutterManagerShared */,
+				642857AD5A07CE2CD0D8C03F /* ShutterManagerWidgets */,
 				7C7CA036F6C617A3FADA70B6 /* ShutterManagerTests */,
 				25C9E6C713E6A2F2D752D936 /* ShutterManagerUITests */,
 				34DE27B068830A27A924C941 /* Products */,
@@ -82,6 +123,7 @@
 				411C23F8321D916E6F858F55 /* ShutterManager.app */,
 				606947D2BA2C578C51FD3432 /* ShutterManagerTests.xctest */,
 				2F2F8B45CE48FCA6FC1FCCE5 /* ShutterManagerUITests.xctest */,
+				51AF3F437967162FF00C3142 /* ShutterManagerWidgets.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -96,11 +138,16 @@
 				94C012D020FDC67C1C7BCED7 /* Sources */,
 				C9341D3D5D937E3407FF7743 /* Frameworks */,
 				E3E03A20E58BFBE2725E8373 /* Resources */,
+				1D0841C2F72766FFFFCE07B4 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
+			dependencies = (
+				7FF1FB83105576FC0870F87C /* PBXTargetDependency */,
+			);
 			fileSystemSynchronizedGroups = (
 				2745398277E4C7E2D58611FC /* ShutterManager */,
+				293E6CD76D235E3BCFC626AF /* ShutterManagerShared */,
 			);
 			name = ShutterManager;
 			productName = ShutterManager;
@@ -149,6 +196,25 @@
 			productReference = 2F2F8B45CE48FCA6FC1FCCE5 /* ShutterManagerUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		B639C26B71740F4684C404BE /* ShutterManagerWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4E3C04E3DB611A1742E97E2A /* Build configuration list for PBXNativeTarget "ShutterManagerWidgets" */;
+			buildPhases = (
+				83CE897292BE9E375580D74E /* Sources */,
+				B38A633B7CE03207243519AA /* Frameworks */,
+				BD0080E2ACE686E18CA274A5 /* Resources */,
+			);
+			buildRules = (
+			);
+			fileSystemSynchronizedGroups = (
+				642857AD5A07CE2CD0D8C03F /* ShutterManagerWidgets */,
+				293E6CD76D235E3BCFC626AF /* ShutterManagerShared */,
+			);
+			name = ShutterManagerWidgets;
+			productName = ShutterManagerWidgets;
+			productReference = 51AF3F437967162FF00C3142 /* ShutterManagerWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -170,6 +236,9 @@
 						CreatedOnToolsVersion = 26.0;
 						TestTargetID = FD10546B265312A78CA521AE;
 					};
+					B639C26B71740F4684C404BE = {
+						CreatedOnToolsVersion = 26.0;
+					};
 				};
 			};
 			buildConfigurationList = D3DD3245A10F06E28F90BD1B /* Build configuration list for PBXProject "ShutterManager" */;
@@ -189,6 +258,7 @@
 				FD10546B265312A78CA521AE /* ShutterManager */,
 				368BBFD8CDDC97A3EB5E817F /* ShutterManagerTests */,
 				8B641C79BD0BA2F234F4F62E /* ShutterManagerUITests */,
+				B639C26B71740F4684C404BE /* ShutterManagerWidgets */,
 			);
 		};
 /* End PBXProject section */
@@ -205,6 +275,11 @@
 			);
 		};
 		734F9CF58BEE2BD633FA9A5D /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			files = (
+			);
+		};
+		BD0080E2ACE686E18CA274A5 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			files = (
 			);
@@ -227,6 +302,11 @@
 			files = (
 			);
 		};
+		83CE897292BE9E375580D74E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			files = (
+			);
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -239,6 +319,11 @@
 			isa = PBXTargetDependency;
 			target = FD10546B265312A78CA521AE /* ShutterManager */;
 			targetProxy = 579BB67E6CE1903193955484 /* PBXContainerItemProxy */;
+		};
+		7FF1FB83105576FC0870F87C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = B639C26B71740F4684C404BE /* ShutterManagerWidgets */;
+			targetProxy = 06615065DDE5992CE86B97AA /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -535,6 +620,62 @@
 			};
 			name = Release;
 		};
+		F2946B742B392D582F272119 /* Debug configuration for PBXNativeTarget "ShutterManagerWidgets" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = 7YGTR289AX;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "ShutterManagerWidgets-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Shutter Manager";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = jcameronfurey.shuttermanager.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		C6C611603FD811862C123489 /* Release configuration for PBXNativeTarget "ShutterManagerWidgets" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = 7YGTR289AX;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "ShutterManagerWidgets-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Shutter Manager";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = jcameronfurey.shuttermanager.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -567,6 +708,14 @@
 			buildConfigurations = (
 				39FEAA828BF9E09878C24385 /* Debug configuration for PBXNativeTarget "ShutterManagerUITests" */,
 				636ABF851ABC217A103125B3 /* Release configuration for PBXNativeTarget "ShutterManagerUITests" */,
+			);
+			defaultConfigurationName = Release;
+		};
+		4E3C04E3DB611A1742E97E2A /* Build configuration list for PBXNativeTarget "ShutterManagerWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F2946B742B392D582F272119 /* Debug configuration for PBXNativeTarget "ShutterManagerWidgets" */,
+				C6C611603FD811862C123489 /* Release configuration for PBXNativeTarget "ShutterManagerWidgets" */,
 			);
 			defaultConfigurationName = Release;
 		};

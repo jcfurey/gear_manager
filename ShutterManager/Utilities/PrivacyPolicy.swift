@@ -12,7 +12,7 @@ import Foundation
 enum PrivacyPolicy {
     static let appName = "Shutter Manager"
     static let contactEmail = "jcfurey@furey-labs.com"
-    static let lastUpdated = "October 11, 2026"
+    static let lastUpdated = "November 10, 2026"
 
     struct Section: Hashable {
         let title: String
@@ -38,20 +38,23 @@ enum PrivacyPolicy {
             • Your library is stored with Apple's SwiftData and, when iCloud is on, synced to your private iCloud database (CloudKit). The developer runs no servers and can't see it.
             • Exports and backups go only where you send them. Local backups include photos by default and can keep records you later delete.
             • Recovery tools can export the stored database and photos; nothing is sent automatically.
+            • The report for your insurer and QR labels are PDFs made on your device, and go only where you send or print them. A label's code holds only an ID that your own library can look up.
             """),
         Section(title: "Camera and Photos", body: """
             • The camera is used to scan barcodes and as a light meter. Frames are processed on your device and never stored or sent; the light meter reads only the camera's exposure settings.
             • Photos are chosen with the system photo picker; the app can't see the rest of your library and never saves to it.
-            • "Fill from a Photo" reads the camera and lens details in a photo's metadata on your device. The photo itself isn't kept.
+            • "Fill from a Photo" and "Usage from Photos" read the camera and lens details in a photo's metadata on your device. The photos themselves aren't copied or kept.
+            • "Usage from Photos" can also read image files or a folder you choose in the system file picker. It reads only what you choose, and only those details.
             • Gear photos are resized before they're stored, and their location data is removed.
             """),
         Section(title: "Location and Maps", body: """
-            • Your location is read only when you tap "Use My Location" in the sun, moon and Milky Way planners, and only while the app is open. It's used on your device to work out sun and moon times, and isn't stored unless you save it as a place.
+            • Your location is read only when you tap "Use My Location" in the sun, moon and Milky Way planners, and only while the app is open. It's used on your device to work out sun and moon times, and isn't stored unless you save it as a place. It leaves your device only for the cloud forecast, if you turn that on.
             • Places you save, and the places of your shoots, sync to your private iCloud database with the rest of your library.
             • Maps, place search and place names come from Apple Maps (MapKit). Searches you type, and the points you pick on the map, are sent to Apple to find places and their names.
+            • The cloud forecast is off until you turn it on, in a planner, on a shoot or in Settings. While it's on, the planners and your coming shoots get the forecast for the place they show from Apple Weather (WeatherKit): that place's position, rounded to about a kilometre, is sent to Apple. That includes your own location when it's the place you chose with "Use My Location". Apple says it uses the position only to provide the forecast and doesn't link it to you. Forecasts are kept only while the app is open, never stored or synced. Turn it off in Settings at any time.
             """),
         Section(title: "Notifications", body: """
-            Reminders for sensor cleanings and loans due back, alerts for running exposure and development timers, and golden-hour heads-ups for shoots you plan are scheduled on your device. Nothing is sent to a server.
+            Reminders for sensor cleanings and loans due back, alerts for running exposure and development timers, and golden-hour heads-ups for shoots you plan are scheduled on your device. A running timer also shows on the Lock Screen and in the Dynamic Island, with the name you gave the exposure or recipe. Nothing is sent to a server.
             """),
         Section(title: "Other Services", body: """
             • Barcode lookup: when you scan a barcode, its number is sent to UPCitemdb (upcitemdb.com) to look up the product. Product images it returns are downloaded from their hosts. You can always enter gear by hand instead.

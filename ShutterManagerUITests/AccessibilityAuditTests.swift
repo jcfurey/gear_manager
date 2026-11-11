@@ -40,7 +40,8 @@ final class AccessibilityAuditTests: XCTestCase {
         try wait(for: app.navigationBars["Inventory"], "The Inventory tab should open")
         try audit("Inventory (empty)")
 
-        try wait(for: app.buttons["addGearButton"].firstMatch, "Missing Add Gear button").tap()
+        try tap(wait(for: app.buttons["addGearButton"].firstMatch, "Missing Add Gear button"),
+                toShow: app.buttons["saveGearButton"].firstMatch, timeout: 30)
         let save = try wait(for: app.buttons["saveGearButton"].firstMatch, "Add Gear should open")
         try audit("Add Gear")
         replaceText(in: app.textFields["gearMakeField"].firstMatch, with: "Canon")
@@ -49,8 +50,9 @@ final class AccessibilityAuditTests: XCTestCase {
         XCTAssertTrue(save.waitForNonExistence(timeout: 5), "The sheet should close")
         try audit("Inventory")
 
-        try wait(for: app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Canon R6,")).firstMatch,
-                 "The new item should be listed").tap()
+        try tap(wait(for: app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Canon R6,")).firstMatch,
+                     "The new item should be listed"),
+                toShow: app.buttons["editGearButton"].firstMatch, timeout: 30)
         try wait(for: app.buttons["editGearButton"].firstMatch, "The item should open")
         try audit("Gear detail")
     }
@@ -65,11 +67,10 @@ final class AccessibilityAuditTests: XCTestCase {
                             ("sunAndMoon", "Sun & Moon"), ("development", "Development Timer")] {
             let row = app.buttons["tool.\(id)"].firstMatch
             reveal(row, in: app)
-            row.tap()
+            tap(row, toShow: app.navigationBars[title], timeout: 30)
             try wait(for: app.navigationBars[title], "\(title) should open")
             try audit(title)
-            app.navigationBars.buttons.element(boundBy: 0).tap()
-            try wait(for: app.navigationBars["Tools"], "Back to Tools from \(title)")
+            goBack(to: "Tools", in: app)
         }
     }
 
@@ -91,7 +92,8 @@ final class AccessibilityAuditTests: XCTestCase {
         try wait(for: app.navigationBars["Shoots"], "The Shoots tab should open")
         try audit("Shoots (empty)")
 
-        try wait(for: app.buttons["addShootButton"].firstMatch, "Missing New Shoot button").tap()
+        try tap(wait(for: app.buttons["addShootButton"].firstMatch, "Missing New Shoot button"),
+                toShow: app.buttons["saveShootButton"].firstMatch, timeout: 30)
         let save = try wait(for: app.buttons["saveShootButton"].firstMatch, "The shoot editor should open")
         try audit("New Shoot")
         replaceText(in: app.textFields["shootTitleField"].firstMatch, with: "Harbour")
@@ -109,29 +111,36 @@ final class AccessibilityAuditTests: XCTestCase {
         for (link, title) in [("About the App", "About"), ("Tip Jar", "Tip Jar"), ("Privacy Policy", "Privacy Policy")] {
             let row = app.buttons[link].firstMatch
             reveal(row, in: app)
-            row.tap()
+            tap(row, toShow: app.navigationBars[title], timeout: 30)
             try wait(for: app.navigationBars[title], "\(title) should open")
             try audit(title)
-            app.navigationBars.buttons.element(boundBy: 0).tap()
-            try wait(for: app.navigationBars["Settings"], "Back to Settings from \(title)")
+            goBack(to: "Settings", in: app)
         }
     }
 
     // MARK: - Helpers
 
     /// Waits for a control a later step needs; a missing one ends the test, since nothing after it
-    /// can run.
+    /// can run. The wait is long: this class runs first, while a newly booted simulator is still
+    /// at its slowest, and a sheet once took more than ten seconds to come up.
     @discardableResult
     private func wait(for element: XCUIElement, _ message: String,
                       file: StaticString = #filePath, line: UInt = #line) throws -> XCUIElement {
-        try XCTUnwrap(element.waitForExistence(timeout: 10) ? element : nil, message, file: file, line: line)
+        try XCTUnwrap(element.waitForExistence(timeout: 30) ? element : nil, message, file: file, line: line)
     }
 
-    /// Audits what is on screen. The keyboard is dismissed first, since its keys are the system's.
+    /// Audits what is on screen. The keyboard is dismissed first, since its keys are the system's,
+    /// and a passing banner ("Gear saved") is given time to go: it isn't part of the screen, and a
+    /// finding on it can't be read once it has gone.
     @MainActor
     private func audit(_ screen: String, file: StaticString = #filePath, line: UInt = #line) throws {
         if app.keyboards.firstMatch.exists {
             app.navigationBars.firstMatch.tap()
+        }
+        let banner = app.buttons["dismissToastButton"].firstMatch
+        if banner.exists {
+            XCTAssertTrue(banner.waitForNonExistence(timeout: 10), "\(screen): the banner should go on its own",
+                          file: file, line: line)
         }
         var failures: [String] = []
         try app.performAccessibilityAudit(for: auditTypes) { issue in

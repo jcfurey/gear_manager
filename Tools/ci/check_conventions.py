@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Checks the project rules a compiler can't: CloudKit-safe models, the model registry, logging,
-project settings that must agree across targets, leftovers from the Axe Manager port, and the App
-Store text's length limits.
+project settings that must agree across targets, leftovers from the Axe Manager port, the App
+Store text's length limits, and wording the app must not use.
 
 Usage: python3 Tools/ci/check_conventions.py
 
@@ -20,15 +20,21 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 APP = ROOT / "ShutterManager"
+# The widget extension, and the folder it shares with the app. What ships to users is checked the
+# same wherever it lives: logging, leftovers, wording.
+EXTENSION_DIRS = [ROOT / "ShutterManagerShared", ROOT / "ShutterManagerWidgets"]
 TEST_DIRS = [ROOT / "ShutterManagerTests", ROOT / "ShutterManagerUITests"]
 PROJECT = ROOT / "ShutterManager.xcodeproj" / "project.pbxproj"
 ENTITLEMENTS = APP / "ShutterManager.entitlements"
+WEATHER_PROVIDER = "WeatherKitCloudProvider.swift"
 INFO_PLIST = ROOT / "Info.plist"
+WIDGETS_INFO_PLIST = ROOT / "ShutterManagerWidgets-Info.plist"
 APP_SCHEMA = APP / "Utilities" / "AppSchema.swift"
 
 BUNDLE_ID = "jcameronfurey.shuttermanager"
 CLOUDKIT_CONTAINER = "iCloud.jcameronfurey.shuttermanager"
-EXPECTED_BUNDLE_IDS = {BUNDLE_ID, f"{BUNDLE_ID}.tests", f"{BUNDLE_ID}.uitests"}
+# An extension's bundle ID has to start with its app's.
+EXPECTED_BUNDLE_IDS = {BUNDLE_ID, f"{BUNDLE_ID}.tests", f"{BUNDLE_ID}.uitests", f"{BUNDLE_ID}.widgets"}
 
 problems = []
 
@@ -60,7 +66,7 @@ def code_only(line):
 def check_logging():
     """App code logs through os.Logger; print/NSLog output is lost on device and unfiltered."""
     pattern = re.compile(r"(?<![\w.])(print|debugPrint|NSLog|dump)\(")
-    for path in swift_files(APP):
+    for path in swift_files(APP, *EXTENSION_DIRS):
         for number, line in enumerate(path.read_text().splitlines(), 1):
             if pattern.search(code_only(line)) and not allowed(line, "logging"):
                 report("logging", path, number, "Use os.Logger, not print/debugPrint/NSLog/dump.")
@@ -71,7 +77,7 @@ def check_logging():
 
 def check_port_leftovers():
     pattern = re.compile(r"guitar|axemanager|Axe Manager|theweegee|\btuner\b|fretboard", re.IGNORECASE)
-    for path in swift_files(APP, *TEST_DIRS):
+    for path in swift_files(APP, *EXTENSION_DIRS, *TEST_DIRS):
         for number, line in enumerate(path.read_text().splitlines(), 1):
             if pattern.search(line) and not allowed(line, "leftovers"):
                 report("leftovers", path, number, f"Axe Manager leftover: {line.strip()[:100]}")
@@ -228,6 +234,26 @@ def check_capabilities():
     info = load_plist(INFO_PLIST, "capabilities")
     if info is not None and "remote-notification" not in info.get("UIBackgroundModes", []):
         report("capabilities", INFO_PLIST, 1, "CloudKit sync needs UIBackgroundModes → remote-notification.")
+    # The timers' Live Activity: the app has to say it supports them, and the extension that
+    # draws them has to be a WidgetKit extension.
+    if info is not None and info.get("NSSupportsLiveActivities") is not True:
+        report("capabilities", INFO_PLIST, 1, "The timers' Live Activity needs NSSupportsLiveActivities = true.")
+    widgets = load_plist(WIDGETS_INFO_PLIST, "capabilities")
+    if widgets is not None:
+        point = widgets.get("NSExtension", {}).get("NSExtensionPointIdentifier")
+        if point != "com.apple.widgetkit-extension":
+            report("capabilities", WIDGETS_INFO_PLIST, 1,
+                   f"NSExtensionPointIdentifier should be com.apple.widgetkit-extension, found {point}.")
+
+    # The cloud forecast: WeatherKit answers only an app with its entitlement, and one file asks
+    # for weather, so there is one place to see what leaves the device and what it costs.
+    weather_users = [path for path in swift_files(APP, *EXTENSION_DIRS)
+                     if re.search(r"^\s*import\s+WeatherKit\b", path.read_text(), re.MULTILINE)]
+    for path in weather_users:
+        if path.name != WEATHER_PROVIDER:
+            report("capabilities", path, 1, f"Only {WEATHER_PROVIDER} imports WeatherKit; go through CloudForecastStore.")
+    if weather_users and entitlements is not None and entitlements.get("com.apple.developer.weatherkit") is not True:
+        report("capabilities", ENTITLEMENTS, 1, "WeatherKit needs com.apple.developer.weatherkit = true.")
 
     # Swift code that names a container must name the one in the entitlements.
     for path in swift_files(APP):
@@ -257,6 +283,25 @@ def check_project_settings():
             json.loads(path.read_text())
         except json.JSONDecodeError as error:
             report("project", path, 1, f"Invalid JSON: {error}")
+
+
+# MARK: - Wording
+
+# The report for the user's insurer is never called anything else: the app doesn't value gear and
+# says nothing about cover. This looks inside string literals, where the user would read it.
+BANNED_WORDING = re.compile(r"insuranc", re.IGNORECASE)
+
+
+def check_wording():
+    for path in swift_files(APP, *EXTENSION_DIRS):
+        for number, line in enumerate(path.read_text().splitlines(), 1):
+            literals = re.findall(r'"((?:\\.|[^"\\])*)"', line.split("//", 1)[0])
+            if any(BANNED_WORDING.search(literal) for literal in literals) and not allowed(line, "wording"):
+                report("wording", path, number, 'Say "a report for your insurer", never "insurance".')
+    for path in sorted((ROOT / "marketing").glob("*/*.txt")):
+        for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+            if BANNED_WORDING.search(line):
+                report("wording", path, number, 'Say "a report for your insurer", never "insurance".')
 
 
 # MARK: - App Store text
@@ -307,6 +352,7 @@ def main():
     check_capabilities()
     check_project_settings()
     check_store_text()
+    check_wording()
 
     for check, path, line, message in problems:
         print(f"::error file={path},line={line},title=conventions/{check}::{message}")

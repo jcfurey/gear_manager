@@ -15,6 +15,7 @@ struct KitsView: View {
     @State private var addingKit = false
     @State private var editingKit: Kit?
     @State private var saveFailed = false
+    @State private var showingLabels = false
 
     var body: some View {
         List {
@@ -54,6 +55,18 @@ struct KitsView: View {
                     }
                 }
             }
+            if !kits.isEmpty {
+                Section {
+                    Button {
+                        showingLabels = true
+                    } label: {
+                        Label("QR Labels", systemImage: "qrcode")
+                    }
+                    .accessibilityIdentifier("kitLabelsButton")
+                } footer: {
+                    Text("Print a label for each bag. Scanning it opens the kit as a checklist.")
+                }
+            }
         }
         .navigationTitle("Kits")
         .toolbar {
@@ -72,6 +85,9 @@ struct KitsView: View {
         }
         .sheet(item: $editingKit) { kit in
             KitEditorView(kit: kit)
+        }
+        .sheet(isPresented: $showingLabels) {
+            LabelsView(kits: Set(kits.map(\.id)))
         }
         .persistenceErrorAlert(isPresented: $saveFailed)
     }

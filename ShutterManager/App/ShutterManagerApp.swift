@@ -20,10 +20,20 @@ struct ShutterManagerApp: App {
 
     init() {
         _store = StateObject(wrappedValue: AppStoreController())
+        #if DEBUG
+        // UI tests tap sooner than a slow simulator finishes animating: a tap made as a sheet
+        // closes or a screen pops lands on a control that isn't listening yet, and is lost. With
+        // nothing animated there is no part-way to land in.
+        if ProcessInfo.processInfo.arguments.contains("-uiTestInMemory") {
+            UIView.setAnimationsEnabled(false)
+        }
+        #endif
         guard !AppStoreController.isSchemaInitialization else { return }
         // Without a delegate, iOS discards notifications delivered while the app is active.
         // Installed before launch finishes.
         UNUserNotificationCenter.current().delegate = NotificationPresentationDelegate.shared
+        // A Live Activity from an earlier run shows a timer that went with that run.
+        TimerActivityController.shared.endLeftovers()
     }
 
     var body: some Scene {
@@ -48,6 +58,8 @@ struct ShutterManagerApp: App {
                 Task { await store.syncManager.refresh() }
                 NotificationManager.shared.clearBadge()
                 refreshGearReminders()
+                ToolTimers.shared.refreshDevelopmentAlerts()
+                ToolTimers.shared.refreshActivities()
             } else if newPhase == .background {
                 performAutomaticBackupIfNeeded()
             }

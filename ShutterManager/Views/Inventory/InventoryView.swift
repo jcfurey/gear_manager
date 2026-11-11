@@ -287,9 +287,15 @@ struct InventoryView: View {
     /// item's reminders, removes it, and confirms via a toast.
     private func delete(_ item: GearItem) {
         HapticFeedbackManager.shared.delete()
-        NotificationManager.shared.cancelReminders(for: item)
+        // Named before the delete, cancelled only once it has been saved: a delete that fails
+        // is undone, and the item keeps its reminders.
+        let reminders = NotificationManager.shared.reminderIdentifiers(for: item)
         withAnimation { context.delete(item) }
-        guard context.saveOrLog() else { return }
+        guard context.saveOrLog() else {
+            withAnimation { context.rollback() }
+            return
+        }
+        NotificationManager.shared.cancelReminders(identifiers: reminders)
         ToastNotificationManager.shared.gearDeleted()
     }
 }

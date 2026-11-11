@@ -82,4 +82,24 @@ struct PlaceValue: Codable, Hashable, Sendable {
               value.coordinate.isValid else { return nil }
         self = value
     }
+
+    /// Degrees typed or pasted into a coordinate field; nil when the text isn't a number.
+    ///
+    /// A coordinate copied from a map has a point for its decimals ("48.137154") whatever the
+    /// region, so a point reads as the decimal separator everywhere; a comma is read by the
+    /// region's own rules. Read the German way, "48.137154" was refused and "0.125" became 125.
+    static func degrees(from text: String, locale: Locale = .current) -> Double? {
+        let trimmed = text.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: "\u{2212}", with: "-")
+        if trimmed.contains("."), !trimmed.contains(",") {
+            guard let value = Double(trimmed), value.isFinite else { return nil }
+            return value
+        }
+        return Double(localizedInput: trimmed, locale: locale)
+    }
+
+    /// Degrees for a coordinate field, in the region's number format, to five decimals (about
+    /// a metre). `degrees(from:)` reads it back.
+    static func fieldText(degrees: Double, locale: Locale = .current) -> String {
+        MeasurementInput.text(degrees, fractionDigits: 5, locale: locale)
+    }
 }

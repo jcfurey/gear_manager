@@ -2,7 +2,8 @@
 //  LibraryExport.swift
 //  ShutterManager
 //
-//  The JSON export and backup format, and the DTOs that mirror each model.
+//  The library's records as JSON, and the DTOs that mirror each model: a JSON export, and the
+//  `library.json` inside a library package (see `LibraryPackage`).
 //
 
 import Foundation
@@ -39,7 +40,7 @@ struct LibraryExport: Codable {
     var filmRolls: [FilmRollDTO]? = nil
     let settings: [String: String]?
     /// Whether photos were included, so a restore can warn before replacing photos with none.
-    let includesPhotos: Bool
+    var includesPhotos: Bool
 
     /// Total records, for previews and the record-count limit.
     var recordCount: Int {
@@ -86,13 +87,25 @@ enum ExportFormat: String, CaseIterable, Codable {
 
 /// Every format the export screen offers.
 enum EnhancedExportFormat: String, CaseIterable, Codable {
-    case json, csv, pdf
+    case library, json, csv, pdf
 
-    var displayName: String { rawValue.uppercased() }
-    var fileExtension: String { rawValue }
+    var displayName: String {
+        switch self {
+        case .library: return "Library"
+        case .json, .csv, .pdf: return rawValue.uppercased()
+        }
+    }
+
+    var fileExtension: String {
+        switch self {
+        case .library: return LibraryPackage.fileExtension
+        case .json, .csv, .pdf: return rawValue
+        }
+    }
 
     var icon: String {
         switch self {
+        case .library: return "archivebox"
         case .json: return "doc.text"
         case .csv: return "tablecells"
         case .pdf: return "doc.richtext"
@@ -101,11 +114,15 @@ enum EnhancedExportFormat: String, CaseIterable, Codable {
 
     var description: String {
         switch self {
-        case .json: return "Complete library. Use this to move to another device or keep a copy"
+        case .library: return "Everything, with your photos, in one file. Use this to move to another device or keep a copy. It's a zip, so any computer can open it"
+        case .json: return "Your records as JSON, without photos, for other software. It imports back too"
         case .csv: return "Spreadsheet of your gear, for Numbers, Excel or Google Sheets"
         case .pdf: return "A printable inventory with serial numbers and values"
         }
     }
+
+    /// Whether the format carries the whole library's records, not only the gear.
+    var holdsEveryRecord: Bool { self == .library || self == .json }
 }
 
 // MARK: - Gear
@@ -179,7 +196,7 @@ struct GearItemDTO: Codable {
     let cardType: String?
     let speedRating: String?
     let referenceLinks: String?
-    let photos: [GearPhotoDTO]?
+    var photos: [GearPhotoDTO]?
 
     /// `includePhotos: false` leaves out the gallery, for size-sensitive exports and backups.
     init(from item: GearItem, includePhotos: Bool = true) {
@@ -321,7 +338,7 @@ struct MaintenanceRecordDTO: Codable {
     let notes: String?
     let performedBy: String?
     let nextDueDate: Date?
-    let photoData: Data?
+    var photoData: Data?
     let isCompleted: Bool
 
     init(from record: MaintenanceRecord, includePhotos: Bool = true) {

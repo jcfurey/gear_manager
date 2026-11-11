@@ -2,24 +2,32 @@
 //  DataImportService.swift
 //  ShutterManager
 //
-//  Imports an export or backup file, merging into the library or replacing it.
+//  Imports a library package, a JSON export or a backup, merging into the library or replacing
+//  it.
 //
 
 import Foundation
 import SwiftData
 
-/// Imports `LibraryExport` files. The whole file is decoded and validated off the main actor
-/// before anything changes, and the import writes through an isolated context with autosave off
-/// and one final save, so a failure leaves the library as it was.
+/// Imports library files. The records are decoded and validated off the main actor before
+/// anything changes, and written through an isolated context with autosave off and one final
+/// save, so a failure leaves the library as it was.
+///
+/// A package's photos come after that save, a few at a time (`addPhotos`): all of them in one
+/// save would need all of them in memory. If that stops part-way the records are in and some
+/// photos aren't, and importing the file again adds the rest.
 @MainActor
 final class DataImportService {
     /// Where imported settings are written; injectable so tests use a scratch suite.
     private let settingsStore: UserDefaults
     private let saveChanges: (ModelContext) throws -> Void
+    /// How many of a package's photos are read and saved at a time.
+    private let photoBatch: Int
 
-    init(settingsStore: UserDefaults = .standard,
+    init(settingsStore: UserDefaults = .standard, photoBatch: Int = Constants.DataLimits.packagePhotoBatch,
          saveChanges: @escaping (ModelContext) throws -> Void = { try $0.save() }) {
         self.settingsStore = settingsStore
+        self.photoBatch = max(photoBatch, 1)
         self.saveChanges = saveChanges
     }
 
@@ -31,17 +39,18 @@ final class DataImportService {
     func previewImport(from url: URL) async throws -> ImportPreview {
         guard url.startAccessingSecurityScopedResource() else { throw ImportError.accessDenied }
         defer { url.stopAccessingSecurityScopedResource() }
-        let document = try await Task.detached { try ImportDocument.decode(ImportDocument.read(url)) }.value
-        return ImportPreview(fileName: url.lastPathComponent, document: document)
+        let file = try await Task.detached { try ImportDocument.open(url) }.value
+        return ImportPreview(fileName: url.lastPathComponent, file: file)
     }
 
     // MARK: - Import
 
     func importData(from url: URL, to modelContext: ModelContext, strategy: ImportStrategy = .merge) async throws {
+        // Held until the last photo is in: a package's photos are read from the file as they go.
         guard url.startAccessingSecurityScopedResource() else { throw ImportError.accessDenied }
         defer { url.stopAccessingSecurityScopedResource() }
-        let data = try await Task.detached { try ImportDocument.read(url) }.value
-        try await importData(from: data, to: modelContext, strategy: strategy)
+        let file = try await Task.detached { try ImportDocument.open(url) }.value
+        try await apply(file, to: modelContext, strategy: strategy)
     }
 
     /// Imports already-loaded file data. Separate from the URL overload so the pipeline can be
@@ -51,10 +60,32 @@ final class DataImportService {
         try await apply(document, to: modelContext, strategy: strategy)
     }
 
+    /// Imports an opened file: its records, then (for a package) its photos.
+    func apply(_ file: ImportFile, to modelContext: ModelContext, strategy: ImportStrategy) async throws {
+        // The records are in, and announced, before the photos start: a replace has just removed
+        // what other screens were showing, and they mustn't wait on the photos to hear of it.
+        try await apply(file.document, to: modelContext, strategy: strategy)
+        guard let package = file.package, let index = package.photoIndex, index.count > 0 else { return }
+        // Announced again when the photos are in, or as far in as they got, so covers and
+        // galleries are drawn afresh.
+        defer {
+            modelContext.processPendingChanges()
+            NotificationCenter.default.post(name: Self.didImportNotification, object: nil)
+        }
+        try await addPhotos(index, from: package, to: modelContext)
+    }
+
+    /// Imports records that are already in hand (a JSON file's, with any photos inside them).
+    func apply(_ document: LibraryExport, to modelContext: ModelContext, strategy: ImportStrategy) async throws {
+        try await commit(document, to: modelContext, strategy: strategy)
+        modelContext.processPendingChanges()
+        NotificationCenter.default.post(name: Self.didImportNotification, object: nil)
+    }
+
     /// Commits through an isolated context. Failed work is discarded without rolling back deleted
     /// parent/child graphs in the live UI context (which can trap in SwiftData). Settings are
     /// applied only after the records save.
-    func apply(_ document: LibraryExport, to modelContext: ModelContext, strategy: ImportStrategy) async throws {
+    private func commit(_ document: LibraryExport, to modelContext: ModelContext, strategy: ImportStrategy) async throws {
         try await Task.detached { try ImportDocument.validate(document) }.value
         // Preserve pending UI edits before the import's transaction boundary.
         try modelContext.save()
@@ -64,8 +95,83 @@ final class DataImportService {
         if let settings = document.settings {
             ImportedSettings.apply(settings, to: settingsStore)
         }
-        modelContext.processPendingChanges()
-        NotificationCenter.default.post(name: Self.didImportNotification, object: nil)
+    }
+
+    // MARK: - A package's photos
+
+    /// Adds a package's photos to records already in the library, `photoBatch` at a time. Each
+    /// lot is read from the file off the main actor, written through a context of its own, saved
+    /// and let go, so memory stays small however many there are.
+    ///
+    /// A gear photo already in the library (by ID) is left alone, and a maintenance record that
+    /// has a photo keeps it. That makes this safe to run again over an import that stopped
+    /// part-way, and it's why merging a package also fills in photos an item was missing.
+    private func addPhotos(_ index: PackagePhotoIndex, from package: LibraryPackageFile,
+                           to modelContext: ModelContext) async throws {
+        let container = modelContext.container
+        var added = 0
+        var total = index.count
+        do {
+            var known = FetchDescriptor<GearPhoto>()
+            known.propertiesToFetch = [\.id]
+            let lookup = ModelContext(container)
+            // The context has to outlive the reading of what it fetched.
+            let present = try withExtendedLifetime(lookup) { Set(try lookup.fetch(known).map(\.id)) }
+            let pending = index.photos.filter { !present.contains($0.id) }
+            total = pending.count + index.maintenancePhotos.count
+
+            for start in stride(from: 0, to: pending.count, by: photoBatch) {
+                let lot = Array(pending[start..<min(start + photoBatch, pending.count)])
+                let loaded = try await Task.detached { try lot.map { try package.data(for: $0) } }.value
+                let context = ModelContext(container)
+                context.autosaveEnabled = false
+                let ids = Array(Set(lot.map(\.gearItemID)))
+                var itemByID: [UUID: GearItem] = [:]
+                for item in try context.fetch(FetchDescriptor<GearItem>(predicate: #Predicate { ids.contains($0.id) }))
+                where itemByID[item.id] == nil {
+                    itemByID[item.id] = item
+                }
+                var count = 0
+                for (entry, data) in zip(lot, loaded) {
+                    // A photo whose item isn't in the library has nothing to hang on.
+                    guard let item = itemByID[entry.gearItemID] else { continue }
+                    // An item that kept its own photos keeps its own cover.
+                    let hasCover = (item.photos ?? []).contains(where: \.isPrimary)
+                    let photo = GearPhoto(imageData: data, caption: entry.caption, order: entry.order,
+                                          isPrimary: entry.isPrimary && !hasCover)
+                    photo.id = entry.id
+                    photo.dateAdded = entry.dateAdded
+                    context.insert(photo)
+                    photo.gearItem = item
+                    count += 1
+                }
+                try saveChanges(context)
+                added += count
+            }
+
+            for start in stride(from: 0, to: index.maintenancePhotos.count, by: photoBatch) {
+                let lot = Array(index.maintenancePhotos[start..<min(start + photoBatch, index.maintenancePhotos.count)])
+                let context = ModelContext(container)
+                context.autosaveEnabled = false
+                let ids = lot.map(\.recordID)
+                let records = try context.fetch(FetchDescriptor<MaintenanceRecord>(predicate: #Predicate { ids.contains($0.id) }))
+                // Only the photos that are wanted are read from the file.
+                let wanted = lot.filter { entry in records.contains { $0.id == entry.recordID && $0.photoData == nil } }
+                let loaded = try await Task.detached { try wanted.map { try package.data(for: $0) } }.value
+                for (entry, data) in zip(wanted, loaded) {
+                    for record in records where record.id == entry.recordID && record.photoData == nil {
+                        record.photoData = data
+                    }
+                }
+                try saveChanges(context)
+                // Counted whether or not it was needed: either way it's in the library now.
+                added += lot.count
+            }
+        } catch let error as LibraryPackageError {
+            throw ImportError.photosIncomplete(added: added, total: total, reason: ImportError(error).localizedDescription)
+        } catch {
+            throw ImportError.photosIncomplete(added: added, total: total, reason: error.localizedDescription)
+        }
     }
 
     private func write(_ document: LibraryExport, to context: ModelContext, strategy: ImportStrategy) throws {
@@ -87,24 +193,26 @@ final class DataImportService {
             gearByID[item.id] = item
         }
 
-        let existing = try strategy == .merge ? ExistingIDs(in: context) : ExistingIDs()
-        for dto in document.maintenanceRecords where !existing.maintenanceRecords.contains(dto.id) {
+        // Each ID is added as its record goes in, so a file that lists a record twice (an export
+        // of a library that already had duplicates) inserts it once.
+        var existing = try strategy == .merge ? ExistingIDs(in: context) : ExistingIDs()
+        for dto in document.maintenanceRecords where existing.maintenanceRecords.insert(dto.id).inserted {
             context.insert(dto.toMaintenanceRecord(gearByID: gearByID))
         }
-        for dto in document.maintenanceReminders where !existing.maintenanceReminders.contains(dto.id) {
+        for dto in document.maintenanceReminders where existing.maintenanceReminders.insert(dto.id).inserted {
             context.insert(dto.toMaintenanceReminder(gearByID: gearByID))
         }
-        for dto in document.shutterCountReadings where !existing.shutterCountReadings.contains(dto.id) {
+        for dto in document.shutterCountReadings where existing.shutterCountReadings.insert(dto.id).inserted {
             context.insert(dto.toReading(gearByID: gearByID))
         }
-        for dto in document.loans where !existing.loans.contains(dto.id) {
+        for dto in document.loans where existing.loans.insert(dto.id).inserted {
             context.insert(dto.toLoan(gearByID: gearByID))
         }
-        for dto in document.places where !existing.savedPlaces.contains(dto.id) {
+        for dto in document.places where existing.savedPlaces.insert(dto.id).inserted {
             if let place = dto.toPlace() { context.insert(place) }
         }
         // A recipe merges whole: one already in the library keeps its own steps.
-        for dto in document.recipes where !existing.developmentRecipes.contains(dto.id) {
+        for dto in document.recipes where existing.developmentRecipes.insert(dto.id).inserted {
             let (recipe, steps) = dto.toRecipe()
             context.insert(recipe)
             steps.forEach(context.insert)
@@ -121,15 +229,15 @@ final class DataImportService {
             shotList.forEach(context.insert)
             shootByID[shoot.id] = shoot
         }
-        for dto in document.kitList where !existing.kits.contains(dto.id) {
+        for dto in document.kitList where existing.kits.insert(dto.id).inserted {
             context.insert(dto.toKit(gearByID: gearByID))
         }
-        for dto in document.templateList where !existing.shotListTemplates.contains(dto.id) {
+        for dto in document.templateList where existing.shotListTemplates.insert(dto.id).inserted {
             let (template, items) = dto.toTemplate()
             context.insert(template)
             items.forEach(context.insert)
         }
-        for dto in document.rollList where !existing.filmRolls.contains(dto.id) {
+        for dto in document.rollList where existing.filmRolls.insert(dto.id).inserted {
             context.insert(dto.toRoll(gearByID: gearByID, shootByID: shootByID))
         }
         try saveChanges(context)
@@ -192,12 +300,19 @@ struct ImportPreview {
     let hasSettings: Bool
     let includesPhotos: Bool
 
-    init(fileName: String, document: LibraryExport) {
+    /// A chosen file's contents: a package's photos are counted from its list, a JSON file's
+    /// from its records.
+    init(fileName: String, file: ImportFile) {
+        self.init(fileName: fileName, document: file.document, photoCount: file.photoCount,
+                  includesPhotos: file.includesPhotos)
+    }
+
+    init(fileName: String, document: LibraryExport, photoCount: Int? = nil, includesPhotos: Bool? = nil) {
         self.fileName = fileName
         exportDate = document.metadata.exportDate
         appVersion = document.metadata.appVersion
         gearCount = document.gearItems.count
-        photoCount = document.gearItems.reduce(0) { $0 + ($1.photos?.count ?? 0) }
+        self.photoCount = photoCount ?? document.gearItems.reduce(0) { $0 + ($1.photos?.count ?? 0) }
         maintenanceCount = document.maintenanceRecords.count + document.maintenanceReminders.count
         shutterCountCount = document.shutterCountReadings.count
         loanCount = document.loans.count
@@ -208,7 +323,7 @@ struct ImportPreview {
         templateCount = document.templateList.count
         filmRollCount = document.rollList.count
         hasSettings = document.settings != nil
-        includesPhotos = document.includesPhotos
+        self.includesPhotos = includesPhotos ?? document.includesPhotos
     }
 
     var totalItems: Int {

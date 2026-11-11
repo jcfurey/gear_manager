@@ -17,6 +17,7 @@ struct SettingsView: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.modelContext) private var modelContext
     @Environment(iCloudSyncManager.self) private var syncManager
+    @Environment(AppNavigation.self) private var navigation
 
     /// All gear, to reschedule reminders when the preference changes.
     @Query private var gearItems: [GearItem]
@@ -29,8 +30,11 @@ struct SettingsView: View {
     @AppStorage(Constants.UserDefaultsKeys.depthOfFieldStandard) private var depthOfFieldStandard = CircleOfConfusionStandard.standard
     @AppStorage(Constants.UserDefaultsKeys.lightMeterCalibration) private var lightMeterCalibration = 0.0
 
+    private let clouds = CloudForecastStore.shared
+
     @State private var showingDataExport = false
     @State private var showingDataImport = false
+    @State private var showingInsurerReport = false
     @State private var showingDeleteConfirmation = false
     @State private var clearFailed = false
 
@@ -81,10 +85,13 @@ struct SettingsView: View {
                                     }
                                 }
                         }
+                        if gearRemindersEnabled {
+                            NotificationsOffNote(what: "reminders can't be delivered")
+                        }
                     } header: {
                         Text("Reminders")
                     } footer: {
-                        Text("Sensor cleanings due and loans due back. Set each item's schedule and reminder time in Inventory.")
+                        Text("Sensor cleanings and other maintenance due, and loans due back. Set each item's schedule and reminder time in Inventory.")
                     }
 
                     Section {
@@ -120,6 +127,19 @@ struct SettingsView: View {
                         Text("Tools")
                     } footer: {
                         Text("Automatic units follow your region. The depth-of-field standard sets how strict \"sharp\" is: \(depthOfFieldStandard.detail.lowercased()). The light meter's calibration is added to every reading: raise it if photos come out too bright, lower it if they come out too dark, or calibrate against a meter you trust in the Light Meter tab.")
+                    }
+
+                    Section {
+                        SettingsRow(icon: "cloud.sun", iconColor: .gray, title: "Cloud Forecast", constants: constants) {
+                            Toggle("", isOn: Binding(get: { clouds.isEnabled }, set: { clouds.setEnabled($0) }))
+                                .labelsHidden()
+                                .accessibilityLabel("Cloud Forecast")
+                                .accessibilityIdentifier("settings.cloudForecast")
+                        }
+                    } header: {
+                        Text("Weather")
+                    } footer: {
+                        Text("Shows Apple Weather's cloud forecast in the sun, moon and Milky Way planners and on shoots still to come. To get it, the place's position is sent to Apple, rounded to about a kilometre. Forecasts aren't stored.")
                     }
 
                     Section("iCloud Sync") {
@@ -171,6 +191,26 @@ struct SettingsView: View {
                             }
                         }
                         .accessibilityIdentifier("settings.import")
+
+                        Button {
+                            HapticFeedbackManager.shared.buttonTap()
+                            showingInsurerReport = true
+                        } label: {
+                            SettingsRow(icon: "doc.richtext", iconColor: .indigo, title: "Report for Your Insurer", constants: constants) {
+                                Image(systemName: "chevron.right")
+                                    .font(constants.captionFont)
+                                    .foregroundColor(.secondary)
+                                    .accessibilityHidden(true)
+                            }
+                        }
+                        .accessibilityIdentifier("settings.insurerReport")
+
+                        NavigationLink {
+                            DuplicateRecordsView()
+                        } label: {
+                            SettingsRow(icon: "square.on.square.dashed", iconColor: .orange, title: "Find Duplicates", constants: constants)
+                        }
+                        .accessibilityIdentifier("settings.duplicates")
 
                         Button {
                             HapticFeedbackManager.shared.buttonTap()
@@ -241,6 +281,9 @@ struct SettingsView: View {
         .sheet(isPresented: $showingDataImport) {
             DataImportView()
         }
+        .sheet(isPresented: $showingInsurerReport) {
+            InsurerReportView()
+        }
     }
 
     private func clearAllData() {
@@ -248,6 +291,8 @@ struct SettingsView: View {
             // Every model in the schema, so nothing is left orphaned or forgotten.
             try modelContext.deleteEveryRecord()
             try modelContext.save()
+            // The other tabs go back to their first screens, off whatever was just deleted.
+            navigation.libraryWasReplaced()
             // No gear or shoots means no reminders: this removes every pending one.
             Task {
                 await NotificationManager.shared.refreshGearReminders(for: [])
@@ -265,5 +310,6 @@ struct SettingsView: View {
     SettingsView()
         .modelContainer(PreviewModelContainer.make())
         .environment(iCloudSyncManager())
+        .environment(AppNavigation())
         .preferredColorScheme(.dark)
 }

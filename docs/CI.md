@@ -43,6 +43,22 @@ screenshots, logs and the full test report.
   in the foreground and wait for `simctl bootstatus` before testing: left to `xcodebuild`, the
   first UI test's app launch once landed mid-boot on iPad and timed out acquiring a background
   assertion.
+- **The UI-test job launches the app once before the tests.** A newly booted simulator's first
+  launch of a newly installed app is its slowest. On a busy runner it outlasted XCUITest's
+  launch limit: the first two iPad tests failed with "Timed out while launching application",
+  one of them holding the job for its whole 10-minute allowance, and the other 21 passed. So the
+  job installs the built app, launches it with `-uiTestInMemory`, waits ten seconds and quits it,
+  where nothing is timing the launch. That first install and launch has taken 2.5 to 4 minutes,
+  which is why the step is allowed 15.
+- **The unit-test job does the same.** Its tests run in under a minute, but one run sat for 16
+  minutes between the test command starting and the first test, with nothing in the log to say
+  why. With the boot and first launch in their own step, a slow simulator shows there, and the
+  job's 30 minutes aren't spent inside a command that prints nothing.
+- **The Release job checks the widget extension is in the app.** The builds are quiet, and a
+  target that stopped being embedded would still compile. `Tools/ci/check-embedded-extension.sh`
+  looks in the built app for `PlugIns/ShutterManagerWidgets.appex`, that it's a WidgetKit
+  extension with a bundle ID under the app's, that the app sets `NSSupportsLiveActivities`, and
+  that the two versions and build numbers match, which App Store Connect insists on.
 - **The unit-test host app uses a temporary in-memory library.** The unit tests build their own
   containers, so the app hosting them doesn't open the simulator's library or start CloudKit
   setup. That alone took the unit-test step from about 7 minutes to under 4.
@@ -107,12 +123,16 @@ xcodebuild test -project ShutterManager.xcodeproj -scheme ShutterManager \
 - **logging**: app code logs with `os.Logger`, not `print`, `debugPrint`, `NSLog` or `dump`.
 - **capabilities**: the entitlements name the `iCloud.jcameronfurey.shuttermanager` container
   (and Swift code names no other), don't set `default-data-protection`, and Info.plist keeps the
-  remote-notification background mode CloudKit sync needs.
+  remote-notification background mode CloudKit sync needs. One file imports WeatherKit
+  (`WeatherKitCloudProvider.swift`), and while it does the entitlements carry
+  `com.apple.developer.weatherkit`.
 - **project**: deployment target, version, build number and Swift version agree across every
   target and configuration; bundle IDs are the expected three; Swift files aren't referenced
   individually (the targets use folder-synced groups); asset catalog JSON parses.
 - **leftovers**: no names from the Axe Manager port (guitar, tuner, axemanager, and so on).
 - **store-text**: each `marketing/<version>/` folder has every App Store text field, each within
   App Store Connect's limit, and the keywords have no spaces after commas or repeats.
+- **wording**: no text the user reads, in the app or the App Store copy, says "insurance". The
+  report is "a report for your insurer"; the app doesn't value gear or speak about cover.
 
 To accept a flagged line on purpose, end it with `// conventions:allow <check-name>`.

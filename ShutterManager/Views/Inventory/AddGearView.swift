@@ -24,6 +24,8 @@ struct AddGearView: View {
     @State private var photoMessage: String?
     /// A shutter count kept from a photo, recorded as a reading when the item is saved.
     @State private var pendingShutterCount: Int?
+    /// When the photo that gave the count was taken.
+    @State private var pendingShutterDate: Date?
     @State private var saveFailed = false
 
     private let logger = Logger(subsystem: Constants.App.loggerSubsystem, category: "AddGear")
@@ -68,6 +70,8 @@ struct AddGearView: View {
         .sheet(item: $photoMetadata) { found in
             PhotoMetadataImportView(metadata: found.metadata, item: draft) { count in
                 pendingShutterCount = count
+                // The count is as of the day the photo was taken, not the day it's added here.
+                pendingShutterDate = found.metadata.dateTaken
             }
         }
         .onChange(of: pickedPhoto) { _, newItem in
@@ -201,10 +205,15 @@ struct AddGearView: View {
         draft.make = draft.make?.trimmingCharacters(in: .whitespacesAndNewlines).nonEmptyOrNil
         draft.model = draft.model?.trimmingCharacters(in: .whitespacesAndNewlines).nonEmptyOrNil
         draft.dateAdded = Date()
+        // A cleaning interval chosen before the category was changed belongs to no sensor.
+        if !draft.gearCategory.hasSensorCleaning {
+            draft.sensorCleaningIntervalDays = 0
+        }
         draft.markModified()
         context.insert(draft)
         if let count = pendingShutterCount, draft.gearCategory.hasShutter {
-            context.insert(ShutterCountReading(gearItem: draft, count: count, source: .photo))
+            context.insert(ShutterCountReading(gearItem: draft, date: pendingShutterDate ?? Date(), count: count,
+                                               source: .photo))
         }
         guard context.saveOrLog() else {
             context.rollback()

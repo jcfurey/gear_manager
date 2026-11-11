@@ -52,8 +52,10 @@ enum PhotoIngest {
             ]
             guard let cgImage = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary),
                   let encoded = UIImage(cgImage: cgImage).jpegData(compressionQuality: compressionQuality) else {
+                // A format ImageIO can open but not draw (a new camera's raw file, say). The
+                // original is kept, with its location removed where the format allows.
                 logger.warning("Could not re-encode picked image — storing original (\(data.count) bytes).")
-                return data
+                return removingLocation(from: data, source: source)
             }
 
             // An already-small image (or one whose format beats JPEG at this quality) shouldn't be

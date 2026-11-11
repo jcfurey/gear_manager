@@ -65,27 +65,43 @@ Keep these when changing CI:
 external dependencies. The targets use folder-synced groups, so a new file in a folder is part of
 the target without a project edit.
 
+**Targets:** the app (`ShutterManager/`), its widget extension (`ShutterManagerWidgets/`, bundle
+ID `jcameronfurey.shuttermanager.widgets`, embedded in the app), and the unit and UI tests.
+`ShutterManagerShared/` is one folder in two targets: the app and the extension both compile
+what's in it. The extension's `Info.plist` is `ShutterManagerWidgets-Info.plist` at the root,
+beside the app's.
+
 **Tabs** (`App/ContentView.swift`): **Inventory · Tools · Light Meter · Shoots · Settings**.
 
 **Folders (`ShutterManager/`):**
 - `App/`: entry point (library or `StoreRecoveryView`), root tabs, and `AppNavigation` (the
   selected tab and the Tools stack, for opening one tab from another).
 - `Models/`: the `@Model` types.
-  - `Catalog/`: Foundation-only catalogs (`GearCategory`, `SensorFormat`, `LensMount`,
-    `FilmStock` with `FilmStockCatalog`).
+  - `Catalog/`: Foundation-only catalogs (`GearCategory`, `SensorFormat`, `LensMount` with
+    `MountCompatibility`, `FilmStock` with `FilmStockCatalog`).
   - `PhotoMath/`: Foundation-only photography math (exposure scales, equivalent exposure, ND,
     Sunny 16, the light meter, optics, astro, time-lapse, flash, print size, reciprocity,
     development timing) and astronomy (`Astronomy`, `SunMoon`, `SkyEvents`: sun and moon
     positions, rise and set, twilights, moon phases, Milky Way windows, and `ShootLight`, a
     shoot's golden hours). Sources are in
     `docs/PHOTO_MATH_REFERENCES.md`; comments cite it rather than re-deriving.
-  - `Export/`: `LibraryExport` and its DTOs.
+  - `Export/`: `LibraryExport` and its DTOs, `LibraryPackage` (the zip a library travels in),
+    and the values the printed pages are laid out from (`InsurerReport`, `GearLabel` and
+    `LabelSheet`).
+  - `PhotoUsage.swift`: Foundation-only counting and matching for Usage from Photos.
+  - `CloudForecast.swift`: Foundation-only: a place's cloud forecast by the hour, and what it
+    says about a window of time.
 - `Services/`: persistence, export/import, backups, reminders, EXIF, Tip Jar, iCloud status,
   `ToolTimers` (the running bulb and development timers), the camera (`CaptureSessionCoordinator`,
-  `BarcodeScannerService`, `LightMeterService`), `LocationService` and `ShootAlertScheduler`.
+  `BarcodeScannerService`, `LightMeterService`), `LocationService`, `ShootAlertScheduler`, the
+  printed pages (`PrintDocument`, `InsurerReportRenderer`, `LabelSheetRenderer`), Usage from
+  Photos (`PhotoUsageReader`, `PhotoUsageRecorder`), `LibraryDeduplicator`, `TimerCue` (a
+  timer's alert when notifications can't show it), and the cloud forecast (`CloudForecastStore`,
+  `WeatherKitCloudProvider`).
 - `Views/`: `Inventory/`, `Tools/`, `LightMeter/`, `Shoots/` (the shoot log, kits, film rolls,
   shot-list templates), `Places/` (choosing a place), `Settings/`, `Shared/`.
-- `Utilities/`: constants, schema, formatters, import validation, photo ingest, marketplace links.
+- `Utilities/`: constants, schema, formatters, import validation, photo ingest, marketplace links,
+  and `ZipArchive` (a store-only zip reader and writer, Foundation-only).
 - `Extensions/`: small helpers on Swift types.
 
 **Tests:**
@@ -99,6 +115,19 @@ the target without a project edit.
   `.primaryAction` and move secondary buttons to the leading side.
 - `AccessibilityAuditTests` runs Xcode's accessibility audit (labels, touch targets, reachable
   text) on each tab's main screens. Its header says why the other audit types are left out.
+- The UI-test helpers expect a slow simulator, because CI's is: `replaceText` waits for typed
+  text to show (it can lag by seconds) and types again only if characters are still missing,
+  `selectTab` checks that the tab came up and taps again if it didn't,
+  `goBack(to:)` taps Back again when the first tap landed mid-push, `tap(_:toShow:)` taps again
+  when a tap that should open a screen or a sheet didn't (`tapToClose` for one that should close
+  it), and the audit waits for a passing banner to go. Use them rather than a bare `typeText`,
+  or a bare `tap` on a tab, a Back button or anything that opens or closes a screen: a tap made
+  just after a sheet closes or a screen pops can be lost. A bare `tap` is for what flips in
+  place (a switch, a tick, a step added), where tapping twice would undo or double it.
+- Under `-uiTestInMemory` the app turns UIKit animations off (Debug), so a tap can't land
+  part-way through a push, a pop or a sheet.
+- Settings a UI test leaves behind stay on the simulator for the tests after it: the planners'
+  place is one, so a later test finds the sun and moon planner already showing a day.
 
 ### Data layer
 
@@ -161,8 +190,44 @@ Development schema. Deploying to Production is done by hand in CloudKit Console.
   actor. It rejects only what can hurt the app: non-finite values, magnitudes past
   `Constants.DataLimits`, and record counts over the limit. `LibraryExport.formatVersion` rises
   only for a change older versions can't read; a newer file is refused with a clear message.
-- **Import strategies.** Import writes through an isolated context with one final save. Merge skips
-  records whose ID already exists; replace removes what the file doesn't have.
+- **A library travels as a package** (`LibraryPackage`): a zip with `library.json` (a
+  `LibraryExport` with no photos in it), `photos.json` (which item or record each photo belongs
+  to) and each photo as an entry. Exports' Library format and every backup write one.
+  - Photos go in and come out `Constants.DataLimits.packagePhotoBatch` at a time. Read their
+    bytes through a scratch `ModelContext` that's let go, never from the library's own objects:
+    those stay in memory as long as the screens showing them. Keep the scratch context alive
+    while its objects are read (`withExtendedLifetime`).
+  - The zip is store-only and in the format's plain form (`ZipArchive`), so any tool opens it.
+    A test pins the bytes the writer produces; if the writer changes, check its output again
+    with a standard zip tool. Never change an entry name or the index's keys: files already
+    written must keep importing.
+  - Import tells a package from a JSON file by how it starts (`ImportDocument.open`), not by
+    its name. JSON files with photos inside, as earlier versions wrote, still import.
+- **Too large to write.** A package past `DataExportService`'s limit (3 GB) is refused with
+  `ExportError.photosTooLarge`, which says to leave the photos out. A backup that large is
+  written without its photos, and the Backups screen says so. A JSON export past its own limit
+  (256 MB) throws `ExportError.tooLarge`.
+- **Import strategies.** The records are written through an isolated context with one final save.
+  Merge skips records whose ID already exists; replace removes what the file doesn't have.
+  - A package's photos follow that save in small lots, each saved by itself: all of them in one
+    save would need all of them in memory. So a failure there leaves the records in and some
+    photos out (`ImportError.photosIncomplete`), and importing the file again adds the rest.
+  - That's why photos merge one by one: a gear photo already in the library (by ID) is left
+    alone, and an item the library has gains the file's photos it's missing.
+  - `didImportNotification` is posted when the records are in, before the photos start, and
+    again when they finish: a replace has removed what other screens were showing.
+- **After the library is replaced** (a replace-import, Delete All Data), call
+  `AppNavigation.libraryWasReplaced()`: the tabs are rebuilt, so no screen is left holding a
+  deleted record.
+- **Doubled records.** A file imported before iCloud has finished downloading the same library
+  leaves every record in twice, as two rows with one `id`: CloudKit allows no unique constraint.
+  - `LibraryDeduplicator` finds them and folds each set into one (Settings → Find Duplicates). It
+    keeps the copy changed last, then the one with more hanging off it, and moves over the parts
+    and links only another copy had.
+  - It runs only when the user asks. Never make it automatic: nothing in a row says which copy
+    it is, so two devices choosing for themselves could each keep the copy the other deletes.
+  - A new model is added to its `models`, `find` and `merge`; a test compares `models` with
+    `AppSchema.models`.
 - **One place for "everything".**
   - Export and backups read the library through `LibraryContents.fetch(from:)`. A new top-level
     model is added there, and to `LibraryExport` as an optional array so older files still decode.
@@ -180,18 +245,56 @@ Development schema. Deploying to Production is done by hand in CloudKit Console.
 - **Photos.** Read EXIF (`PhotoMetadataReader`) from the original bytes *before* `PhotoIngest`
   downsamples them. Stored photos have their location removed. Only Nikon maker notes expose a
   shutter count through ImageIO.
+- **Printed pages** (the report for your insurer, QR labels).
+  - Lay a page out first as `PrintElement`s with frames, then draw it with `PrintDocument`. The
+    tests check the layout's frames and read the PDF back with PDFKit.
+  - Paper comes from `PrintPaper.size()`: Letter where it's the custom, A4 elsewhere.
+  - Say "a report for your insurer". The word "insurance" is banned from the app's strings and the
+    App Store text (the `wording` convention check).
+- **QR labels.** A label's code is a `LabelLink`: `shuttermanager://kit/<id>` or
+  `shuttermanager://gear/<id>`, an ID and nothing else. The scheme is in `Info.plist`;
+  `AppNavigation.open(_:)` handles it and `ContentView` shows what it names. Never change the
+  link's form: printed labels can't be updated.
+- **Usage from Photos** (`PhotoUsageView`, from Collection and from a shoot).
+  - `PhotoUsageReader` reads only metadata, from the file where the system put it
+    (`PhotoMetadataReader.read(contentsOf:)`); a raw file and a JPEG of the same name are one shot.
+  - `PhotoUsageMatcher` matches by serial number, then by name. A match the user chooses is
+    remembered per device (`PhotoUsageMatchStore`), not synced.
+  - No tally is stored. `PhotoUsageRecorder` writes shutter-count readings, gear the user asks to
+    add, and a shoot or its gear, in one save: an item's use still comes from the shoot log.
+  - A lens's group also counts the focal lengths and apertures its shots were taken at, shown as
+    a line of words and, for a zoom, a chart. Those are shown, not saved.
+  - The pickers can't be driven from a UI test: `-uiTestPhotoUsageSample` (Debug) adds a button
+    that reads a fixed batch.
 - **Money** is `Decimal?` (`purchasePrice`, `currentValue`). There is no price history and there
   are no price alerts: the user enters a purchase price and an optional current value.
   `MarketplaceSearch` opens searches on used-gear sites.
-- **Gear reminders** (sensor cleaning, loan due dates) go through `NotificationManager`. Its
-  notification-center calls are injectable for tests. Reminders are reconciled on foreground,
-  import, restore and CloudKit remote changes.
+- **Gear reminders** (sensor cleaning, loan due dates, maintenance reminders) go through
+  `NotificationManager`. Its notification-center calls are injectable for tests. Reminders are
+  reconciled on foreground, import, restore and CloudKit remote changes.
 - **Timer alerts** (bulb exposures; development agitations, pour warnings and step ends) go through
   `NotificationManager.scheduleTimerAlerts(_:group:)`.
   - Their identifiers start with `timer_`, so a gear-reminder refresh never removes them.
   - They don't depend on the Gear Reminders setting.
   - `ToolTimers.shared` holds the running timers for the session. Timing comes from wall-clock
     dates, so it stays right in the background.
+  - When notifications can't be shown, `ToolTimers.giveDueCues` gives each alert through
+    `TimerCue` while the app is open: a banner, a haptic and a tone made in code
+    (`TimerToneData`). With notifications on it does nothing, so no alert comes twice.
+- **Live Activities** (a running timer on the Lock Screen and in the Dynamic Island).
+  - `ShutterManagerShared/TimerActivityAttributes.swift` is what an activity shows, with the
+    words and numbers worked out there so the app's tests can check them. The extension
+    (`TimerLiveActivity`) only draws.
+  - `ToolTimers` asks `TimerActivityPresenting` to show or end; `TimerActivityController` is the
+    ActivityKit one, and only `ToolTimers.shared` has it. Tests pass a recorder, or nothing.
+  - Nothing is pushed to an activity: there's no server. A running countdown is drawn by the
+    system (`Text(timerInterval:)`), and its stale date, set to when it runs out, is what makes
+    the activity say "Time's up" with the app asleep. Anything that must change at a moment the
+    app may not be running has to work that way.
+  - What the extension needs from the app goes in the activity's content state. It can't read
+    the library: sharing that would take an App Group, which the app doesn't have.
+  - The extension's version and build number must match the app's, and its bundle ID must start
+    with the app's. The convention checks hold both.
 - **Photography math.**
   - `Models/PhotoMath/` stays Foundation-only, with lengths in millimetres, times in seconds and
     temperatures in °C.
@@ -205,6 +308,19 @@ Development schema. Deploying to Production is done by hand in CloudKit Console.
   - A stock whose maker publishes no figures is `.unpublished` or `.noCorrectionUpTo`; never fill
     it from third-party tables.
   - Film stock IDs are stored and synced like the other catalog IDs: never rename or remove one.
+- **Lens mounts and compatibility.**
+  - `GearItem.mount` is text: a `LensMount` suggestion or any typed name. An adapter's mount
+    names both sides, lens first: "Canon EF → Canon RF" (`LensMount.adapterName`; a typed "->"
+    reads the same). It's a stored form: never change it.
+  - `MountCompatibility.fit` answers from, in order: the same mount, a maker's own adapter, then
+    the room between the two flange distances. An adapter in the inventory counts for its pair
+    whatever the arithmetic says.
+  - The data comes only from the sources in `docs/PHOTO_MATH_REFERENCES.md` ("Lens mounts"): a
+    flange distance from the table, a maker's adapter from the maker's own page. Never say an
+    adapter exists unless its maker does; other brands' adapters are shown as room, "if one is
+    made for this pair".
+  - `CompatibilityView` (from a body's or a lens's screen) lists the inventory by fit, and
+    `GearItem.packingIssues(for:)` flags a lens that goes on no body packed with it.
 - **One camera owner.** `CaptureSessionCoordinator.shared` owns the capture session and its one
   preview layer, like `AudioSessionManager` in Axe Manager.
   - The barcode scanner and the light meter each start it for themselves. `stop(for:)` does
@@ -218,6 +334,26 @@ Development schema. Deploying to Production is done by hand in CloudKit Console.
     one per device as JSON; `SavedPlace` is the synced list.
   - `LocationService` asks for one location, while in use, only when "Use My Location" is tapped.
   - Sky times show in the place's own time zone, not the device's.
+- **Cloud forecast** (Apple Weather, in the sky planners and on a shoot still to come).
+  - It's off until the user turns it on (`CloudForecastStore.setEnabled`), because asking sends
+    the place to Apple. Nothing asks for weather while it's off. The switch is per device and
+    never exported: a file from another device can't agree for this one.
+  - `CloudForecastStore.shared` is the one owner, and `WeatherKitCloudProvider` the one file that
+    imports WeatherKit. The convention checks hold that, and the entitlement it needs.
+  - A place is asked for at `GeoCoordinate.forecastPoint` (two decimal places, about a
+    kilometre), and again only once its forecast is `Constants.CloudForecast.lifetime` old: each
+    request counts against the developer account's monthly allowance.
+  - Forecasts live in memory for the session. Don't store or sync one: Apple's terms allow only
+    temporary caching.
+  - Apple's terms also ask for its credit wherever its data shows: the Apple Weather mark and
+    the legal link (`WeatherAttributionRow`). A screen shows a forecast through
+    `CloudForecastRows`, which adds the credit, and asks for it with
+    `task(id: CloudForecastStore.shared.request(for:))`.
+  - `Models/CloudForecast.swift` stays Foundation-only. A window's clouds weigh each hour by its
+    share of the window; one that runs past the forecast's ten days gets no summary.
+  - CI's simulator isn't signed for WeatherKit, so the real provider always fails there.
+    `-uiTestCloudSample` (Debug) puts a fixed forecast in its place, and under `-uiTestInMemory`
+    the switch starts off and isn't saved.
 - **Sky math.**
   - Every event is an altitude crossing found by `SkySearch` (sample, then bisect to a second), so
     polar day and night come out as no crossing.
@@ -281,6 +417,12 @@ Development schema. Deploying to Production is done by hand in CloudKit Console.
   Parse typed numbers with `Double(localizedInput:)` and `Decimal(localizedInput:)`.
 - **Constants.** `Utilities/Constants.swift` holds magic numbers and UserDefaults keys in nested
   enums.
+- **Swift pitfalls CI has caught here.**
+  - Don't name an enum case `none`: next to an optional it reads as `Optional.none`, with a
+    warning. Use a word for what it means (`unmatched`, `leftOut`).
+  - Don't name a local after the method that makes it (`let pages = pages(for:)`).
+  - A default argument can't read a main-actor static: take an optional and fill it in inside.
+  - Turn a `Double` into an `Int` with `Int(saturating:)`: a calculator's result can be infinite.
 - **Shared views.** Reuse `Views/Shared/`: `StatCard`, `EmptyStateView`, `LoadingStateView`,
   `SettingsRow`, `MeasurementField`, `CountField`, `MoneyField`, and `ToastNotificationManager`.
 - **Charts** use Swift Charts.

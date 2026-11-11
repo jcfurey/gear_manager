@@ -9,12 +9,13 @@ import SwiftUI
 import SwiftData
 import UniformTypeIdentifiers
 
-/// File-picker import: previews a chosen export, then merges it into the library through
-/// `DataImportService`. Records the library already has (same ID) are skipped, so importing the
-/// same file twice adds nothing.
+/// File-picker import: previews a chosen library file or JSON export, then merges it into the
+/// library through `DataImportService`. Records the library already has (same ID) are skipped,
+/// so importing the same file twice adds nothing.
 struct DataImportView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    @Environment(iCloudSyncManager.self) private var syncManager
 
     @State private var showingDocumentPicker = false
     @State private var isImporting = false
@@ -40,7 +41,7 @@ struct DataImportView: View {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("Select File to Import")
                                     .foregroundColor(.primary)
-                                Text("A JSON export or backup from \(Constants.App.name)")
+                                Text("A library file, JSON export or backup from \(Constants.App.name)")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }
@@ -77,6 +78,13 @@ struct DataImportView: View {
                         if preview.hasSettings {
                             Label("App settings", systemImage: "gearshape")
                         }
+                        if let warning = Self.syncWarning(storageMode: syncManager.storageMode, status: syncManager.status,
+                                                          lastDownload: syncManager.lastDownload) {
+                            Label(warning, systemImage: "exclamationmark.icloud")
+                                .font(.footnote)
+                                .foregroundStyle(AppColors.warningText)
+                                .accessibilityIdentifier("importSyncWarning")
+                        }
                         Button("Import This Data") {
                             if pendingImportURL != nil { showingConfirmation = true }
                         }
@@ -86,11 +94,13 @@ struct DataImportView: View {
 
                 Section("About Importing") {
                     ImportInfoRow(title: "What's Added",
-                                  description: "Everything in the file that isn't already in your library. Items you already have are left as they are.")
+                                  description: "Everything in the file that isn't already in your library. Items you already have are left as they are; from a library file, they gain any of its photos they're missing.")
                     ImportInfoRow(title: "Settings",
                                   description: "Appearance and haptics settings in the file replace the current ones.")
                     ImportInfoRow(title: "Before You Import",
                                   description: "Consider exporting or backing up your current library first.")
+                    ImportInfoRow(title: "With iCloud Sync",
+                                  description: "Your library already reaches your other devices through iCloud, so there's no need to import it there. On a new device, let iCloud finish syncing before importing a file, or records it hasn't downloaded yet end up twice. If that happens, Find Duplicates in Settings folds them back into one.")
                 }
             }
             .navigationTitle("Import Data")
@@ -101,7 +111,7 @@ struct DataImportView: View {
                 }
             }
         }
-        .fileImporter(isPresented: $showingDocumentPicker, allowedContentTypes: [.json],
+        .fileImporter(isPresented: $showingDocumentPicker, allowedContentTypes: [.zip, .json],
                       allowsMultipleSelection: false) { result in
             handleFileSelection(result)
         }
@@ -112,6 +122,22 @@ struct DataImportView: View {
             }
         } message: {
             Text("This adds the file's records to your library. It can't be undone.")
+        }
+    }
+
+    /// Why importing now could put records in twice, or nil when there's no sign it would: iCloud
+    /// is on and is syncing, or hasn't finished a download since the app opened.
+    static func syncWarning(storageMode: iCloudSyncManager.StorageMode, status: iCloudSyncManager.SyncStatus,
+                            lastDownload: Date?) -> String? {
+        guard storageMode == .cloudKit else { return nil }
+        let advice = "If this file is a copy of a library you keep in iCloud, wait for it: importing first puts every record in twice."
+        switch status {
+        case .syncing:
+            return "iCloud is syncing now. \(advice)"
+        case .available where lastDownload == nil:
+            return "iCloud hasn't finished checking for your library since the app opened. \(advice)"
+        default:
+            return nil
         }
     }
 
@@ -204,4 +230,5 @@ struct ShareSheet: UIViewControllerRepresentable {
 #Preview {
     DataImportView()
         .modelContainer(PreviewModelContainer.make())
+        .environment(iCloudSyncManager())
 }

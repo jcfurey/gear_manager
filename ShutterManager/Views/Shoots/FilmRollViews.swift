@@ -303,7 +303,7 @@ struct FilmRollEditorView: View {
         dismiss()
         DispatchQueue.main.async {
             context.delete(roll)
-            _ = context.saveOrLog()
+            if !context.saveOrLog() { context.rollback() }
         }
     }
 }

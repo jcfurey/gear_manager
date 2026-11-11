@@ -262,6 +262,16 @@ extension GearItem {
     static func trimmed(_ value: Double) -> String {
         value.formatted(.number.precision(.fractionLength(0...2)))
     }
+
+    /// The item as the compatibility lists see it: its mount, and its format when it has one.
+    var mountedGear: MountedGear {
+        MountedGear(id: id, name: displayName, mount: mount, category: gearCategory, format: sensorFormat)
+    }
+
+    /// "Canon EF lenses on Canon RF bodies", when the mount names an adapter's two mounts.
+    var adapterDescription: String? {
+        LensMount.adapterMounts(in: mount).map { "\($0.lens) lenses on \($0.body) bodies" }
+    }
 }
 
 // MARK: - Shutter, sensor cleaning, batteries
@@ -314,6 +324,28 @@ extension GearItem {
     var isOnLoan: Bool { openLoan != nil }
 
     var isLoanOverdue: Bool { openLoan?.isOverdue ?? false }
+}
+
+// MARK: - Attention
+
+extension GearItem {
+    /// Why the item needs a look, in words: on loan, needing service, a sensor cleaning due, a
+    /// shutter near its rated life. Empty when nothing does.
+    var attentionReasons: [String] {
+        var reasons: [String] = []
+        if let loan = openLoan { reasons.append(loan.isOverdue ? "\(loan.summary), overdue" : loan.summary) }
+        if serviceNeeded { reasons.append("Needs service") }
+        if isSensorCleaningDue { reasons.append("Sensor cleaning due") }
+        if isNearShutterLife { reasons.append("Shutter near rated life") }
+        // Maintenance reminders that have come due, soonest first; one line for each kind.
+        let due = (maintenanceReminders ?? [])
+            .filter { $0.notifies(for: self) && $0.daysUntilDue <= 0 }
+            .sorted { $0.dueDate < $1.dueDate }
+        for reminder in due where !reasons.contains("\(reminder.type.displayName) due") {
+            reasons.append("\(reminder.type.displayName) due")
+        }
+        return reasons
+    }
 }
 
 // MARK: - Value

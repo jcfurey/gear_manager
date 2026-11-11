@@ -69,7 +69,9 @@ final class NotificationManager: ObservableObject {
         authorizationStatus = await authorizationProvider()
     }
 
-    private var canDeliver: Bool {
+    /// Whether a scheduled notification will be shown. When it won't, a running timer gives its
+    /// alerts itself while the app is open (`ToolTimers.giveDueCues`).
+    var canDeliver: Bool {
         authorizationStatus == .authorized || authorizationStatus == .provisional
     }
 
@@ -91,7 +93,11 @@ final class NotificationManager: ObservableObject {
     struct GearReminder: Equatable {
         static let sensorCleaningPrefix = "sensor_cleaning_"
         static let loanDuePrefix = "loan_due_"
-        static let prefixes = [sensorCleaningPrefix, loanDuePrefix]
+        static let maintenanceDuePrefix = "maintenance_due_"
+        static let prefixes = [sensorCleaningPrefix, loanDuePrefix, maintenanceDuePrefix]
+
+        static func identifier(for loan: GearLoan) -> String { loanDuePrefix + loan.id.uuidString }
+        static func identifier(for reminder: MaintenanceReminder) -> String { maintenanceDuePrefix + reminder.id.uuidString }
 
         let identifier: String
         let title: String
@@ -102,11 +108,14 @@ final class NotificationManager: ObservableObject {
         let minute: Int
 
         /// Changes whenever anything shown or the fire time changes, so an edit reschedules.
+        /// The due date counts in whole seconds: a backup stores dates without fractions, so a
+        /// finer revision changed on every restore and delivered reminders fired again.
         var revision: String {
-            "\(due?.timeIntervalSince1970 ?? 0)|\(hour)|\(minute)|\(title)|\(body)"
+            "\(due.map { $0.timeIntervalSince1970.rounded(.down) } ?? 0)|\(hour)|\(minute)|\(title)|\(body)"
         }
 
-        /// The sensor-cleaning reminder and one reminder per loan for `item`.
+        /// The sensor-cleaning reminder, one reminder per loan, and one per maintenance reminder
+        /// for `item`.
         static func all(for item: GearItem) -> [GearReminder] {
             let name = item.displayName
             var reminders = [GearReminder(
@@ -125,10 +134,18 @@ final class NotificationManager: ObservableObject {
                     body = who.isEmpty ? "\(name) is due to be returned today." : "\(name) is due back to \(who) today."
                 }
                 reminders.append(GearReminder(
-                    identifier: loanDuePrefix + loan.id.uuidString,
+                    identifier: identifier(for: loan),
                     title: loan.direction == .lentOut ? "Gear due back" : "Rental due back",
                     body: body,
                     due: loan.isOpen ? loan.dueDate : nil,
+                    hour: item.reminderHour, minute: item.reminderMinute))
+            }
+            for reminder in item.maintenanceReminders ?? [] {
+                reminders.append(GearReminder(
+                    identifier: identifier(for: reminder),
+                    title: "\(reminder.type.displayName) due",
+                    body: "\(name) is due for \(reminder.type.displayName.lowercased()).",
+                    due: reminder.notifies(for: item) ? reminder.dueDate : nil,
                     hour: item.reminderHour, minute: item.reminderMinute))
             }
             return reminders
@@ -148,9 +165,20 @@ final class NotificationManager: ObservableObject {
         }.value
     }
 
+    /// The identifiers of every reminder `item` can have, for cancelling them once the item has
+    /// been deleted.
+    func reminderIdentifiers(for item: GearItem) -> [String] {
+        GearReminder.all(for: item).map(\.identifier)
+    }
+
     /// Removes a deleted item's reminders.
     func cancelReminders(for item: GearItem) {
-        let identifiers = GearReminder.all(for: item).map(\.identifier)
+        cancelReminders(identifiers: reminderIdentifiers(for: item))
+    }
+
+    /// Removes the reminders with these identifiers: a deleted item's, or a deleted loan's or
+    /// maintenance reminder's, which the item no longer lists.
+    func cancelReminders(identifiers: [String]) {
         enqueue { [self] in
             removeRequests(identifiers)
             var revisions = storedRevisions
@@ -247,6 +275,9 @@ final class NotificationManager: ObservableObject {
         let date: Date
         let title: String
         let body: String
+        /// Kept when there are more alerts than can be scheduled: a step's end matters more
+        /// than one more agitation.
+        var isRequired = false
     }
 
     static let timerPrefix = "timer_"
@@ -264,8 +295,8 @@ final class NotificationManager: ObservableObject {
                 await refreshAuthorizationStatus()
             }
             guard canDeliver else { return }
-            let upcoming = alerts.filter { $0.date.timeIntervalSinceNow > 0.5 }.sorted { $0.date < $1.date }
-            for (index, alert) in upcoming.prefix(Self.maximumTimerAlerts).enumerated() {
+            let upcoming = Self.timerAlertsToSchedule(alerts.filter { $0.date.timeIntervalSinceNow > 0.5 })
+            for (index, alert) in upcoming.enumerated() {
                 let content = UNMutableNotificationContent()
                 content.title = alert.title
                 content.body = alert.body
@@ -280,6 +311,21 @@ final class NotificationManager: ObservableObject {
                 }
             }
         }
+    }
+
+    /// At most `limit` of `alerts`, soonest first: every required one, then the soonest of the
+    /// rest. A long development step has more agitations than iOS will hold, and cutting off
+    /// the latest alerts dropped its "pour out" and "done".
+    ///
+    /// `limit` is `maximumTimerAlerts` unless given (a default argument can't read that, being
+    /// evaluated off the main actor).
+    static func timerAlertsToSchedule(_ alerts: [TimerAlert], limit: Int? = nil) -> [TimerAlert] {
+        let limit = limit ?? maximumTimerAlerts
+        let sorted = alerts.sorted { $0.date < $1.date }
+        guard sorted.count > limit else { return sorted }
+        let required = sorted.filter(\.isRequired).suffix(limit)
+        let others = sorted.filter { !$0.isRequired }.prefix(limit - required.count)
+        return (others + required).sorted { $0.date < $1.date }
     }
 
     func cancelTimerAlerts(group: String) {
@@ -322,9 +368,11 @@ final class NotificationManager: ObservableObject {
                 content.title = alert.title
                 content.body = alert.body
                 content.sound = .default
-                let components = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute, .second],
-                                                                 from: alert.date)
-                let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
+                // An interval, not calendar components: golden hour is a moment, and a calendar
+                // trigger follows the wall clock when the device changes time zone on the way to
+                // the shoot.
+                let trigger = UNTimeIntervalNotificationTrigger(timeInterval: max(alert.date.timeIntervalSinceNow, 1),
+                                                                repeats: false)
                 do {
                     try await deliverRequest(UNNotificationRequest(identifier: alert.identifier, content: content,
                                                                    trigger: trigger))

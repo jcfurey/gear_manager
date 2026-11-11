@@ -66,6 +66,12 @@ extension XCTestCase {
         repeat {
             if let item = candidates.first(where: { $0.exists && $0.isHittable }) {
                 item.tap()
+                // A tap that lands while a sheet is still leaving doesn't switch tabs: on iPad the
+                // Settings tab was tapped a second after Add Gear closed, and Settings never came.
+                // Tap again until the tab is the one showing.
+                for _ in 0..<2 where !isShowingTab(title, item: item, in: app, within: 2) {
+                    if item.exists && item.isHittable { item.tap() }
+                }
                 return true
             }
             Thread.sleep(forTimeInterval: 0.2)
@@ -78,6 +84,18 @@ extension XCTestCase {
         }
         XCTFail("Could not find a tab labeled \"\(title)\" (checked tab-bar button, cell, and button).",
                 file: file, line: line)
+        return false
+    }
+
+    /// Whether `title`'s tab comes up within `timeout`: its item reports being selected, or the
+    /// bar of its first screen (titled as the tab is) is on screen.
+    private func isShowingTab(_ title: String, item: XCUIElement, in app: XCUIApplication,
+                              within timeout: TimeInterval) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        repeat {
+            if (item.exists && item.isSelected) || app.navigationBars[title].exists { return true }
+            Thread.sleep(forTimeInterval: 0.2)
+        } while Date() < deadline
         return false
     }
 }
@@ -134,6 +152,103 @@ extension XCTestCase {
         return false
     }
 
+    /// Taps `element` and waits for what the tap should bring up; if that never comes, the test
+    /// fails.
+    ///
+    /// A tap made just as a sheet closes or a screen pops can be lost on a slow simulator: the
+    /// control is there to be found, but isn't listening yet. So while the control is still on
+    /// screen and `destination` hasn't come, it's tapped again. Use it for a tap that opens a
+    /// screen or a sheet, never for one that flips something (a switch, a tick): tapped twice,
+    /// that would end where it began.
+    func tap(_ element: XCUIElement, toShow destination: XCUIElement, timeout: TimeInterval = 5,
+             file: StaticString = #file, line: UInt = #line) {
+        XCTAssertTrue(element.waitForExistence(timeout: timeout), "Missing control: \(element)", file: file, line: line)
+        element.tap()
+        for _ in 0..<2 where !destination.waitForExistence(timeout: 3) {
+            if element.exists && element.isHittable { element.tap() }
+        }
+        XCTAssertTrue(destination.waitForExistence(timeout: timeout), "Tapping \(element) didn't bring up \(destination)",
+                      file: file, line: line)
+    }
+
+    /// Taps a control that closes the sheet or screen it's on (Save, Done) and waits for it to
+    /// go, tapping again while it's still there to be tapped. For a Save that comes just after
+    /// another screen has gone back, where a tap can be lost like any other.
+    func tapToClose(_ element: XCUIElement, timeout: TimeInterval = 5,
+                    file: StaticString = #file, line: UInt = #line) {
+        XCTAssertTrue(element.waitForExistence(timeout: timeout), "Missing control: \(element)", file: file, line: line)
+        element.tap()
+        for _ in 0..<2 where !element.waitForNonExistence(timeout: 3) {
+            if element.exists && element.isHittable { element.tap() }
+        }
+        XCTAssertTrue(element.waitForNonExistence(timeout: timeout), "\(element) didn't close what it was on",
+                      file: file, line: line)
+    }
+
+    /// Goes back one screen, to the one whose bar is titled `title`; an absent screen always fails.
+    ///
+    /// A back tap that lands while the push that brought this screen is still finishing is
+    /// ignored. That's rare on a light screen, but the sun and moon planner with a place chosen
+    /// takes long enough to settle that CI's iPhone lost one. So this taps again while this
+    /// screen's back button is still there and the earlier screen hasn't come.
+    func goBack(to title: String, in app: XCUIApplication,
+                file: StaticString = #file, line: UInt = #line) {
+        goBack(toShow: app.navigationBars[title], in: app, file: file, line: line)
+    }
+
+    /// Goes back one screen, to the one that shows `destination`. For a screen whose bar has no
+    /// fixed title to look for.
+    func goBack(toShow destination: XCUIElement, in app: XCUIApplication,
+                file: StaticString = #file, line: UInt = #line) {
+        // Named, so a later try can't tap some other button once the earlier screen is back.
+        let named = app.navigationBars.buttons["BackButton"].firstMatch
+        (named.exists ? named : app.navigationBars.buttons.element(boundBy: 0)).tap()
+        for _ in 0..<2 where !destination.waitForExistence(timeout: 3) {
+            if named.exists && named.isHittable { named.tap() }
+        }
+        XCTAssertTrue(destination.waitForExistence(timeout: 5), "Going back didn't bring up \(destination)",
+                      file: file, line: line)
+    }
+
+    /// Chooses a place for a planner from typed coordinates, starting on a screen with the place
+    /// row and ending back on it. Typed, so it needs no location permission and no network.
+    func chooseTypedPlace(latitude: String, longitude: String, in app: XCUIApplication,
+                          file: StaticString = #file, line: UInt = #line) {
+        let findOnMap = app.buttons["findOnMapButton"].firstMatch
+        tap(app.buttons["placeRow"].firstMatch, toShow: findOnMap, file: file, line: line)
+        tap(findOnMap, toShow: app.textFields["latitudeField"].firstMatch, file: file, line: line)
+
+        replaceText(in: app.textFields["latitudeField"].firstMatch, with: latitude)
+        replaceText(in: app.textFields["longitudeField"].firstMatch, with: longitude)
+        let useCoordinates = app.buttons["useCoordinatesButton"].firstMatch
+        reveal(useCoordinates, in: app, file: file, line: line)
+        XCTAssertTrue(useCoordinates.isEnabled, "Typed coordinates should be accepted", file: file, line: line)
+        useCoordinates.tap()
+        let use = app.buttons["usePlaceButton"].firstMatch
+        XCTAssertTrue(use.waitForExistence(timeout: 5), file: file, line: line)
+        XCTAssertTrue(use.isEnabled, "A picked place can be used", file: file, line: line)
+        use.tap()
+
+        // The place sheet closes, back to the screen it was opened from.
+        XCTAssertTrue(use.waitForNonExistence(timeout: 5), "Using the place closes the place sheet", file: file, line: line)
+    }
+
+    /// Adds an item from the Inventory tab with a make and model, leaving the tab showing the
+    /// list. New items are camera bodies unless the category is changed.
+    func addGear(make: String, model: String, in app: XCUIApplication,
+                 file: StaticString = #file, line: UInt = #line) {
+        selectTab("Inventory", in: app, file: file, line: line)
+        let add = app.buttons["addGearButton"].firstMatch
+        XCTAssertTrue(add.waitForExistence(timeout: 10), "Missing Add Gear button", file: file, line: line)
+        tap(add, toShow: app.textFields["gearMakeField"], file: file, line: line)
+        replaceText(in: app.textFields["gearMakeField"], with: make, file: file, line: line)
+        replaceText(in: app.textFields["gearModelField"], with: model, file: file, line: line)
+        let save = app.buttons["saveGearButton"]
+        XCTAssertTrue(save.isEnabled, file: file, line: line)
+        save.tap()
+        XCTAssertTrue(save.waitForNonExistence(timeout: 5), "The sheet should close", file: file, line: line)
+    }
+
     func replaceText(in field: XCUIElement, with text: String,
                      file: StaticString = #file, line: UInt = #line) {
         XCTAssertTrue(field.waitForExistence(timeout: 5), file: file, line: line)
@@ -146,9 +261,55 @@ extension XCTestCase {
             field.tap()
             _ = keyboard.waitForExistence(timeout: 2)
         }
-        let existing = field.value as? String ?? ""
-        // Empty TextFields report their placeholder as their value.
-        let count = existing == field.placeholderValue ? 0 : existing.count
-        field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: count) + text)
+        /// What the field holds. An empty TextField reports its placeholder as its value.
+        func contents() -> String {
+            let value = field.value as? String ?? ""
+            return value == field.placeholderValue ? "" : value
+        }
+        /// Deletes `held` characters, then types `text`. Deleting more than the field holds does
+        /// no harm; deleting fewer leaves the rest in front of what's typed.
+        func enter(deleting held: Int) {
+            field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: held) + text)
+        }
+        /// Waits for what was typed to show. True once the field holds `text`, or holds something
+        /// that isn't a shortened copy of it: a field that rewrites what's typed (grouping
+        /// separators, capitals) is left alone. False if it still holds a shortened copy when the
+        /// wait runs out.
+        func settles() -> Bool {
+            let deadline = Date().addingTimeInterval(5)
+            repeat {
+                let arrived = contents()
+                if arrived == text || !Self.isSubsequence(arrived, of: text) { return true }
+                Thread.sleep(forTimeInterval: 0.25)
+            } while Date() < deadline
+            return false
+        }
+        enter(deleting: contents().count)
+        // A busy simulator does two things here, and they look alike for a moment:
+        // - it loses keystrokes: "Harbour" once arrived as "Ha" in CI, and the test then looked for
+        //   a title that was never typed;
+        // - it shows them late: the field read "R" some seconds after "R6" had gone in. Taking that
+        //   for a loss and deleting one character before typing again left "RR6".
+        // So the text is given time to show before it's counted as lost, and a retry clears as
+        // much as could be there, not only what the field admits to.
+        var attempts = 1
+        while !settles(), attempts < 3 {
+            enter(deleting: max(contents().count, text.count))
+            attempts += 1
+        }
+        let arrived = contents()
+        XCTAssertFalse(arrived != text && Self.isSubsequence(arrived, of: text),
+                       "Typed \"\(text)\" \(attempts) times, but the field holds \"\(arrived)\"", file: file, line: line)
+    }
+
+    /// Whether `part`'s characters all appear in `whole`, in order: what a field that lost some
+    /// keystrokes holds.
+    static func isSubsequence(_ part: String, of whole: String) -> Bool {
+        var remaining = Substring(whole)
+        for character in part {
+            guard let index = remaining.firstIndex(of: character) else { return false }
+            remaining = remaining[remaining.index(after: index)...]
+        }
+        return true
     }
 }

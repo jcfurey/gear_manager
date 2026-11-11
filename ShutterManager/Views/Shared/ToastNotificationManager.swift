@@ -140,10 +140,18 @@ struct ToastView: View {
                 Image(systemName: "xmark")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(.secondary)
+                    // A full-size touch target, not just the glyph: the accessibility audit
+                    // flagged the bare glyph's hit region.
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
             }
             .accessibilityLabel("Dismiss")
+            .accessibilityIdentifier("dismissToastButton")
         }
-        .padding()
+        // The button's target supplies the height; the text keeps its own breathing room.
+        .padding(.leading)
+        .padding(.trailing, 4)
+        .padding(.vertical, 6)
         .background(
             RoundedRectangle(cornerRadius: 12)
                 .fill(.ultraThinMaterial)

@@ -8,6 +8,7 @@
 
 import SwiftUI
 import SwiftData
+import UIKit
 
 /// Picks a value on a standard scale (apertures, shutter speeds, ISO). The binding holds the
 /// exact value; a value off the scale shows as the nearest mark.
@@ -118,7 +119,7 @@ struct DistanceField: View {
 
     var body: some View {
         MeasurementField(title: title, value: Binding(
-            get: { units.displayDistance(millimetres: millimetres) },
+            get: { units.fieldDistance(millimetres: millimetres) },
             set: { millimetres = units.millimetres(fromDisplay: $0) }
         ), unit: units.distanceUnit)
     }
@@ -235,10 +236,82 @@ struct FilmStockRow: View {
     }
 }
 
+/// A bulb timer for an exposure of `seconds`: a button to start it, or the countdown that's
+/// running with a way to stop it. One exposure runs at a time, whichever tool started it, so
+/// every tool that offers a timer shows the same rows.
+struct BulbTimerRows: View {
+    let seconds: Double
+    /// What the exposure is, for its alert: "4 min exposure".
+    let title: String
+    /// The prefix of the buttons' accessibility identifiers.
+    var identifier = "bulb"
+
+    private let timers = ToolTimers.shared
+
+    var body: some View {
+        if let exposure = timers.exposure {
+            // Each row keeps its own clock: a timeline's content is one row of the form.
+            TimelineView(.periodic(from: .now, by: 0.5)) { context in
+                let done = exposure.isDone(at: context.date)
+                LabeledContent {
+                    Text(done ? "Done" : CountdownText.format(exposure.remaining(at: context.date)))
+                        .font(.title2.monospacedDigit().weight(.semibold))
+                        .accessibilityLabel(done ? "Done" : CountdownText.spoken(exposure.remaining(at: context.date)))
+                        .accessibilityAddTraits(.updatesFrequently)
+                } label: {
+                    Label(exposure.title, systemImage: "timer")
+                }
+            }
+            TimelineView(.periodic(from: .now, by: 0.5)) { context in
+                let done = exposure.isDone(at: context.date)
+                // A finished timer is cleared, not stopped, and makes way for the next one.
+                Button(done ? "Clear Timer" : "Stop Timer", role: done ? nil : .destructive) {
+                    timers.cancelExposure()
+                }
+                .accessibilityIdentifier("\(identifier).stopTimer")
+            }
+            NotificationsOffNote(what: "the timer alerts you only while the app is open")
+        } else {
+            Button {
+                HapticFeedbackManager.shared.buttonTap()
+                timers.startExposure(seconds: seconds, title: title)
+            } label: {
+                Label("Start Bulb Timer", systemImage: "timer")
+            }
+            .disabled(!(seconds >= 1))
+            .accessibilityIdentifier("\(identifier).startTimer")
+        }
+    }
+}
+
+/// A line saying notifications are turned off for the app, with a way to iOS Settings. Shown
+/// beside the things that rely on a notification, so they don't fail without a word.
+struct NotificationsOffNote: View {
+    /// What's lost, to finish "Notifications are off for Shutter Manager, so …".
+    let what: String
+
+    @ObservedObject private var notifications = NotificationManager.shared
+
+    var body: some View {
+        if notifications.authorizationStatus == .denied {
+            VStack(alignment: .leading, spacing: 6) {
+                Label("Notifications are off for \(Constants.App.name), so \(what).", systemImage: "bell.slash")
+                    .font(.footnote)
+                    .foregroundStyle(AppColors.warningText)
+                if let settings = URL(string: UIApplication.openNotificationSettingsURLString) {
+                    Link("Open Settings", destination: settings)
+                        .font(.footnote)
+                }
+            }
+            .accessibilityIdentifier("notificationsOffNote")
+        }
+    }
+}
+
 /// Formats seconds as a countdown: "4:05", "1:02:09".
 enum CountdownText {
     static func format(_ seconds: Double) -> String {
-        let total = max(Int(seconds.rounded(.up)), 0)
+        let total = max(Int(saturating: seconds.rounded(.up)), 0)
         let hours = total / 3600, minutes = (total % 3600) / 60, secs = total % 60
         return hours > 0
             ? String(format: "%d:%02d:%02d", hours, minutes, secs)
@@ -247,7 +320,7 @@ enum CountdownText {
 
     /// "4 minutes, 5 seconds": how VoiceOver should read a countdown, rather than as a clock time.
     static func spoken(_ seconds: Double) -> String {
-        let total = max(Int(seconds.rounded(.up)), 0)
+        let total = max(Int(saturating: seconds.rounded(.up)), 0)
         return Duration.seconds(total).formatted(.units(allowed: [.hours, .minutes, .seconds], width: .wide))
     }
 }

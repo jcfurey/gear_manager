@@ -5,7 +5,8 @@ optional Tip Jar and no paid tier. Version 1.0 is ready for the App Store, apart
 only the owner can do (see the release checklist in the [roadmap](ROADMAP.md)).
 
 - **Platform:** iOS 18.6 or later; Xcode 26; Swift 5 language mode
-- **Architecture:** SwiftUI, SwiftData with private CloudKit sync, and feature services
+- **Architecture:** SwiftUI, SwiftData with private CloudKit sync, and feature services; a
+  widget extension for the timers' Live Activity
 - **Dependencies:** Apple frameworks only
 
 The five tabs are **Inventory · Tools · Light Meter · Shoots · Settings**.
@@ -47,6 +48,7 @@ The five tabs are **Inventory · Tools · Light Meter · Shoots · Settings**.
     of the directions, and the coming moon phases;
   - a Milky Way planner that lists the coming nights' dark, moonless hours with the galactic core
     up;
+  - the cloud forecast for those hours, if you turn it on (see below);
   - astro exposure: the NPF and 500 rules from your camera's pixel pitch, and star trails.
 - **Places:** your current location, a place found by search or a tap on the map, or typed
   coordinates. Save places to reuse them; they sync with the rest of your library.
@@ -82,8 +84,8 @@ The five tabs are **Inventory · Tools · Light Meter · Shoots · Settings**.
 
 **Your data**
 - Private iCloud sync across your devices, with a local-only fallback.
-- Export to JSON (restorable, with photos, development recipes, places, shoots, kits, templates
-  and film rolls), CSV and PDF; import by merge or replace.
+- Export the whole library, photos included, as one file (a zip any computer can open: the
+  records as JSON and each photo as a file), or as JSON, CSV or PDF; import by merge or replace.
 - Automatic and manual backups, with retention.
 
 **Accessibility**
@@ -91,6 +93,58 @@ The five tabs are **Inventory · Tools · Light Meter · Shoots · Settings**.
 
 The formulas and sources behind the tools, the light meter and the sky planners are in
 [docs/PHOTO_MATH_REFERENCES.md](docs/PHOTO_MATH_REFERENCES.md).
+
+## Added since 1.0
+
+These are built and tested, and aren't in the 1.0 App Store text or release notes yet.
+
+- **A report for your insurer:** a PDF of your gear, or a chosen part of it, with serial numbers,
+  purchase prices, current values and photos, grouped by category with totals. From Settings or
+  the Collection screen.
+- **QR labels:** print labels for kits and gear on Letter or A4, two sizes, with an optional
+  "if found" line. Pointing the Camera app at a label opens the kit's checklist or the item. The
+  code holds only an ID from your library.
+- **Usage from photos:** choose photos, files or a whole folder and see how many shots each body
+  and lens took.
+  - Bodies and lenses are matched to your inventory by serial number, then by name; a match you
+    choose is remembered on that device.
+  - A shutter count the files carry (Nikon) is recorded as a reading, dated by the photo.
+  - Gear the inventory lacks can be added, and the batch logged as a shoot or its gear added to
+    one, which is where an item's use is counted from.
+  - Everything is read on the device; the photos aren't copied or kept.
+- **Lens and body compatibility:** a body's screen lists your lenses by how they go on it: fits,
+  with an adapter you have, with an adapter, or doesn't fit. A lens's screen lists your bodies.
+  - Worked out from the flange distances of 33 mounts and 22 adapters that the camera and lens
+    makers sell for their own systems, each cited in the references.
+  - An adapter you own is added as a lens whose mount names both sides ("Canon EF → Sony E");
+    it then counts for that pair.
+  - A lens made for a smaller format than the body's says so.
+  - A shoot's packing check flags a lens that goes on none of the bodies packed with it.
+- **Usage from photos also says how each lens was used:** a zoom's range and the focal lengths
+  used most, with a small chart, and the apertures used most.
+- **Find Duplicates** (Settings): importing a file before iCloud has finished syncing the same
+  library puts every record in twice. This counts the records that share an ID and folds each
+  set into one, keeping the copy changed last with anything only another copy had. A backup is
+  made first, and the import screen now warns when iCloud hasn't finished.
+- **Timers on the Lock Screen and in the Dynamic Island:** a running bulb exposure or
+  development step shows as a Live Activity, with a countdown that keeps moving while the phone
+  is locked, a progress bar, and what follows ("Next: Stop", "Close the shutter").
+- **Cloud forecast**, from Apple Weather, in the sun and moon planner, the Milky Way planner and
+  on a shoot still to come: a chart of the hours, and the cloud over each golden hour, dark
+  window or the shoot itself, by height (low, mid, high), with the chance of precipitation. It
+  reaches ten days ahead. It's off until you turn it on, because getting it sends the place's
+  position to Apple, rounded to about a kilometre.
+- **One file for a library of any ordinary size.** An export or backup used to be one JSON file
+  with the photos inside it, held whole in memory, so it stopped at 256 MB: a larger export was
+  refused, and a larger backup left its photos out. A library now travels as a zip with each
+  photo as a file of its own, written and read a few at a time, up to 3 GB. Importing one again
+  after it stopped part-way adds what's missing, and older JSON files still import.
+- **Timers alert in the app when notifications are off:** a banner, a haptic and a short tone at
+  each agitation, pour and end, on whichever screen is up, while the app is open.
+- **Fixes from a review of the 1.0 code:** maintenance reminders now notify; timer alerts keep
+  the ones that matter when there are more than iOS allows; a shoot keeps its clock time when its
+  place changes time zone; exports and backups that are too large say so instead of failing
+  silently; and a dozen smaller ones (see [docs/PROGRESS.md](docs/PROGRESS.md)).
 
 ## Release material
 - [docs/RELEASE_NOTES_1.0.md](docs/RELEASE_NOTES_1.0.md): what's in 1.0, and its known limits.

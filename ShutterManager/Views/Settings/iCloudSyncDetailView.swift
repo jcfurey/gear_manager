@@ -45,8 +45,8 @@ struct iCloudSyncDetailView: View {
                 }
 
                 Section("What syncs") {
-                    Text("Gear and photos, maintenance history and reminders, shutter counts, and loans.")
-                    Text("App preferences and backup files stay on each device.")
+                    Text("Gear and photos, maintenance history and reminders, shutter counts and loans; development recipes and saved places; shoots with their shot lists, kits, shot-list templates and film rolls.")
+                    Text("App preferences, what you last typed into the tools, and backup files stay on each device.")
                         .foregroundStyle(.secondary)
                 }
 

@@ -13,7 +13,14 @@ import Foundation
 enum Constants {
     enum DataLimits {
         // Generous bounds for imported libraries; reject pathological files before allocating DTOs.
+        /// The largest JSON file read or written: a JSON export, or the records inside a package.
         static let maximumImportBytes = 256 * 1024 * 1024
+        /// The largest library package (the zip a library travels in, photos and all): 3 GB. The
+        /// format's plain form holds a little under 4 GB.
+        static let maximumPackageBytes = 3 * 1024 * 1024 * 1024
+        /// A package's photos are written and read this many at a time, each lot in a context of
+        /// its own that's let go, so memory stays small however large the library.
+        static let packagePhotoBatch = 8
         static let maximumPhotoBytes = 25 * 1024 * 1024
         static let maximumRecords = 100_000
         /// Bound for physical measurements (focal length, aperture, filter thread, distance…).
@@ -106,6 +113,17 @@ enum Constants {
         static let storageCompressionQuality: CGFloat = 0.8
     }
 
+    // MARK: - Usage from photos
+
+    enum PhotoUsage {
+        /// The most photos one batch reads. A folder with more is read up to here, and says so.
+        static let maximumPhotos = 10_000
+        /// Files read between progress updates and checks for Cancel.
+        static let readBatchSize = 25
+        /// The most remembered matches kept (see `PhotoUsageMatchStore`).
+        static let maximumRememberedMatches = 500
+    }
+
     // MARK: - Shoots
 
     enum Shoots {
@@ -122,6 +140,14 @@ enum Constants {
     // MARK: - User Defaults Keys
 
     /// Every persisted preference key, in one place.
+    enum CloudForecast {
+        /// How long a place's forecast is shown before it's asked for again. Apple Weather's
+        /// hourly forecast doesn't change faster, and each asking counts against the app's quota.
+        static let lifetime: TimeInterval = 3600
+        /// Forecasts kept at once, for the session only: nothing is written to disk.
+        static let maximumPlaces = 8
+    }
+
     enum UserDefaultsKeys {
         static let lastBackupDate = "lastBackupDate"
         /// The most recent automatic-backup failure, as `["message": String, "date": Date]`;
@@ -148,6 +174,18 @@ enum Constants {
 
         // Per-device tool state, not exported: the last values typed into each calculator.
         static let toolValuesPrefix = "tools.values."
+
+        /// The name last put on a report for the user's insurer. Per device, not exported.
+        static let reportOwnerName = "report.ownerName"
+        /// The line printed at the foot of QR labels, such as "If found: 555-0100". Per device.
+        static let labelContactLine = "labels.contactLine"
+        /// Which item the user said a body or lens named in photos is, as `[group key: item ID]`.
+        /// Per device, not exported: a match that names a missing item is ignored.
+        static let photoUsageMatches = "photoUsage.matches"
+        /// Whether the cloud forecast is on (`Bool`, off until the user turns it on). Per device,
+        /// not exported: turning it on is agreeing to send places to Apple Weather, which a
+        /// file from another device can't do for this one.
+        static let cloudForecastEnabled = "cloudForecast.enabled"
     }
 
     // MARK: - UI Constants

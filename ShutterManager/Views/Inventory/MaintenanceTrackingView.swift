@@ -153,8 +153,9 @@ struct MaintenanceTrackingView: View {
         do {
             if try MaintenanceService.complete(reminder, for: gearItem, context: modelContext) != nil {
                 ToastNotificationManager.shared.success("Sensor cleaning recorded")
-                Task { await NotificationManager.shared.updateReminders(for: gearItem) }
             }
+            // The reminder moved on or ended, and its notification with it.
+            Task { await NotificationManager.shared.updateReminders(for: gearItem) }
         } catch {
             saveFailed = true
         }
@@ -163,8 +164,14 @@ struct MaintenanceTrackingView: View {
     /// Remove a reminder outright (swipe → Dismiss).
     private func dismissReminder(_ reminder: MaintenanceReminder) {
         HapticFeedbackManager.shared.buttonTap()
+        let identifier = NotificationManager.GearReminder.identifier(for: reminder)
         modelContext.delete(reminder)
-        if !modelContext.saveOrLog() { saveFailed = true }
+        guard modelContext.saveOrLog() else {
+            modelContext.rollback()
+            saveFailed = true
+            return
+        }
+        NotificationManager.shared.cancelReminders(identifiers: [identifier])
     }
 }
 
@@ -418,7 +425,13 @@ struct AddMaintenanceRecordView: View {
                             .accessibilityLabel("Notes")
                     }
                     
-                    if let frequency = selectedType.recommendedFrequency {
+                    if usesItemCleaningSchedule {
+                        Section {
+                        } footer: {
+                            Text("This item's own cleaning schedule sets the next reminder, counted from this cleaning.")
+                                .font(constants.captionFont)
+                        }
+                    } else if let frequency = selectedType.recommendedFrequency {
                         Section {
                             Toggle("Set Reminder", isOn: $setupReminder)
                             
@@ -460,6 +473,12 @@ struct AddMaintenanceRecordView: View {
     private func nextDueDate(frequency: Int) -> Date {
         Calendar.current.date(byAdding: .day, value: frequency, to: date) ?? date
     }
+
+    /// A sensor cleaning on an item that keeps its own cleaning interval: that schedule reminds,
+    /// so a second reminder here would only contradict it.
+    private var usesItemCleaningSchedule: Bool {
+        selectedType == .sensorCleaning && gearItem.gearCategory.hasSensorCleaning && gearItem.sensorCleaningIntervalDays > 0
+    }
     
     /// An entered cost must parse to a non-negative amount, as in AddGearView. Unparseable or
     /// negative text used to be dropped silently at save — the record was logged with no cost
@@ -476,7 +495,8 @@ struct AddMaintenanceRecordView: View {
         do {
             try MaintenanceService.log(for: gearItem, type: selectedType, date: date, cost: costValue,
                 notes: notes.isEmpty ? nil : notes, performedBy: performedBy.isEmpty ? nil : performedBy,
-                reminderInterval: setupReminder ? selectedType.recommendedFrequency : nil, context: modelContext)
+                reminderInterval: setupReminder && !usesItemCleaningSchedule ? selectedType.recommendedFrequency : nil,
+                context: modelContext)
             Task { await NotificationManager.shared.updateReminders(for: gearItem) }
             dismiss()
         } catch {

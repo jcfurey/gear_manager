@@ -21,6 +21,7 @@ struct ShootDetailView: View {
 
     @State private var editing = false
     @State private var choosingGear = false
+    @State private var addingGearFromPhotos = false
     @State private var gearSelection: Set<UUID> = []
     @State private var newShot = ""
     @State private var savingTemplate = false
@@ -31,11 +32,17 @@ struct ShootDetailView: View {
     @State private var saveFailed = false
     @State private var light: SkyDay?
 
+    private let clouds = CloudForecastStore.shared
+
     var body: some View {
         Form {
             summarySection
             if let place = shoot.place {
                 lightSection(place)
+                // A forecast is for what's coming: a shoot that's over has none.
+                if shoot.isUpcoming() {
+                    cloudSection(place)
+                }
             }
             gearSection
             shotListSection
@@ -70,6 +77,9 @@ struct ShootDetailView: View {
                     }
             }
         }
+        .sheet(isPresented: $addingGearFromPhotos) {
+            PhotoUsageView(shoot: shoot)
+        }
         .sheet(isPresented: $addingRoll) {
             FilmRollEditorView(roll: nil, camera: nil, shoot: shoot)
         }
@@ -91,6 +101,9 @@ struct ShootDetailView: View {
         }
         .persistenceErrorAlert(isPresented: $saveFailed)
         .task(id: LightKey(place: shoot.place, start: shoot.startDate)) { await loadLight() }
+        .task(id: clouds.request(for: shoot.isUpcoming() ? shoot.place?.coordinate : nil)) {
+            if shoot.isUpcoming(), let place = shoot.place { await clouds.load(for: place.coordinate) }
+        }
     }
 
     // MARK: - Summary
@@ -180,6 +193,25 @@ struct ShootDetailView: View {
         }
     }
 
+    // MARK: - Clouds
+
+    /// The forecast for the shoot's own hours, then for that day's golden hours.
+    private func cloudSection(_ place: PlaceValue) -> some View {
+        let zone = place.timeZone
+        let time = Date.FormatStyle(date: .omitted, time: .shortened, timeZone: zone)
+        var windows = [CloudWindow(title: "During the shoot", interval: shoot.interval)]
+        if let light, light.observer == place.coordinate {
+            windows += light.goldenHours.map {
+                CloudWindow(title: "Golden hour · \($0.start.formatted(time)) – \($0.end.formatted(time))", interval: $0)
+            }
+        }
+        return Section("Clouds") {
+            CloudForecastRows(coordinate: place.coordinate) { forecast in
+                CloudRows(forecast: forecast, timeZone: zone, windows: windows)
+            }
+        }
+    }
+
     // MARK: - Gear
 
     private var gearSection: some View {
@@ -217,11 +249,17 @@ struct ShootDetailView: View {
                 }
                 .accessibilityIdentifier("addKitMenu")
             }
+            Button {
+                addingGearFromPhotos = true
+            } label: {
+                Label("Add Gear from Photos", systemImage: "photo.stack")
+            }
+            .accessibilityIdentifier("shootPhotoUsageButton")
         } header: {
             let progress = shoot.packingProgress
             Text(progress.total > 0 ? "Packing · \(progress.packed) of \(progress.total)" : "Packing")
         } footer: {
-            Text("Tick items off as you pack. Items lent out, needing service or due back are flagged.")
+            Text("Tick items off as you pack. Items lent out, needing service or due back are flagged. After the shoot, its photos can say which gear you used.")
         }
     }
 
@@ -351,8 +389,7 @@ struct ShootDetailView: View {
     private func saveTemplate() {
         let name = templateName.trimmingCharacters(in: .whitespacesAndNewlines)
         shoot.saveShotList(asTemplateNamed: name.isEmpty ? shoot.displayTitle : name, in: context)
-        commit()
-        ToastNotificationManager.shared.success("Template saved")
+        if commit() { ToastNotificationManager.shared.success("Template saved") }
     }
 
     // MARK: - Film
@@ -401,13 +438,16 @@ struct ShootDetailView: View {
 
     // MARK: - Saving
 
-    private func commit() {
+    /// Saves the shoot. A failed save is undone and reported; returns whether it succeeded.
+    @discardableResult
+    private func commit() -> Bool {
         shoot.markModified()
         guard context.saveOrLog() else {
             context.rollback()
             saveFailed = true
-            return
+            return false
         }
+        return true
     }
 
     private func remove(_ item: GearItem) {
@@ -419,8 +459,7 @@ struct ShootDetailView: View {
     private func applyGearSelection() {
         shoot.gear = allGear.filter { gearSelection.contains($0.id) }
         shoot.packedIDs = shoot.packedIDs.intersection(gearSelection)
-        commit()
-        choosingGear = false
+        if commit() { choosingGear = false }
     }
 
     private func deleteShoot() {
@@ -428,9 +467,11 @@ struct ShootDetailView: View {
         dismiss()
         DispatchQueue.main.async {
             context.delete(shoot)
-            if context.saveOrLog() {
-                Task { await ShootAlertScheduler.refresh(in: context) }
+            guard context.saveOrLog() else {
+                context.rollback()
+                return
             }
+            Task { await ShootAlertScheduler.refresh(in: context) }
         }
     }
 }

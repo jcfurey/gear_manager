@@ -148,7 +148,7 @@ struct TimeLapseView: View {
     }
 
     private static func storage(_ megabytes: Double) -> String {
-        megabytes >= 1000 ? "\(ExposureScale.decimal(megabytes / 1000, places: 1)) GB" : "\(Int(megabytes.rounded())) MB"
+        megabytes >= 1000 ? "\(ExposureScale.decimal(megabytes / 1000, places: 1)) GB" : "\(Int(saturating: megabytes.rounded())) MB"
     }
 }
 
@@ -255,7 +255,7 @@ struct PrintSizeView: View {
                     ForEach(PrintSize.papers) { paper in
                         if let fill = PrintSize.fillDPI(pixelsWide: pixelsWide, pixelsHigh: pixelsHigh, paper: paper) {
                             let quality = PrintSize.Quality(dpi: fill)
-                            ToolResultRow(title: paper.name, value: "\(Int(fill.rounded())) dpi",
+                            ToolResultRow(title: paper.name, value: "\(Int(saturating: fill.rounded())) dpi",
                                           detail: quality.displayName, emphasized: false)
                         }
                     }

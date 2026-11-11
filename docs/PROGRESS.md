@@ -10,6 +10,481 @@ is still to check on a device. Add a section when a milestone finishes.
 | M3 — Light Meter and sky planning | Done (2026-10-11) |
 | M4 — Shoots | Done (2026-10-11) |
 | M5 — 1.0 release prep | Done in code (2026-10-12); the release checklist in the roadmap is the owner's |
+| After 1.0 — later candidates, round 1 | Done (2026-11-10); not merged to `main` yet |
+| After 1.0 — round 2: what the review left | Done (2026-11-10); not merged to `main` yet |
+| After 1.0 — round 3: the timers' Live Activity | Done (2026-11-10); not merged to `main` yet |
+| After 1.0 — round 4: the cloud forecast | Done (2026-11-10); not merged to `main` yet |
+| After 1.0 — round 5: the package format | Done (2026-11-11); not merged to `main` yet |
+
+---
+
+## After 1.0 — round 5: the package format
+
+**Done 2026-11-11** on `claude/camera-gear-manager-e1zzxt` (commits `1ce0442` to `67779ce`), in
+pull request #2. The roadmap's "package format for exports and backups, so a large
+library keeps its photos in one file".
+
+### What it was like before
+An export or backup was one JSON file with every photo inside it as text. Writing it held the
+whole library in memory, twice over, so it was capped at 256 MB, which is about four hundred
+photos. Past that an export was refused and a backup was written without its photos.
+
+### What shipped
+- **A library file**: a zip holding `library.json` (the records), `photos.json` (which item or
+  record each photo belongs to), each photo as a file under `photos/` or `maintenance/`, and a
+  `README.txt` saying what it all is. Any computer opens it.
+- **Written and read a few photos at a time.** Eight photos are read through a scratch context,
+  written to the file, and let go. The limit for one file is now 3 GB.
+- **Export** has a Library format, the default. JSON stays as the records alone, for other
+  software. CSV and PDF are as they were.
+- **Import** takes either kind of file and tells them apart by how they start.
+  - The records go in with one save, as before, so a failure there changes nothing.
+  - A package's photos follow in lots, each saved by itself. If that stops part-way (a full
+    disk, the app closed), the records are in and some photos aren't; importing the file again
+    adds the rest. The message says how many made it.
+  - Merging a package also gives an item you already have the photos it's missing. An item
+    that kept a cover photo of its own keeps it.
+- **Backups** are packages. Before one is listed its records are decoded and every photo is
+  read back against its checksum. JSON backups from earlier builds are still listed and restored.
+- **The Backups screen** says when a restore is under way, and how much room the backups take:
+  with photos in every one, several backups of a large library add up.
+- **Refused in words:** a zip that isn't a library; one another app has unpacked and zipped
+  again with compression; a file that's damaged or cut short; one from a newer version.
+- **Tests:** 26 Foundation-only tests for the zip and the package (run on Linux too), and 12
+  for export, import and backups through it.
+- **A UI-test fix along the way.** Text typed into a field is checked, and typed again if
+  characters went missing. On a slow run the field showed its text late ("R" of "R6", "Ha" of
+  "Harbour"); the check took that for a loss, deleted only what it saw and typed again, leaving
+  "RR6", and two audit tests failed on names that were never there. `replaceText` now gives the
+  text five seconds to show, clears as much as could be in the field before a retry, and says
+  what the field holds if it still isn't right.
+- **And the taps that kept getting lost.** Four full runs in a row each failed a different UI
+  test the same way: a tap made just as a sheet closed or a screen popped did nothing. Under
+  UI tests the app now runs with animations off, which made the runs a quarter faster but
+  didn't stop it. So every tap that opens or closes a screen now goes through a helper that
+  waits for what the tap should bring up, and taps again if it hasn't come while the control is
+  still there (`tap(_:toShow:)`, `tapToClose`, `goBack`).
+- **A bug the tests caught on their third run:** photos went into a package in whatever order
+  each fetch returned them, so the same library could write a different file each time. They
+  go in gallery order now. Nothing was lost on import either way: each photo carries its place.
+
+### Verified
+[CI run 42951173168](https://github.com/jcfurey/gear_manager/actions/runs/42951173168), the pull
+request's, passed every job on `67779ce`, the last commit to change code:
+- 170 Foundation-only tests in the Swift 6.2 Linux image, the zip's and the package's among them;
+- the Debug and Release builds with warnings as errors;
+- 402 unit tests, with the 12 for export, import and backups through a package;
+- 27 UI tests on each of iPhone 17 and iPad Pro 11-inch (iOS 26.5), the accessibility audit
+  included.
+
+The four full runs before it each failed one or two UI tests where a tap or typed text was
+lost, never in the package code; what was done about that is under "What shipped".
+
+Files the writer produced were opened with Python's `zipfile` and `unzip -t` here. No test has
+written or read a package on a device: that's in the list below.
+
+### Changes from the plan
+- **A zip, not a format of the app's own.** A backup you can open without the app is worth
+  more than one you can't. The app writes it with no compression (photos are compressed
+  already) and in the format's plain form, which keeps the code to a few hundred lines and
+  needs no library. Files it writes were checked with Python's `zipfile` and `unzip -t`.
+- **Photos are no longer all-or-nothing.** One save for everything is what made an import
+  safe to fail, but it needs every photo in memory at once. The records keep that guarantee;
+  the photos trade it for being resumable.
+- **No compressed zips.** A library file unpacked and zipped again by a computer's own
+  "compress" is refused, with a message saying to use the file as the app wrote it. Reading
+  compressed entries would be Apple-only code that can't be tested here.
+
+### Still to check on a device
+- **Memory**, in Xcode, while a library with a few hundred photos is exported, backed up and
+  restored: it should stay flat. Nothing here could measure it.
+- **Time** for the same, and whether an automatic backup of a large library finishes in the
+  time iOS gives the app as it goes to the background. If it doesn't, the next launch's backup
+  will; a backup cut off is never listed.
+- **The file elsewhere:** AirDrop a library file to a Mac and open it; pick one from iCloud
+  Drive in the import screen.
+- **Room:** backups of a large library now include its photos where they used to leave them
+  out, so check the total on the Backups screen and the number kept.
+
+---
+
+## After 1.0 — round 4: the cloud forecast
+
+**Done 2026-11-10** on `claude/camera-gear-manager-e1zzxt` (commits `6cc7039` and `eb91a07`).
+The roadmap's "cloud cover via WeatherKit".
+
+### What shipped
+- **A Clouds section** in the sun and moon planner, the Milky Way planner (the list of nights and
+  each night's screen) and on a shoot still to come:
+  - a chart of the share of sky covered, hour by hour, on the place's clock, with the golden and
+    blue hours (or the dark, moonless hours) shaded;
+  - the clouds over each golden hour, blue hour, dark window, or the shoot's own hours: the
+    weather in Apple's words, the share covered, the cloud by height (low, mid, high) and the
+    chance of precipitation;
+  - in the sun and moon planner, the hour at the moment picked on the altitude chart;
+  - in the list of nights, each night's cloud beside its moon.
+- **Off until it's turned on.** Each of those screens offers it, saying what is sent; Settings →
+  Weather has the switch. Turning it off drops every forecast on hand.
+- **What leaves the device:** the place's position rounded to two decimal places, about a
+  kilometre, to Apple Weather. That includes the user's own location when it's the place chosen
+  with "Use My Location". The privacy policy says so.
+- **Sparing with requests.** A place is asked for once an hour at most, ten days of hours at a
+  time, and nearby spots share one forecast. Forecasts are kept in memory for the session only.
+- **When it can't be fetched:** a line saying so with Try Again. A forecast already on hand
+  stays up through a failed refresh, and the credit row says when it's from: out with no
+  signal, this morning's forecast beats none.
+- **Apple Weather's credit** goes wherever its numbers do: the Apple Weather mark and the link
+  to its other data sources, as its terms ask.
+- **Tests:** 17 Foundation-only tests for the forecast (windows, weighting, what's past or too
+  far ahead) and 18 for the store (off by default, rounding, hourly re-asking, failures, turning
+  off mid-request, the credit), with a stand-in for Apple Weather. A UI test turns the forecast
+  on in the planner, checks the credit, and turns it off in Settings.
+- **A UI-test fix the new test brought out.** It leaves the planners a place, so the test that
+  opens every tool now finds the sun and moon planner showing a full day, which takes longer to
+  settle; on CI's iPhone a Back tap landed mid-push and was ignored. `goBack(to:)` taps again
+  while the screen's own Back button is still there.
+
+### Verified
+[CI run 42890412459](https://github.com/jcfurey/gear_manager/actions/runs/42890412459) passed
+every job on `eb91a07`:
+- 144 Foundation-only tests in the Swift 6.2 Linux image;
+- the Debug and Release builds with warnings as errors;
+- 365 unit tests;
+- 27 UI tests on each of iPhone 17 and iPad Pro 11-inch (iOS 26.5), the accessibility audit
+  included.
+
+The run before it, on `6cc7039`, passed all but one iPhone UI test: the Back tap described
+above.
+
+Every test ran against a stand-in for Apple Weather. CI's builds aren't signed for WeatherKit,
+so no real forecast has been fetched yet: that's in the device list below.
+
+### Changes from the plan
+- **WeatherKit after all.** The free sources that need no API key were compared first:
+  Open-Meteo (free for non-commercial use, which its terms say a tip jar is; under 10,000 calls
+  a day) and MET Norway (any use, but its terms want mobile apps to go through a proxy, and it
+  is six-hourly past about two and a half days). WeatherKit's 500,000 requests a month come
+  with the developer membership, it gives hourly cloud by height for ten days, and what Apple
+  collects isn't the app's to declare, so the App Privacy answer stays "Data Not Collected".
+- **The weather in Apple's words.** Each hour's condition ("Mostly Clear") and symbol are
+  Apple's own; the app draws no line of its own between clear and cloudy.
+- **No forecast in the golden-hour heads-up.** A notification is scheduled days ahead and the
+  app can't fetch when it fires.
+
+### Still to check on a device
+- **The capability:** WeatherKit on the App ID (release checklist, step 1). Until then every
+  forecast fails; CI can't sign for it, so no test has seen a real forecast.
+- **The numbers:** a few hours against the Weather app. WeatherKit's cover is read as a share
+  from 0 to 1, by height too; a value the wrong way round would show as 0% or 100% everywhere.
+- **The mark:** Apple's image loads and reads in light and dark mode, and the link opens.
+- **Use:** the request count in the developer account after a day's use.
+
+---
+
+## After 1.0 — round 3: the timers' Live Activity
+
+**Done 2026-11-10** on `claude/camera-gear-manager-e1zzxt` (commit `02a3a78` and the one that adds
+this section). The roadmap's "widgets or a Live Activity for the development and bulb timers",
+built as the Live Activity, in the app's first extension.
+
+### What shipped
+- **A running timer on the Lock Screen and in the Dynamic Island.** A bulb exposure or a
+  development step shows what's being timed, a countdown, a progress bar and what follows
+  ("Close the shutter", "Next: Stop", "Last step").
+  - The system draws the countdown, so it keeps moving with the phone locked and the app
+    suspended. When it runs out the activity says "Time's up" by itself.
+  - A development run shows from its first step's start to its last step's end: through a
+    pause ("Paused", with the time left) and the wait between steps ("Ready to start").
+  - A finished exposure's activity goes when you come back to the app, which shows "Done"
+    itself. Clearing the timer, ending the run or starting another removes it at once.
+- **The widget extension** (`ShutterManagerWidgets`, bundle ID
+  `jcameronfurey.shuttermanager.widgets`): the app's second target, embedded in it. It holds
+  the one Live Activity.
+- **A folder in two targets** (`ShutterManagerShared`): what the activity shows, and the words
+  and numbers worked out from it, compiled into the app and the extension alike. That keeps the
+  extension to drawing, and lets the app's tests check what it will say.
+- **Checks that the pieces stay joined:**
+  - the convention checks cover the new folders, the extension's bundle ID, its
+    `NSExtension` entry and the app's `NSSupportsLiveActivities`;
+  - the Release job looks inside the built app for the extension, at the app's version.
+- **The privacy policy** says a running timer shows on the Lock Screen, with the name you gave
+  it. Nothing leaves the device.
+- **Tests:** 330 unit tests in all (10 new). The UI tests that start timers now start their
+  Live Activities too.
+
+### Verified
+[CI run 42874241972](https://github.com/jcfurey/gear_manager/actions/runs/42874241972) passed
+every job on `c76c25d`, the last commit to change code:
+- 127 Foundation-only tests in the Swift 6.2 Linux image;
+- the Debug and Release builds with warnings as errors, the extension built and embedded
+  (`jcameronfurey.shuttermanager.widgets` 1.0.0 (1), found inside the Release app);
+- 330 unit tests;
+- 26 UI tests on each of iPhone 17 and iPad Pro 11-inch (iOS 26.5), the accessibility audit
+  included. The tests that start timers ran with their Live Activities starting.
+
+CI can't look at the Lock Screen or the Dynamic Island: what the activity looks like there is in
+the device list below.
+
+### Changes from the plan
+- **A Live Activity, not a Home Screen widget.** A timer is only worth showing while it runs,
+  which is what a Live Activity is for. A widget is now a small step (a second entry in the
+  extension's bundle), but the useful ones need the library or a place shared with the
+  extension, and that takes an App Group. It's in the roadmap's open list.
+- **Nothing is pushed to the activity.** There's no server, so the app can only update it while
+  it's running. The countdown and the "Time's up" at its end don't need the app. What does: the
+  move from "Time's up" to the next step, and a finished exposure's activity going away. Both
+  happen when the app is next opened. An activity nobody comes back to stays until iOS removes
+  it (up to eight hours, then four more on the Lock Screen).
+- **Agitation isn't in the activity.** It can't change at each agitation without the app
+  running. Those alerts still come as notifications.
+
+### Still to check on a device
+- **The activity itself:** start a bulb timer and a development step, lock the phone, and watch
+  the Lock Screen and the Dynamic Island through a pause, the end of a step and the next step.
+  The first one asks, on the Lock Screen, whether to allow Live Activities from the app.
+- **Signing:** open the project and let Xcode register the extension's App ID (release
+  checklist, step 1), then archive and check the upload is accepted with the extension inside.
+- **iPad:** the Lock Screen activity (an iPad has no Dynamic Island).
+- **Live Activities turned off** in Settings: the timers should run as before, with no activity.
+
+---
+
+## After 1.0 — round 2: what the review left
+
+**Done 2026-11-10** on `claude/camera-gear-manager-e1zzxt` (commits `d522bd9` to `b646832`,
+and the commit that finishes this section). The roadmap's remaining candidates
+each wait on a decision (a second app target, a change to the privacy story, demand), so this
+round took what round 1's review had left, and the one extension round 1 had noted.
+
+### What shipped
+- **Find Duplicates** (`d522bd9`), in Settings. Importing a file before iCloud has finished
+  downloading the same library leaves every record in twice.
+  - It counts the records that share an ID, by kind, and folds each set into one when asked.
+  - The copy changed last is kept; where a record keeps no change date, the copy with more
+    hanging off it. Photos, history, list entries, and places on shoots, in kits and on rolls
+    that only another copy had move to the kept one.
+  - A backup is made first, the other tabs are rebuilt afterwards, and a failed merge is rolled
+    back.
+  - The import screen warns when iCloud is syncing, or hasn't finished a download since the app
+    opened.
+- **Timers alert in the app when notifications are off** (`e9ecf5c`). A bulb timer used to end
+  silently, and a development step's agitations showed only on its own screen.
+  - While the app is open, each alert comes as a banner, a haptic and a two-note tone, on
+    whichever screen is up.
+  - Of several due together, the one that ends an exposure or a step wins over an agitation. An
+    alert more than two seconds old is skipped, so coming back from the background replays
+    nothing.
+  - The tone is made in code and played as a system alert sound: it mixes with other audio and
+    is a vibration when the phone is on silent.
+- **Usage from photos says how each lens was used** (`0a982ca`): a zoom's range and its most
+  used focal lengths, with a chart of shots at each focal length marked on a zoom ring, and the
+  apertures used most.
+- **The banner's close button** has a full 44-point target. The accessibility audit caught the
+  bare glyph (see below).
+- **Tests:** 127 Foundation-only tests (8 new), 320 unit tests in all (26 new), and 26 UI
+  tests on each device (1 new).
+
+### Verified
+[CI run 42767229616](https://github.com/jcfurey/gear_manager/actions/runs/42767229616) passed
+every job on `b646832`, the last commit to change code:
+- 127 Foundation-only tests in the Swift 6.2 Linux image;
+- the Debug and Release builds with warnings as errors;
+- 320 unit tests;
+- 26 UI tests on each of iPhone 17 and iPad Pro 11-inch (iOS 26.5), the accessibility audit
+  included.
+
+It took three full runs to get there. The two before it each failed one UI test, for the
+reasons under "Found by CI and fixed"; none was a fault in this round's features.
+
+### Changes from the plan
+- **Find Duplicates is a tool, not an automatic pass.** Round 1 left this as "a pass that finds
+  records doubled by importing". Two copies of a record are the same in every field, the ID
+  included, so no two devices can be sure of keeping the same one. Run automatically, one
+  device could keep the copy another deletes, and iCloud would remove both. So the user starts
+  it, and the screen says to do it on one device.
+- **The in-app alert only speaks when a notification can't.** With notifications on, the
+  notification is already shown in the app, with its sound; a second alert would double it.
+
+### Found by CI and fixed
+- The test build failed on `e9ecf5c`: a helper's default argument read a main-actor static,
+  which Swift 5 mode reports as an error under warnings-as-errors. The pitfall was already in
+  `CLAUDE.md`; the static is now nonisolated (`adacdc3`).
+- The unit-test step on `0a982ca` took 17 minutes for 38 seconds of tests: the runner's
+  simulator sat for 16 minutes before the first test. The job now boots the simulator and
+  launches the app once in a step of its own, as the UI-test job has since round 1.
+- The first UI test of the run, `AccessibilityAuditTests.testInventoryScreens`, failed on both
+  devices in [run 42759636285](https://github.com/jcfurey/gear_manager/actions/runs/42759636285),
+  for two reasons. The other 25 passed on each.
+  - On iPad the audit flagged the close button on the "Gear saved" banner, whose touch target
+    was the 12-point glyph. The banner then left while the test was reading the finding, and the
+    lookup failed. The button now has a 44-point target, and the audit waits for a banner to go.
+  - On iPhone the simulator was at its slowest in its first minute (18 seconds to go idle, 11 to
+    find a button), and the Add Gear sheet took more than the 10 seconds the test allowed. That
+    class's waits are now 30 seconds.
+- With those fixed, [run 42763760961](https://github.com/jcfurey/gear_manager/actions/runs/42763760961)
+  passed all 26 UI tests on iPhone and 25 on iPad. The last, the report test, tapped the Settings
+  tab a second after the Add Gear sheet closed, and the tab didn't change. `selectTab` tapped
+  once and took it on trust; it now checks that the tab came up and taps again if it didn't.
+
+### Left for later
+- A package format so a large library exports and backs up with its photos. It changes the
+  backup and restore path, so it's best chosen deliberately rather than slipped in.
+- A record deleted on another device while its detail screen is open here. It needs two devices
+  on one iCloud account to see what happens, and to check any fix.
+
+### Still to check on a device
+- **The timer tone:** that it's audible over music, vibrates on silent, and comes at each
+  agitation and at the end with notifications off. A simulator plays no alert sounds.
+- **Find Duplicates on a doubled library:** import an export on a second device before iCloud
+  has synced, run it on one device, and watch the other follow.
+- **Focal lengths and apertures** from real files, a zoom's especially.
+
+---
+
+## After 1.0 — later candidates, round 1
+
+**Done 2026-11-10** on `claude/camera-gear-manager-e1zzxt`, restarted from `main` after pull
+request #1 merged (commits `7c418c5`, `a4d7101`, `b8e19a0`, `1f8c38d`, and the commit that adds
+this section). The first four of the roadmap's later candidates, and a review of the 1.0 code.
+
+### What shipped
+- **A report for your insurer** (`7c418c5`): a PDF of all gear or a chosen part, grouped by
+  category with totals, with serial numbers, prices, values and one or all photos per item. From
+  Settings and from the Collection screen. The word "insurance" is kept out of the app and the App
+  Store text by a convention check.
+- **QR labels** (`a4d7101`): labels for kits and gear, 8 or 18 to a page, on Letter or A4, with
+  an optional "if found" line.
+  - A label's code is `shuttermanager://kit/<id>` or `shuttermanager://gear/<id>`: an ID and
+    nothing else. The Camera app opens it in the app, which shows the kit's checklist or the item,
+    and says so when the label is from another library.
+  - The app registers the `shuttermanager` URL scheme. Nothing else uses it.
+- **Usage from photos** (`1f8c38d`): choose photos, files or a folder and see the shots each body
+  and lens took.
+  - Matching is by serial number, then by name. It knows Nikon's "Z 6_2" is the Z6 II, and that a
+    lens named "NIKKOR Z 50mm f/1.8 S" is the item "Z 50mm f/1.8 S". A match you choose is
+    remembered on that device.
+  - A shutter count in the files is recorded as a reading dated by the photo. Choosing the same
+    photos twice records it once.
+  - Gear the inventory lacks can be added. The batch can be logged as a shoot, or its gear added
+    to the shoot it was opened from.
+  - Only metadata is read, from the file where the system put it, so a 60 MB raw file costs
+    little. A raw file and a JPEG of the same name count as one shot. Up to 10,000 photos a batch.
+- **Lens and body compatibility** (the commit that adds this section): a body's screen lists the
+  inventory's lenses as fitting, fitting with an adapter you have, fitting with an adapter, or
+  not fitting; a lens's screen lists the bodies.
+  - The answer comes from the same mount, then a maker's own adapter, then the room between the
+    two mounts' flange distances. 33 mounts and 22 makers' adapters, each with its source in
+    `docs/PHOTO_MATH_REFERENCES.md`.
+  - An adapter you own is a lens whose mount names both sides ("Canon EF → Sony E"), chosen from
+    the mount field's menu. It counts for its pair.
+  - A lens made for a smaller format than the body's says to expect a crop or dark corners.
+  - A shoot's packing check flags a lens that goes on none of the bodies packed with it, and
+    names the maker's adapter when that's what's missing.
+- **Fixes from a review of the 1.0 code** (`b8e19a0`). Two reviewers read the services and the
+  views; each finding was checked against the code before it was fixed.
+  - Maintenance reminders were never scheduled as notifications. They are now, and they count
+    toward an item needing attention.
+  - With more timer alerts than iOS keeps, the ones that end a step are kept and agitation
+    reminders go first. Development alerts are topped up when the app comes back.
+  - A shoot keeps its clock time when its place moves it to another time zone.
+  - An export too large to write says so and names the fix; a backup that large is written
+    without photos and the Backups screen says so. Both used to fail without a reason.
+  - A calculator result that isn't a finite number no longer crashes a conversion to a whole
+    number (`Int(saturating:)`); an ND stack stops at 40 stops.
+  - After a replace-import or Delete All Data, the tabs are rebuilt, so no screen is left showing
+    a deleted record.
+  - Failed saves are reported in six places that used to ignore them: deleting gear (from the
+    list and from its screen), a roll or a loan, changes on a shoot's screen, and dismissing a
+    reminder.
+  - Smaller ones: a photo's location is removed on the fallback path too; coordinates typed with
+    a decimal comma are read; a record repeated inside one import file is added once; a distance
+    in feet shows three decimals, not sixteen; Add Gear dates a photo's shutter count by the
+    photo; a note appears beside timers and heads-ups when notifications are off.
+- **The privacy policy** now covers usage from photos, the report and the labels, dated
+  November 10, 2026. No data leaves the device in a new way.
+- **Tests' typing:** `replaceText` checks what arrived and types again when the simulator
+  dropped keystrokes.
+- **Tests:** 119 Foundation-only tests (49 new), 294 unit tests in all (115 new), and 25 UI
+  tests on each device (8 new).
+
+### Verified
+Each commit ran CI, the later ones with UI tests on iPhone 17 and iPad (iOS 26.5):
+- `7c418c5` and `a4d7101`:
+  [run 42732745496](https://github.com/jcfurey/gear_manager/actions/runs/42732745496) and
+  [run 42733904367](https://github.com/jcfurey/gear_manager/actions/runs/42733904367) passed the
+  convention checks, the Linux tests, the Debug build with unit tests and the Release build.
+- `b8e19a0`: [run 42735785866](https://github.com/jcfurey/gear_manager/actions/runs/42735785866)
+  passed everything but one iPhone UI test, the dropped keystrokes described below. The iPad run
+  passed all 21 UI tests, the new ones for labels and the report among them.
+- `1f8c38d`: [run 42738975436](https://github.com/jcfurey/gear_manager/actions/runs/42738975436)
+  passed 99 Foundation-only tests on Linux, 273 unit tests, the Release build and all 23 UI tests
+  on iPhone. On iPad 21 passed, both new usage tests among them, and the first two of the run
+  never launched the app: see below.
+- The lens compatibility commit and the CI change after it (`c0b8607`):
+  [run 42743213703](https://github.com/jcfurey/gear_manager/actions/runs/42743213703) passed
+  every job:
+  - 119 Foundation-only tests in the Swift 6.2 Linux image;
+  - the Debug and Release builds with warnings as errors;
+  - 294 unit tests;
+  - 25 UI tests on each of iPhone 17 and iPad Pro 11-inch (iOS 26.5), the accessibility audit
+    included.
+
+### Changes from the plan
+- **Usage from photos stores no tally.** The roadmap said "count shots per body and lens … and
+  update shutter counts". The counts are shown, and what's kept goes where the app already keeps
+  it: shutter-count readings, and the shoot log, which is where an item's use is counted from. A
+  stored per-item tally would need a schema change and would double on a second pass over the
+  same photos.
+- **Shutter counts come only from files that carry them**, which through ImageIO means Nikon.
+  The number of photos isn't turned into an estimate: kept photos undercount the shutter, and an
+  electronic shutter doesn't move it.
+- **Labels carry an ID, not a name.** A label for a kit doesn't change when the kit's contents do,
+  and a found bag gives nothing away.
+- **An adapter's two mounts live in the mount text**, not in new fields. The roadmap asked for
+  "compatibility, including adapters"; a second mount field would have been a schema change. An
+  older version of the app shows the text as it is.
+- **Only makers' own adapters are named.** Other brands make many more, with no one source for
+  which exist, so those pairs show the room between the mounts and say "if one is made for this
+  pair". Sigma's Canon EF converters are left out because Sigma offers them for its own lenses.
+- **No schema change in the round.** All fifteen models are as they were, so there is nothing new
+  to deploy in CloudKit Console.
+- **Not in the plan:** the code review and its fixes, the URL scheme, remembered matches, and
+  the packing check for lenses.
+
+### Found by CI and fixed
+- The iPhone UI run on `b8e19a0` failed one test: `AccessibilityAuditTests.testShootScreens`
+  looked for a shoot titled "Harbour", and the result bundle showed the shoot open with the title
+  "Ha". The simulator had dropped keystrokes. The app was right; `replaceText` now retypes text
+  that arrived short.
+- The iPad UI run on `1f8c38d` failed its first two tests with "Timed out while launching
+  application", one of them holding the job for ten minutes; the other 21 passed. A newly booted
+  simulator's first launch of a newly installed app outlasted XCUITest's launch limit. The job
+  now installs the app and launches it once before the tests. In the next run that first
+  install and launch took 4 minutes on iPhone and 2.5 on iPad, and then all 25 tests passed on
+  both.
+
+### Left for later
+These came out of the review and weren't fixed here. Round 2, above, took the first and third.
+- A pass that finds records doubled by importing a file before iCloud finished syncing. Today the
+  import screen warns about it.
+- A package format so a large library exports and backs up with its photos.
+- A sound or banner inside the app when a timer ends and notifications are off. Today there is
+  only the note.
+- A record deleted on another device while its detail screen is open here.
+
+### Still to check on a device
+- **Usage from photos** with real files: a card's folder of raw files from the Files app, photos
+  chosen from the Photos library (raw and HEIC), and photos still in iCloud, which should count
+  as unreadable until downloaded.
+- **A Nikon body's shutter count** through the batch reader, against the camera's own count.
+- **QR labels:** print a sheet on Letter and A4 and scan the labels with the Camera app.
+- **The report for your insurer** printed, and opened in Files and Mail.
+- **Compatibility** against gear you own: a few lens and body pairs you know the answer for,
+  and an adapter of yours entered as one.
+- **The camera preview in landscape**, in the barcode scanner, the label scanner and the light
+  meter. The review flagged its rotation as possibly wrong; a simulator has no camera to check.
+- **The camera beside another app on iPad** (Split View, Stage Manager): whether the light meter
+  and scanner are interrupted, and what they show if so.
 
 ---
 

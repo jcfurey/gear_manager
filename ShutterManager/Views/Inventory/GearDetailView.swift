@@ -20,6 +20,7 @@ struct GearDetailView: View {
     @State private var draft: GearItem?
     @State private var saveFailed = false
     @State private var showingDeleteConfirm = false
+    @State private var showingLabel = false
     /// Downsampled hero image, loaded once per hero-photo change rather than decoded in `body`.
     @State private var heroImage: UIImage?
 
@@ -35,6 +36,9 @@ struct GearDetailView: View {
             }
         }
         .persistenceErrorAlert(isPresented: $saveFailed)
+        .sheet(isPresented: $showingLabel) {
+            LabelsView(gear: [item.id])
+        }
         .navigationTitle(draft?.displayName ?? item.displayName)
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
@@ -87,6 +91,7 @@ struct GearDetailView: View {
             detailsSection
         }
         Group {
+            compatibilitySection
             if category.hasShutter { shutterSection }
             usageSection
             loansSection
@@ -240,6 +245,31 @@ struct GearDetailView: View {
                     }
                 }
             }
+        }
+    }
+
+    /// A body's lenses and a lens's bodies; for an adapter, what it joins.
+    @ViewBuilder
+    private var compatibilitySection: some View {
+        switch CompatibilityList.role(of: item.mountedGear) {
+        case .body?, .lens?:
+            Section {
+                NavigationLink {
+                    CompatibilityView(item: item)
+                } label: {
+                    Label(category == .lens ? "Bodies It Fits" : "Lenses That Fit",
+                          systemImage: category == .lens ? "camera" : "camera.aperture")
+                }
+                .accessibilityIdentifier("compatibilityLink")
+            }
+        case .adapter?:
+            if let description = item.adapterDescription {
+                Section("Adapter") {
+                    Text("Puts \(description).")
+                }
+            }
+        case nil:
+            EmptyView()
         }
     }
 
@@ -404,6 +434,12 @@ struct GearDetailView: View {
                     Label("Maintenance", systemImage: "wrench.and.screwdriver")
                 }
             }
+            Button {
+                showingLabel = true
+            } label: {
+                Label("QR Label", systemImage: "qrcode")
+            }
+            .accessibilityIdentifier("gearLabelButton")
         }
     }
 
@@ -472,14 +508,18 @@ struct GearDetailView: View {
     }
 
     private func deleteItem() {
-        NotificationManager.shared.cancelReminders(for: item)
+        let reminders = NotificationManager.shared.reminderIdentifiers(for: item)
         // Pop first, then delete on the next runloop so this view isn't rendering a deleted model.
         dismiss()
         DispatchQueue.main.async {
             context.delete(item)
-            if context.saveOrLog() {
-                ToastNotificationManager.shared.gearDeleted()
+            guard context.saveOrLog() else {
+                // Undone, so the item is back in the list with its reminders.
+                context.rollback()
+                return
             }
+            NotificationManager.shared.cancelReminders(identifiers: reminders)
+            ToastNotificationManager.shared.gearDeleted()
         }
     }
 }
