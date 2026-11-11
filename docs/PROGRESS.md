@@ -67,7 +67,17 @@ photos. Past that an export was refused and a backup was written without its pho
   go in gallery order now. Nothing was lost on import either way: each photo carries its place.
 
 ### Verified
-VERIFIED_PLACEHOLDER
+[CI run 42942308467](https://github.com/jcfurey/gear_manager/actions/runs/42942308467) on
+`51ab799`, the last commit to change the package code:
+- 170 Foundation-only tests in the Swift 6.2 Linux image, the zip's and the package's among them;
+- the Debug and Release builds with warnings as errors;
+- 402 unit tests, with the 12 for export, import and backups through a package.
+
+The UI tests are the pull request's to show: see its checks. On that run and the two before it
+they failed in places that have nothing to do with packages, described under "What shipped".
+
+Files the writer produced were opened with Python's `zipfile` and `unzip -t` here. No test has
+written or read a package on a device: that's in the list below.
 
 ### Changes from the plan
 - **A zip, not a format of the app's own.** A backup you can open without the app is worth
