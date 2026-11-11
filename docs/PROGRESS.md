@@ -20,8 +20,8 @@ is still to check on a device. Add a section when a milestone finishes.
 
 ## After 1.0 — round 5: the package format
 
-**Done 2026-11-11** on `claude/camera-gear-manager-e1zzxt` (commits `1ce0442`, `5f18ade` and the
-one that adds this section). The roadmap's "package format for exports and backups, so a large
+**Done 2026-11-11** on `claude/camera-gear-manager-e1zzxt` (commits `1ce0442` to `67779ce`), in
+pull request #2. The roadmap's "package format for exports and backups, so a large
 library keeps its photos in one file".
 
 ### What it was like before
@@ -69,14 +69,16 @@ photos. Past that an export was refused and a backup was written without its pho
   go in gallery order now. Nothing was lost on import either way: each photo carries its place.
 
 ### Verified
-[CI run 42942308467](https://github.com/jcfurey/gear_manager/actions/runs/42942308467) on
-`51ab799`, the last commit to change the package code:
+[CI run 42951173168](https://github.com/jcfurey/gear_manager/actions/runs/42951173168), the pull
+request's, passed every job on `67779ce`, the last commit to change code:
 - 170 Foundation-only tests in the Swift 6.2 Linux image, the zip's and the package's among them;
 - the Debug and Release builds with warnings as errors;
-- 402 unit tests, with the 12 for export, import and backups through a package.
+- 402 unit tests, with the 12 for export, import and backups through a package;
+- 27 UI tests on each of iPhone 17 and iPad Pro 11-inch (iOS 26.5), the accessibility audit
+  included.
 
-The UI tests are the pull request's to show: see its checks. On that run and the two before it
-they failed in places that have nothing to do with packages, described under "What shipped".
+The four full runs before it each failed one or two UI tests where a tap or typed text was
+lost, never in the package code; what was done about that is under "What shipped".
 
 Files the writer produced were opened with Python's `zipfile` and `unzip -t` here. No test has
 written or read a package on a device: that's in the list below.
