@@ -197,7 +197,12 @@ final class DataExportService {
         let scratch = ModelContext(container)
         // The context has to outlive the reading: its objects fetch their bytes through it.
         return try withExtendedLifetime(scratch) {
-            details(try scratch.fetch(FetchDescriptor<GearPhoto>(predicate: #Predicate { ids.contains($0.id) })))
+            let fetched = try scratch.fetch(FetchDescriptor<GearPhoto>(predicate: #Predicate { ids.contains($0.id) }))
+            // A fetch comes back in no order of its own. The lot's order is the gallery's, and a
+            // file should come out the same way each time. Of two rows with one ID, the first.
+            var byID: [UUID: GearPhoto] = [:]
+            for photo in fetched where byID[photo.id] == nil { byID[photo.id] = photo }
+            return details(ids.compactMap { byID[$0] })
         }
     }
 
@@ -212,7 +217,10 @@ final class DataExportService {
         let ids = lot.map(\.id)
         let scratch = ModelContext(container)
         return try withExtendedLifetime(scratch) {
-            details(try scratch.fetch(FetchDescriptor<MaintenanceRecord>(predicate: #Predicate { ids.contains($0.id) })))
+            let fetched = try scratch.fetch(FetchDescriptor<MaintenanceRecord>(predicate: #Predicate { ids.contains($0.id) }))
+            var byID: [UUID: MaintenanceRecord] = [:]
+            for record in fetched where byID[record.id] == nil { byID[record.id] = record }
+            return details(ids.compactMap { byID[$0] })
         }
     }
 
