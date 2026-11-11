@@ -334,29 +334,6 @@ struct ExportSizeFixTests {
         #expect(manager.availableBackups.contains { $0.includesPhotos == true })
     }
 
-    @Test func removingPhotosMatchesAnExportMadeWithoutThem() throws {
-        let container = try TestSupport.makeContainer()
-        let context = container.mainContext
-        let body = bodyWithALargePhoto(in: context)
-        try context.save()
-        let record = try #require(body.maintenanceRecords?.first)
-        record.photoData = Data([1, 2, 3])
-        try context.save()
-        let service = DataExportService(settingsStore: TestSupport.makeDefaults())
-        let library = LibraryContents(gearItems: [body], developmentRecipes: [])
-        let full = service.buildExportData(configuration: .init(format: .json), library: library)
-        #expect(full.includesPhotos)
-        #expect(full.gearItems[0].photos?.count == 1)
-        #expect(full.maintenanceRecords[0].photoData != nil)
-
-        let stripped = full.removingPhotos()
-        #expect(!stripped.includesPhotos)
-        #expect(stripped.gearItems[0].photos == nil)
-        #expect(stripped.maintenanceRecords[0].photoData == nil)
-        #expect(stripped.recordCount == full.recordCount - 1)
-        #expect(stripped.loans.count == full.loans.count)
-    }
-
     @Test func aFileThatListsARecordTwiceImportsItOnce() async throws {
         let source = try TestSupport.makeContainer()
         let body = TestSupport.insertSampleBody(into: source.mainContext)

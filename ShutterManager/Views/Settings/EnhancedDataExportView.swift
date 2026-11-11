@@ -2,8 +2,8 @@
 //  EnhancedDataExportView.swift
 //  ShutterManager
 //
-//  Export sheet: choose JSON (complete, importable), CSV (spreadsheet) or PDF (inventory
-//  report), what to include, and share the file.
+//  Export sheet: choose a library file (everything, with photos), JSON (the records), CSV
+//  (spreadsheet) or PDF (inventory report), what to include, and share the file.
 //
 
 import SwiftUI
@@ -19,7 +19,7 @@ struct EnhancedDataExportView: View {
     @Query private var shoots: [Shoot]
     @Query private var filmRolls: [FilmRoll]
 
-    @State private var selectedFormat = EnhancedExportFormat.json
+    @State private var selectedFormat = EnhancedExportFormat.library
     @State private var includePhotos = true
     @State private var includeSettings = true
     @State private var showingShareSheet = false
@@ -46,33 +46,36 @@ struct EnhancedDataExportView: View {
                     Text(selectedFormat.description)
                 }
 
-                if selectedFormat == .json {
+                if selectedFormat.holdsEveryRecord {
                     Section {
-                        Toggle("Photos", isOn: $includePhotos)
+                        if selectedFormat == .library {
+                            Toggle("Photos", isOn: $includePhotos)
+                        }
                         Toggle("App Settings", isOn: $includeSettings)
                     } header: {
                         Text("Include")
                     } footer: {
-                        Text("Gear, maintenance, shutter counts, loans, development recipes, saved places, shoots, kits, shot-list templates and film rolls are always included. Leaving photos out makes a much smaller file.")
+                        Text("Gear, maintenance, shutter counts, loans, development recipes, saved places, shoots, kits, shot-list templates and film rolls are always included."
+                             + (selectedFormat == .library ? " Leaving photos out makes a much smaller file." : ""))
                     }
                 }
 
                 Section {
                     StatRow(icon: "camera", label: "Gear Items", value: "\(gearItems.count)", color: .orange)
-                    if selectedFormat == .json && includePhotos {
+                    if writesPhotos {
                         StatRow(icon: "photo.on.rectangle", label: "Photos",
                                 value: "\(gearItems.reduce(0) { $0 + $1.totalPhotoCount })", color: .blue)
                     }
-                    if selectedFormat == .json && !recipes.isEmpty {
+                    if selectedFormat.holdsEveryRecord && !recipes.isEmpty {
                         StatRow(icon: "flask", label: "Development Recipes", value: "\(recipes.count)", color: .purple)
                     }
-                    if selectedFormat == .json && !places.isEmpty {
+                    if selectedFormat.holdsEveryRecord && !places.isEmpty {
                         StatRow(icon: "mappin.and.ellipse", label: "Saved Places", value: "\(places.count)", color: .teal)
                     }
-                    if selectedFormat == .json && !shoots.isEmpty {
+                    if selectedFormat.holdsEveryRecord && !shoots.isEmpty {
                         StatRow(icon: "calendar", label: "Shoots", value: "\(shoots.count)", color: .indigo)
                     }
-                    if selectedFormat == .json && !filmRolls.isEmpty {
+                    if selectedFormat.holdsEveryRecord && !filmRolls.isEmpty {
                         StatRow(icon: "film", label: "Film Rolls", value: "\(filmRolls.count)", color: .brown)
                     }
                 }
@@ -115,26 +118,33 @@ struct EnhancedDataExportView: View {
         }
     }
 
-    /// CSV and PDF list gear; JSON also carries everything else and settings.
+    /// Photos travel only in a library file.
+    private var writesPhotos: Bool { selectedFormat == .library && includePhotos }
+
+    /// CSV and PDF list gear; a library file and JSON also carry everything else and settings.
     private var hasAnythingToExport: Bool {
-        !gearItems.isEmpty || (selectedFormat == .json && (includeSettings || !recipes.isEmpty || !places.isEmpty
-                                                           || !shoots.isEmpty || !filmRolls.isEmpty))
+        !gearItems.isEmpty || (selectedFormat.holdsEveryRecord && (includeSettings || !recipes.isEmpty || !places.isEmpty
+                                                                   || !shoots.isEmpty || !filmRolls.isEmpty))
     }
 
     private func performExport() {
         guard !isExporting else { return }
         isExporting = true
         exportError = nil
-        var configuration = DataExportService.ExportConfiguration(format: selectedFormat == .csv ? .csv : .json)
-        // CSV and PDF never contain photos, so their DTOs skip the multi-MB blobs.
-        configuration.includePhotos = selectedFormat == .json && includePhotos
-        configuration.includeSettings = selectedFormat == .json && includeSettings
+        let format = selectedFormat
+        var configuration = DataExportService.ExportConfiguration(format: format == .csv ? .csv : .json)
+        // Only a library file carries photos, each as a file of its own.
+        configuration.includePhotos = writesPhotos
+        configuration.includeSettings = format.holdsEveryRecord && includeSettings
         Task {
             do {
                 let library = try LibraryContents.fetch(from: modelContext)
-                if selectedFormat == .pdf {
+                switch format {
+                case .library:
+                    exportedFileURL = try await exportService.exportLibrary(configuration: configuration, library: library)
+                case .pdf:
                     exportedFileURL = try await exportService.exportPDF(configuration: configuration, library: library)
-                } else {
+                case .json, .csv:
                     exportedFileURL = try await exportService.exportData(configuration: configuration, library: library)
                 }
                 showingShareSheet = true

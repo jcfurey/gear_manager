@@ -9,9 +9,9 @@ import SwiftUI
 import SwiftData
 import UniformTypeIdentifiers
 
-/// File-picker import: previews a chosen export, then merges it into the library through
-/// `DataImportService`. Records the library already has (same ID) are skipped, so importing the
-/// same file twice adds nothing.
+/// File-picker import: previews a chosen library file or JSON export, then merges it into the
+/// library through `DataImportService`. Records the library already has (same ID) are skipped,
+/// so importing the same file twice adds nothing.
 struct DataImportView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
@@ -41,7 +41,7 @@ struct DataImportView: View {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("Select File to Import")
                                     .foregroundColor(.primary)
-                                Text("A JSON export or backup from \(Constants.App.name)")
+                                Text("A library file, JSON export or backup from \(Constants.App.name)")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }
@@ -94,7 +94,7 @@ struct DataImportView: View {
 
                 Section("About Importing") {
                     ImportInfoRow(title: "What's Added",
-                                  description: "Everything in the file that isn't already in your library. Items you already have are left as they are.")
+                                  description: "Everything in the file that isn't already in your library. Items you already have are left as they are; from a library file, they gain any of its photos they're missing.")
                     ImportInfoRow(title: "Settings",
                                   description: "Appearance and haptics settings in the file replace the current ones.")
                     ImportInfoRow(title: "Before You Import",
@@ -111,7 +111,7 @@ struct DataImportView: View {
                 }
             }
         }
-        .fileImporter(isPresented: $showingDocumentPicker, allowedContentTypes: [.json],
+        .fileImporter(isPresented: $showingDocumentPicker, allowedContentTypes: [.zip, .json],
                       allowsMultipleSelection: false) { result in
             handleFileSelection(result)
         }

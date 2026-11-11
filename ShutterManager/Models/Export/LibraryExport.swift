@@ -2,7 +2,8 @@
 //  LibraryExport.swift
 //  ShutterManager
 //
-//  The JSON export and backup format, and the DTOs that mirror each model.
+//  The library's records as JSON, and the DTOs that mirror each model: a JSON export, and the
+//  `library.json` inside a library package (see `LibraryPackage`).
 //
 
 import Foundation
@@ -65,16 +66,6 @@ struct LibraryExport: Codable {
     var kitList: [KitDTO] { kits ?? [] }
     var templateList: [ShotListTemplateDTO] { shotListTemplates ?? [] }
     var rollList: [FilmRollDTO] { filmRolls ?? [] }
-
-    /// The same export with no photos, as `includePhotos: false` would have built it. For a
-    /// library whose photos make the file too large to read back.
-    func removingPhotos() -> LibraryExport {
-        var copy = self
-        for index in copy.gearItems.indices { copy.gearItems[index].photos = nil }
-        for index in copy.maintenanceRecords.indices { copy.maintenanceRecords[index].photoData = nil }
-        copy.includesPhotos = false
-        return copy
-    }
 }
 
 /// Header written into every export file.
@@ -96,13 +87,25 @@ enum ExportFormat: String, CaseIterable, Codable {
 
 /// Every format the export screen offers.
 enum EnhancedExportFormat: String, CaseIterable, Codable {
-    case json, csv, pdf
+    case library, json, csv, pdf
 
-    var displayName: String { rawValue.uppercased() }
-    var fileExtension: String { rawValue }
+    var displayName: String {
+        switch self {
+        case .library: return "Library"
+        case .json, .csv, .pdf: return rawValue.uppercased()
+        }
+    }
+
+    var fileExtension: String {
+        switch self {
+        case .library: return LibraryPackage.fileExtension
+        case .json, .csv, .pdf: return rawValue
+        }
+    }
 
     var icon: String {
         switch self {
+        case .library: return "archivebox"
         case .json: return "doc.text"
         case .csv: return "tablecells"
         case .pdf: return "doc.richtext"
@@ -111,11 +114,15 @@ enum EnhancedExportFormat: String, CaseIterable, Codable {
 
     var description: String {
         switch self {
-        case .json: return "Complete library. Use this to move to another device or keep a copy"
+        case .library: return "Everything, with your photos, in one file. Use this to move to another device or keep a copy. It's a zip, so any computer can open it"
+        case .json: return "Your records as JSON, without photos, for other software. It imports back too"
         case .csv: return "Spreadsheet of your gear, for Numbers, Excel or Google Sheets"
         case .pdf: return "A printable inventory with serial numbers and values"
         }
     }
+
+    /// Whether the format carries the whole library's records, not only the gear.
+    var holdsEveryRecord: Bool { self == .library || self == .json }
 }
 
 // MARK: - Gear

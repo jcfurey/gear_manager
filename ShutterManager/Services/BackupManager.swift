@@ -2,7 +2,9 @@
 //  BackupManager.swift
 //  ShutterManager
 //
-//  Local backups: scheduled and manual, verified before they're listed, with retention.
+//  Local backups: scheduled and manual, verified before they're listed, with retention. Each is
+//  a library package (a zip: the records, and every photo as a file); the JSON backups earlier
+//  versions wrote are still listed and restored.
 
 import Foundation
 import SwiftData
@@ -42,6 +44,9 @@ class BackupManager: ObservableObject {
     @Published var configuration: BackupConfiguration
     @Published var availableBackups: [BackupMetadata] = []
     @Published var isBackingUp = false
+    /// True while a restore runs. One of a large library takes a while, photo by photo, and the
+    /// screen should say it's under way.
+    @Published private(set) var isRestoring = false
     @Published var lastBackupDate: Date?
     @Published var lastBackupError: String?
     /// Set while the most recent automatic attempt failed; persisted, so it survives the app
@@ -62,17 +67,19 @@ class BackupManager: ObservableObject {
     }
 
     private static var busyDirectories: Set<URL> = []
+    /// What a backup file may be: a package, or the JSON file earlier versions wrote.
+    static let fileExtensions: Set<String> = [LibraryPackage.fileExtension, "json"]
     private let fileManager = FileManager.default
     private let exportService: DataExportService
     private let backupsDirectory: URL
     private let defaults: UserDefaults
 
     init(directory: URL? = nil, defaults: UserDefaults = .standard,
-         maximumBackupBytes: Int = Constants.DataLimits.maximumImportBytes) {
+         maximumBackupBytes: Int = Constants.DataLimits.maximumPackageBytes) {
         self.backupsDirectory = (directory ?? URL.documentsDirectory.appendingPathComponent("Backups", isDirectory: true)).standardizedFileURL
         self.defaults = defaults
         // Back up the same preferences a restore writes back.
-        self.exportService = DataExportService(settingsStore: defaults, maximumBytes: maximumBackupBytes)
+        self.exportService = DataExportService(settingsStore: defaults, maximumPackageBytes: maximumBackupBytes)
         self.configuration = BackupConfiguration()
         self.lastBackupDate = defaults.object(forKey: Constants.UserDefaultsKeys.lastBackupDate) as? Date
         if let stored = defaults.dictionary(forKey: Constants.UserDefaultsKeys.lastAutomaticBackupFailure),
@@ -104,18 +111,18 @@ class BackupManager: ObservableObject {
             // Create backup configuration
             var backupConfig = DataExportService.ExportConfiguration(format: .json)
             backupConfig.includePhotos = configuration.includePhotos
-            // A library with a few hundred photos passes what one file can hold; its records
-            // are still worth backing up.
+            // A library past what one file can hold still has records worth backing up.
             backupConfig.dropsPhotosIfTooLarge = true
 
-            let exportURL = try await exportService.exportData(configuration: backupConfig, library: library)
+            let exportURL = try await exportService.exportLibrary(configuration: backupConfig, library: library)
             
             defer { try? fileManager.removeItem(at: exportURL) }
             let replacedValues = exportService.lastReplacedValueCount
             let leftPhotosOut = exportService.lastExportDroppedPhotos
-            // Never advertise a backup that the restore path cannot read or validate.
+            // Never advertise a backup that the restore path cannot read or validate: the
+            // records are decoded and checked, and every photo read back against its checksum.
             do {
-                _ = try await Task.detached { try ImportDocument.decode(ImportDocument.read(exportURL)) }.value
+                try await Task.detached { try ImportDocument.open(exportURL).verifyPhotos() }.value
             } catch ImportError.importFailed(let reason) {
                 // "Import failed: …" would misdescribe a backup in Backup Management.
                 throw BackupError.verificationFailed(reason)
@@ -167,12 +174,12 @@ class BackupManager: ObservableObject {
     func restoreBackup(_ metadata: BackupMetadata, to modelContext: ModelContext) async throws {
         guard Self.busyDirectories.insert(backupsDirectory).inserted else { throw BackupError.busy }
         defer { Self.busyDirectories.remove(backupsDirectory) }
+        isRestoring = true
+        defer { isRestoring = false }
         let url = try resolvedURL(for: metadata)
         guard fileManager.fileExists(atPath: url.path) else { throw BackupError.backupNotFound }
-        let document = try await Task.detached {
-            try ImportDocument.decode(ImportDocument.read(url))
-        }.value
-        try await DataImportService(settingsStore: defaults).apply(document, to: modelContext, strategy: .replace)
+        let file = try await Task.detached { try ImportDocument.open(url) }.value
+        try await DataImportService(settingsStore: defaults).apply(file, to: modelContext, strategy: .replace)
     }
 
     func deleteBackup(_ metadata: BackupMetadata) throws {
@@ -189,7 +196,7 @@ class BackupManager: ObservableObject {
 
     private func resolvedURL(for metadata: BackupMetadata) throws -> URL {
         let url = backupsDirectory.appendingPathComponent(metadata.fileURL.lastPathComponent)
-        guard url.pathExtension == "json", url.lastPathComponent != "metadata.json",
+        guard Self.fileExtensions.contains(url.pathExtension), url.lastPathComponent != "metadata.json",
               url.resolvingSymlinksInPath().deletingLastPathComponent().path == backupsDirectory.resolvingSymlinksInPath().path else {
             throw BackupError.invalidBackupFile
         }
@@ -240,7 +247,7 @@ class BackupManager: ObservableObject {
     // MARK: - Private Helpers
     
     private func moveToBackupsDirectory(from sourceURL: URL, id: UUID) throws -> URL {
-        let filename = "backup_\(DateFormatter.fileTimestamp.string(from: Date()))_\(id.uuidString).json"
+        let filename = "backup_\(DateFormatter.fileTimestamp.string(from: Date()))_\(id.uuidString).\(sourceURL.pathExtension)"
         let destination = backupsDirectory.appendingPathComponent(filename)
         try fileManager.moveItem(at: sourceURL, to: destination)
         return destination
@@ -285,7 +292,8 @@ class BackupManager: ObservableObject {
         }
         // Do not decode photo-heavy payloads on launch. Recovered entries advertise unknown contents.
         if let files = try? fileManager.contentsOfDirectory(at: backupsDirectory, includingPropertiesForKeys: [.creationDateKey, .fileSizeKey]) {
-            for url in files where url.lastPathComponent.hasPrefix("backup_") && url.pathExtension == "json" && !names.contains(url.lastPathComponent) {
+            for url in files where url.lastPathComponent.hasPrefix("backup_") && Self.fileExtensions.contains(url.pathExtension)
+                && !names.contains(url.lastPathComponent) {
                 let values = try? url.resourceValues(forKeys: [.creationDateKey, .fileSizeKey])
                 entries.append(BackupMetadata(id: UUID(), date: values?.creationDate ?? .distantPast,
                     fileURL: url, fileSize: Int64(values?.fileSize ?? 0),
@@ -298,6 +306,11 @@ class BackupManager: ObservableObject {
 
     private func loadAvailableBackups() {
         availableBackups = loadAllBackupMetadata().sorted { $0.date > $1.date }
+    }
+
+    /// What the listed backups take up on this device, as "1.2 GB".
+    var formattedTotalSize: String {
+        ByteCountFormatter.string(fromByteCount: availableBackups.reduce(0) { $0 + $1.fileSize }, countStyle: .file)
     }
 
     private func cleanupOldBackups() throws {

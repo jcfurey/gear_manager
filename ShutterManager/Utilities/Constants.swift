@@ -13,7 +13,14 @@ import Foundation
 enum Constants {
     enum DataLimits {
         // Generous bounds for imported libraries; reject pathological files before allocating DTOs.
+        /// The largest JSON file read or written: a JSON export, or the records inside a package.
         static let maximumImportBytes = 256 * 1024 * 1024
+        /// The largest library package (the zip a library travels in, photos and all): 3 GB. The
+        /// format's plain form holds a little under 4 GB.
+        static let maximumPackageBytes = 3 * 1024 * 1024 * 1024
+        /// A package's photos are written and read this many at a time, each lot in a context of
+        /// its own that's let go, so memory stays small however large the library.
+        static let packagePhotoBatch = 8
         static let maximumPhotoBytes = 25 * 1024 * 1024
         static let maximumRecords = 100_000
         /// Bound for physical measurements (focal length, aperture, filter thread, distance…).

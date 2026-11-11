@@ -111,6 +111,10 @@ struct BackupManagementView: View {
                                     ProgressView()
                                         .scaleEffect(0.8)
                                     Text("Creating Backup...")
+                                } else if backupManager.isRestoring {
+                                    ProgressView()
+                                        .scaleEffect(0.8)
+                                    Text("Restoring Backup...")
                                 } else {
                                     Image(systemName: "square.and.arrow.down")
                                         .accessibilityHidden(true)
@@ -119,7 +123,7 @@ struct BackupManagementView: View {
                             }
                             .frame(maxWidth: .infinity)
                         }
-                        .disabled(backupManager.isBackingUp)
+                        .disabled(backupManager.isBackingUp || backupManager.isRestoring)
                         .buttonStyle(.borderedProminent)
                     } footer: {
                         if let error = backupManager.lastBackupError {
@@ -158,6 +162,7 @@ struct BackupManagementView: View {
                                     BackupRow(backup: backup, constants: constants)
                                 }
                                 .buttonStyle(.plain)
+                                .disabled(backupManager.isBackingUp || backupManager.isRestoring)
                                 .accessibilityHint("Restores this backup, after you confirm")
                                     .contextMenu {
                                         Button {
@@ -197,6 +202,12 @@ struct BackupManagementView: View {
                         }
                     } header: {
                         Text("Backup History")
+                    } footer: {
+                        // A backup holds the photos too, so several of a large library add up.
+                        if !backupManager.availableBackups.isEmpty {
+                            Text("Backups use \(backupManager.formattedTotalSize) on this device.")
+                                .accessibilityIdentifier("backup.totalSize")
+                        }
                     }
                 }
             .navigationTitle("Backup Management")
@@ -294,7 +305,7 @@ struct BackupRow: View {
                         .foregroundColor(.secondary)
                     Text(backup.photoSummary)
                         .font(constants.captionFont)
-                        .foregroundStyle(backup.includesPhotos == true ? Color.secondary : Color.orange)
+                        .foregroundStyle(backup.includesPhotos == true ? Color.secondary : AppColors.warningText)
                 }
                 
                 Spacer()

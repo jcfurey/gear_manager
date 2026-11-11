@@ -11,6 +11,30 @@ import Foundation
 /// actor. Nothing here touches the store: a file is fully read and checked before any record
 /// changes.
 enum ImportDocument {
+    /// Reads a file someone chose as far as its records: a library package, whose photos stay
+    /// in the file until they're imported, or a JSON export. Told apart by how the file starts,
+    /// not by its name.
+    static func open(_ url: URL) throws -> ImportFile {
+        guard LibraryPackage.looksLikePackage(url) else {
+            return ImportFile(document: try decode(read(url)), package: nil)
+        }
+        do {
+            let package = try LibraryPackageFile(url: url, maximumBytes: Constants.DataLimits.maximumPackageBytes,
+                                                 maximumManifestBytes: Constants.DataLimits.maximumImportBytes,
+                                                 maximumPhotos: Constants.DataLimits.maximumRecords)
+            let document = try decode(package.manifest)
+            for photo in package.photoIndex?.photos ?? [] {
+                try check(Double(photo.order), Constants.DataLimits.maximumMeasurement)
+            }
+            guard document.recordCount + (package.photoIndex?.count ?? 0) <= Constants.DataLimits.maximumRecords else {
+                throw ImportError.importFailed("The file contains too many records.")
+            }
+            return ImportFile(document: document, package: package)
+        } catch let error as LibraryPackageError {
+            throw ImportError(error)
+        }
+    }
+
     static func read(_ url: URL) throws -> Data {
         let size = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
         guard size <= Constants.DataLimits.maximumImportBytes else { throw ImportError.fileTooLarge }
@@ -129,26 +153,75 @@ enum ImportDocument {
     }
 }
 
+/// A chosen file, read as far as its records.
+struct ImportFile: Sendable {
+    let document: LibraryExport
+    /// The package the records came from, when the file is one. Its photos are read from it as
+    /// they're imported, never all at once.
+    let package: LibraryPackageFile?
+
+    /// Gear photos the file holds, wherever it keeps them.
+    var photoCount: Int {
+        package?.photoIndex?.photos.count ?? document.gearItems.reduce(0) { $0 + ($1.photos?.count ?? 0) }
+    }
+
+    /// Whether the file was made with photos, so a restore can warn before replacing photos
+    /// with none.
+    var includesPhotos: Bool {
+        package.map { $0.photoIndex != nil } ?? document.includesPhotos
+    }
+
+    /// Reads every photo in a package through and checks it against its checksum. What a backup
+    /// does before it's listed; a JSON file's photos were checked by decoding them.
+    func verifyPhotos() throws {
+        do {
+            try package?.verifyPhotos()
+        } catch let error as LibraryPackageError {
+            throw ImportError(error)
+        }
+    }
+}
+
 enum ImportError: LocalizedError {
     case accessDenied
     case fileTooLarge
     case unsupportedFormat
     case newerFormat
     case corruptedData
+    /// A library file another app has unpacked and zipped again.
+    case rewrittenArchive
+    /// The records went in, but not every photo: `added` of `total` did.
+    case photosIncomplete(added: Int, total: Int, reason: String)
     case importFailed(String)
+
+    init(_ error: LibraryPackageError) {
+        switch error {
+        case .notALibrary: self = .unsupportedFormat
+        case .rewritten: self = .rewrittenArchive
+        case .damaged: self = .corruptedData
+        case .newerVersion: self = .newerFormat
+        case .tooLarge: self = .fileTooLarge
+        }
+    }
 
     var errorDescription: String? {
         switch self {
         case .accessDenied:
             return "Access to the file was denied."
         case .fileTooLarge:
-            return "The file is larger than the supported 256 MB."
+            let json = Constants.DataLimits.maximumImportBytes / (1024 * 1024)
+            let library = Constants.DataLimits.maximumPackageBytes / (1024 * 1024 * 1024)
+            return "The file is larger than \(Constants.App.name) can read: \(library) GB for a library file, \(json) MB for a JSON file."
         case .unsupportedFormat:
             return "This isn't a \(Constants.App.name) export or backup."
         case .newerFormat:
             return "This file was made by a newer version of \(Constants.App.name). Update the app to import it."
         case .corruptedData:
             return "The file appears to be damaged."
+        case .rewrittenArchive:
+            return "This zip file has been changed by another app. Use the library file as \(Constants.App.name) wrote it: one that was unpacked and zipped again can't be read."
+        case .photosIncomplete(let added, let total, let reason):
+            return "The records were imported, but only \(added) of \(total) photos were. Import the file again to add the rest. (\(reason))"
         case .importFailed(let message):
             return "Import failed: \(message)"
         }
