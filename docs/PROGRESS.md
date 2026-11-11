@@ -14,6 +14,76 @@ is still to check on a device. Add a section when a milestone finishes.
 | After 1.0 — round 2: what the review left | Done (2026-11-10); not merged to `main` yet |
 | After 1.0 — round 3: the timers' Live Activity | Done (2026-11-10); not merged to `main` yet |
 | After 1.0 — round 4: the cloud forecast | Done (2026-11-10); not merged to `main` yet |
+| After 1.0 — round 5: the package format | Done (2026-11-11); not merged to `main` yet |
+
+---
+
+## After 1.0 — round 5: the package format
+
+**Done 2026-11-11** on `claude/camera-gear-manager-e1zzxt` (commits `1ce0442`, `5f18ade` and the
+one that adds this section). The roadmap's "package format for exports and backups, so a large
+library keeps its photos in one file".
+
+### What it was like before
+An export or backup was one JSON file with every photo inside it as text. Writing it held the
+whole library in memory, twice over, so it was capped at 256 MB, which is about four hundred
+photos. Past that an export was refused and a backup was written without its photos.
+
+### What shipped
+- **A library file**: a zip holding `library.json` (the records), `photos.json` (which item or
+  record each photo belongs to), each photo as a file under `photos/` or `maintenance/`, and a
+  `README.txt` saying what it all is. Any computer opens it.
+- **Written and read a few photos at a time.** Eight photos are read through a scratch context,
+  written to the file, and let go. The limit for one file is now 3 GB.
+- **Export** has a Library format, the default. JSON stays as the records alone, for other
+  software. CSV and PDF are as they were.
+- **Import** takes either kind of file and tells them apart by how they start.
+  - The records go in with one save, as before, so a failure there changes nothing.
+  - A package's photos follow in lots, each saved by itself. If that stops part-way (a full
+    disk, the app closed), the records are in and some photos aren't; importing the file again
+    adds the rest. The message says how many made it.
+  - Merging a package also gives an item you already have the photos it's missing. An item
+    that kept a cover photo of its own keeps it.
+- **Backups** are packages. Before one is listed its records are decoded and every photo is
+  read back against its checksum. JSON backups from earlier builds are still listed and restored.
+- **The Backups screen** says when a restore is under way, and how much room the backups take:
+  with photos in every one, several backups of a large library add up.
+- **Refused in words:** a zip that isn't a library; one another app has unpacked and zipped
+  again with compression; a file that's damaged or cut short; one from a newer version.
+- **Tests:** 26 Foundation-only tests for the zip and the package (run on Linux too), and 12
+  for export, import and backups through it.
+- **A UI-test fix along the way.** Text typed into a field is checked, and typed again if
+  characters went missing. On a slow run the field showed its text late ("R" of "R6", "Ha" of
+  "Harbour"); the check took that for a loss, deleted only what it saw and typed again, leaving
+  "RR6", and two audit tests failed on names that were never there. `replaceText` now gives the
+  text five seconds to show, clears as much as could be in the field before a retry, and says
+  what the field holds if it still isn't right.
+
+### Verified
+VERIFIED_PLACEHOLDER
+
+### Changes from the plan
+- **A zip, not a format of the app's own.** A backup you can open without the app is worth
+  more than one you can't. The app writes it with no compression (photos are compressed
+  already) and in the format's plain form, which keeps the code to a few hundred lines and
+  needs no library. Files it writes were checked with Python's `zipfile` and `unzip -t`.
+- **Photos are no longer all-or-nothing.** One save for everything is what made an import
+  safe to fail, but it needs every photo in memory at once. The records keep that guarantee;
+  the photos trade it for being resumable.
+- **No compressed zips.** A library file unpacked and zipped again by a computer's own
+  "compress" is refused, with a message saying to use the file as the app wrote it. Reading
+  compressed entries would be Apple-only code that can't be tested here.
+
+### Still to check on a device
+- **Memory**, in Xcode, while a library with a few hundred photos is exported, backed up and
+  restored: it should stay flat. Nothing here could measure it.
+- **Time** for the same, and whether an automatic backup of a large library finishes in the
+  time iOS gives the app as it goes to the background. If it doesn't, the next launch's backup
+  will; a backup cut off is never listed.
+- **The file elsewhere:** AirDrop a library file to a Mac and open it; pick one from iCloud
+  Drive in the import screen.
+- **Room:** backups of a large library now include its photos where they used to leave them
+  out, so check the total on the Backups screen and the number kept.
 
 ---
 

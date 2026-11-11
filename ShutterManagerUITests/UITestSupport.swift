@@ -229,21 +229,44 @@ extension XCTestCase {
             let value = field.value as? String ?? ""
             return value == field.placeholderValue ? "" : value
         }
-        func enter() {
-            field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: contents().count) + text)
+        /// Deletes `held` characters, then types `text`. Deleting more than the field holds does
+        /// no harm; deleting fewer leaves the rest in front of what's typed.
+        func enter(deleting held: Int) {
+            field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: held) + text)
         }
-        enter()
-        // A busy simulator can lose keystrokes: "Harbour" once arrived as "Ha" in CI, and the test
-        // then looked for a title that was never typed. Text that arrived with characters missing
-        // is typed again, once. A field that rewrites what's typed (grouping separators, capitals)
-        // doesn't hold a shortened copy of it, so it's left alone.
+        /// Waits for what was typed to show. True once the field holds `text`, or holds something
+        /// that isn't a shortened copy of it: a field that rewrites what's typed (grouping
+        /// separators, capitals) is left alone. False if it still holds a shortened copy when the
+        /// wait runs out.
+        func settles() -> Bool {
+            let deadline = Date().addingTimeInterval(5)
+            repeat {
+                let arrived = contents()
+                if arrived == text || !Self.isSubsequence(arrived, of: text) { return true }
+                Thread.sleep(forTimeInterval: 0.25)
+            } while Date() < deadline
+            return false
+        }
+        enter(deleting: contents().count)
+        // A busy simulator does two things here, and they look alike for a moment:
+        // - it loses keystrokes: "Harbour" once arrived as "Ha" in CI, and the test then looked for
+        //   a title that was never typed;
+        // - it shows them late: the field read "R" some seconds after "R6" had gone in. Taking that
+        //   for a loss and deleting one character before typing again left "RR6".
+        // So the text is given time to show before it's counted as lost, and a retry clears as
+        // much as could be there, not only what the field admits to.
+        var attempts = 1
+        while !settles(), attempts < 3 {
+            enter(deleting: max(contents().count, text.count))
+            attempts += 1
+        }
         let arrived = contents()
-        if arrived != text, Self.isSubsequence(arrived, of: text) {
-            enter()
-        }
+        XCTAssertFalse(arrived != text && Self.isSubsequence(arrived, of: text),
+                       "Typed \"\(text)\" \(attempts) times, but the field holds \"\(arrived)\"", file: file, line: line)
     }
 
-    /// Whether `part` is `whole` with zero or more characters left out.
+    /// Whether `part`'s characters all appear in `whole`, in order: what a field that lost some
+    /// keystrokes holds.
     static func isSubsequence(_ part: String, of whole: String) -> Bool {
         var remaining = Substring(whole)
         for character in part {

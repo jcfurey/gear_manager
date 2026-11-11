@@ -84,8 +84,8 @@ The five tabs are **Inventory · Tools · Light Meter · Shoots · Settings**.
 
 **Your data**
 - Private iCloud sync across your devices, with a local-only fallback.
-- Export to JSON (restorable, with photos, development recipes, places, shoots, kits, templates
-  and film rolls), CSV and PDF; import by merge or replace.
+- Export the whole library, photos included, as one file (a zip any computer can open: the
+  records as JSON and each photo as a file), or as JSON, CSV or PDF; import by merge or replace.
 - Automatic and manual backups, with retention.
 
 **Accessibility**
@@ -134,6 +134,11 @@ These are built and tested, and aren't in the 1.0 App Store text or release note
   window or the shoot itself, by height (low, mid, high), with the chance of precipitation. It
   reaches ten days ahead. It's off until you turn it on, because getting it sends the place's
   position to Apple, rounded to about a kilometre.
+- **One file for a library of any ordinary size.** An export or backup used to be one JSON file
+  with the photos inside it, held whole in memory, so it stopped at 256 MB: a larger export was
+  refused, and a larger backup left its photos out. A library now travels as a zip with each
+  photo as a file of its own, written and read a few at a time, up to 3 GB. Importing one again
+  after it stopped part-way adds what's missing, and older JSON files still import.
 - **Timers alert in the app when notifications are off:** a banner, a haptic and a short tone at
   each agitation, pour and end, on whichever screen is up, while the app is open.
 - **Fixes from a review of the 1.0 code:** maintenance reminders now notify; timer alerts keep

@@ -364,7 +364,9 @@ GPS or iCloud happens on your Mac and devices. Work down the list in order.
 - [ ] Notifications: a gear reminder, a bulb timer with the app in the background, a development
   run, and a golden-hour heads-up.
 - [ ] Tip Jar: buy a tip (TestFlight purchases are free).
-- [ ] Backups: back up, export JSON, and import it by merge and by replace.
+- [ ] Backups: back up and restore; export a library file and import it on the other device.
+  With a few hundred photos in the library, watch memory in Xcode while a backup is made and
+  restored, and unzip the file on a Mac to see the photos inside.
 - [ ] Turn on VoiceOver and the largest text size, and go through each tab.
 - [ ] The dark and tinted icons on the Home Screen.
 
@@ -392,6 +394,9 @@ as they come up.
 - Timer alerts in the app when notifications are off.
 - A Live Activity for the bulb and development timers, on the Lock Screen and in the Dynamic
   Island, from a widget extension (the app's second target).
+- A package format for exports and backups, so a large library keeps its photos in one file: a
+  zip with the records as JSON and each photo as a file, written and read a few photos at a
+  time. The limit for one file went from 256 MB to 3 GB.
 - The cloud forecast from Apple Weather (WeatherKit) in the sun and moon planner, the Milky Way
   planner and on a shoot still to come. Off until the user turns it on, and asked for to about a
   kilometre. Open-Meteo and MET Norway were looked at as free sources that need no key; WeatherKit
@@ -406,5 +411,3 @@ as they come up.
   extension through an App Group, which is a new capability to add in the Developer account.
 - Rental-house or studio mode (checking gear out to clients). A big build for a different user;
   scope it only if there's demand.
-- A package format for exports and backups, so a large library keeps its photos in one file (today
-  an export past the size limit is refused, and a backup past it leaves the photos out).

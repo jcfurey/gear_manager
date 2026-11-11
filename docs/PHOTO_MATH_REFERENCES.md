@@ -440,3 +440,42 @@ thresholds of its own between clear and cloudy.
 **Where it's asked for.** The place's coordinates are rounded to two decimal places before they
 are sent, about 1.1 km of latitude: finer than a forecast's grid, and coarser than where anyone
 stood.
+
+## Library package
+
+The file a library is exported and backed up as is a zip, written and read by the app's own
+code (`ZipArchive`). The format is PKWARE's
+[APPNOTE.TXT](https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT) (version 6.3.10,
+revised November 2022; read November 2026): 4.3.7 is the local file header, 4.3.12 the central
+directory, 4.3.16 the end of central directory record, and 4.4 explains their fields (4.4.4 the
+flags, 4.4.5 the methods, 4.4.7 the checksum).
+
+**What the app writes.**
+- Every entry is stored (method 0), with no compression: photos are compressed already.
+- Sizes and the checksum go in the local header, so there are no data descriptors.
+- Names are UTF-8 (general-purpose bit 11). There are no extra fields and no comments.
+- The plain form only: no zip64 records. That holds a file under 4 GiB and 65,535 entries; the
+  app stops at 3 GB (`Constants.DataLimits.maximumPackageBytes`).
+- The checksum is the CRC-32 that APPNOTE 4.4.7 describes: the register starts as all ones and
+  the result is inverted. In the bit order zip uses the polynomial is 0xEDB88320, and the
+  checksum of the text "123456789", the usual check value, is 0xCBF43926; a test holds both that
+  and Python's `zlib.crc32` of a second text.
+- Dates are in the format's own form (two-second steps, no time zone), written in UTC.
+
+**What it reads.** Stored entries from any tool. A zip that's compressed, encrypted, split
+across files or in the zip64 form is refused as changed by another app.
+
+**Checked with** Python 3's `zipfile` (`testzip()` and reading each entry) and Info-ZIP's
+`unzip -t`, on files the writer produced, in November 2026. A unit test pins the bytes of a
+small file so a change to the writer shows up; check its output again with one of those tools
+before changing the pinned bytes.
+
+**Inside a package.**
+
+| Entry | Holds |
+|---|---|
+| `library.json` | Every record, as a JSON export with no photos in it. |
+| `photos.json` | Each photo's ID, owner, caption, order, date and cover flag, and the entry its bytes are in. Absent from a package made without photos. |
+| `photos/<photo ID>.<ext>` | A gear photo. The extension follows the bytes (`jpg`, `png`, `heic`, `gif`, `tiff`, else `bin`). |
+| `maintenance/<record ID>.<ext>` | A maintenance record's photo. |
+| `README.txt` | What the file is, for someone who opens it without the app. |

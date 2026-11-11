@@ -85,8 +85,9 @@ beside the app's.
     positions, rise and set, twilights, moon phases, Milky Way windows, and `ShootLight`, a
     shoot's golden hours). Sources are in
     `docs/PHOTO_MATH_REFERENCES.md`; comments cite it rather than re-deriving.
-  - `Export/`: `LibraryExport` and its DTOs, and the values the printed pages are laid out from
-    (`InsurerReport`, `GearLabel` and `LabelSheet`).
+  - `Export/`: `LibraryExport` and its DTOs, `LibraryPackage` (the zip a library travels in),
+    and the values the printed pages are laid out from (`InsurerReport`, `GearLabel` and
+    `LabelSheet`).
   - `PhotoUsage.swift`: Foundation-only counting and matching for Usage from Photos.
   - `CloudForecast.swift`: Foundation-only: a place's cloud forecast by the hour, and what it
     says about a window of time.
@@ -99,7 +100,8 @@ beside the app's.
   `WeatherKitCloudProvider`).
 - `Views/`: `Inventory/`, `Tools/`, `LightMeter/`, `Shoots/` (the shoot log, kits, film rolls,
   shot-list templates), `Places/` (choosing a place), `Settings/`, `Shared/`.
-- `Utilities/`: constants, schema, formatters, import validation, photo ingest, marketplace links.
+- `Utilities/`: constants, schema, formatters, import validation, photo ingest, marketplace links,
+  and `ZipArchive` (a store-only zip reader and writer, Foundation-only).
 - `Extensions/`: small helpers on Swift types.
 
 **Tests:**
@@ -113,8 +115,9 @@ beside the app's.
   `.primaryAction` and move secondary buttons to the leading side.
 - `AccessibilityAuditTests` runs Xcode's accessibility audit (labels, touch targets, reachable
   text) on each tab's main screens. Its header says why the other audit types are left out.
-- The UI-test helpers expect a slow simulator, because CI's is: `replaceText` types again when
-  characters went missing, `selectTab` checks that the tab came up and taps again if it didn't,
+- The UI-test helpers expect a slow simulator, because CI's is: `replaceText` waits for typed
+  text to show (it can lag by seconds) and types again only if characters are still missing,
+  `selectTab` checks that the tab came up and taps again if it didn't,
   `goBack(to:)` taps Back again when the first tap landed mid-push, and the audit waits for a
   passing banner to go. Use them rather than a bare `typeText`, or a bare `tap` on a tab or a
   Back button.
@@ -182,11 +185,32 @@ Development schema. Deploying to Production is done by hand in CloudKit Console.
   actor. It rejects only what can hurt the app: non-finite values, magnitudes past
   `Constants.DataLimits`, and record counts over the limit. `LibraryExport.formatVersion` rises
   only for a change older versions can't read; a newer file is refused with a clear message.
-- **Too large to write.** An export past `DataExportService`'s size limit is refused with
-  `ExportError.tooLarge`, which says to leave the photos out. A backup that large is written
-  without its photos, and the Backups screen says so.
-- **Import strategies.** Import writes through an isolated context with one final save. Merge skips
-  records whose ID already exists; replace removes what the file doesn't have.
+- **A library travels as a package** (`LibraryPackage`): a zip with `library.json` (a
+  `LibraryExport` with no photos in it), `photos.json` (which item or record each photo belongs
+  to) and each photo as an entry. Exports' Library format and every backup write one.
+  - Photos go in and come out `Constants.DataLimits.packagePhotoBatch` at a time. Read their
+    bytes through a scratch `ModelContext` that's let go, never from the library's own objects:
+    those stay in memory as long as the screens showing them. Keep the scratch context alive
+    while its objects are read (`withExtendedLifetime`).
+  - The zip is store-only and in the format's plain form (`ZipArchive`), so any tool opens it.
+    A test pins the bytes the writer produces; if the writer changes, check its output again
+    with a standard zip tool. Never change an entry name or the index's keys: files already
+    written must keep importing.
+  - Import tells a package from a JSON file by how it starts (`ImportDocument.open`), not by
+    its name. JSON files with photos inside, as earlier versions wrote, still import.
+- **Too large to write.** A package past `DataExportService`'s limit (3 GB) is refused with
+  `ExportError.photosTooLarge`, which says to leave the photos out. A backup that large is
+  written without its photos, and the Backups screen says so. A JSON export past its own limit
+  (256 MB) throws `ExportError.tooLarge`.
+- **Import strategies.** The records are written through an isolated context with one final save.
+  Merge skips records whose ID already exists; replace removes what the file doesn't have.
+  - A package's photos follow that save in small lots, each saved by itself: all of them in one
+    save would need all of them in memory. So a failure there leaves the records in and some
+    photos out (`ImportError.photosIncomplete`), and importing the file again adds the rest.
+  - That's why photos merge one by one: a gear photo already in the library (by ID) is left
+    alone, and an item the library has gains the file's photos it's missing.
+  - `didImportNotification` is posted when the records are in, before the photos start, and
+    again when they finish: a replace has removed what other screens were showing.
 - **After the library is replaced** (a replace-import, Delete All Data), call
   `AppNavigation.libraryWasReplaced()`: the tabs are rebuilt, so no screen is left holding a
   deleted record.
